@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Zapisnik.Core\Zapisnik.Core.csproj" />
+  </ItemGroup>
+</Project>

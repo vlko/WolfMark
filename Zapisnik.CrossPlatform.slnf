@@ -1,0 +1,15 @@
+{
+  "solution": {
+    "path": "Zapisnik.sln",
+    "projects": [
+      "src\\Zapisnik.Core\\Zapisnik.Core.csproj",
+      "src\\Zapisnik.Storage\\Zapisnik.Storage.csproj",
+      "src\\Zapisnik.Index\\Zapisnik.Index.csproj",
+      "src\\Zapisnik.Sync.ClaudeCode\\Zapisnik.Sync.ClaudeCode.csproj",
+      "tests\\Zapisnik.Core.Tests\\Zapisnik.Core.Tests.csproj",
+      "tests\\Zapisnik.Storage.Tests\\Zapisnik.Storage.Tests.csproj",
+      "tests\\Zapisnik.Index.Tests\\Zapisnik.Index.Tests.csproj",
+      "tests\\Zapisnik.Sync.ClaudeCode.Tests\\Zapisnik.Sync.ClaudeCode.Tests.csproj"
+    ]
+  }
+}

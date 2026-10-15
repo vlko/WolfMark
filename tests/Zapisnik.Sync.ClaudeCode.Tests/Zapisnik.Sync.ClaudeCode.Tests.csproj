@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Zapisnik.Sync.ClaudeCode\Zapisnik.Sync.ClaudeCode.csproj" />
+  </ItemGroup>
+</Project>

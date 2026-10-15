@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(ZapisnikCoreTargetFramework)</TargetFramework>
+    <RootNamespace>Zapisnik.Storage</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- SHFILEOPSTRUCTW differs only on 32-bit x86 (pack 1); x64 and arm64 share the 64-bit layout. x86 is not shipped. -->
+    <CsWin32PlatformTarget>x64</CsWin32PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Zapisnik.Core\Zapisnik.Core.csproj" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Zapisnik.Storage.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+SetForegroundWindow
+ShowWindow
+CreateEvent
+SetEvent
+CoWaitForMultipleObjects
+CWMO_FLAGS
