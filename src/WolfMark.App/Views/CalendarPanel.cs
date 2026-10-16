@@ -45,7 +45,7 @@ internal sealed partial class CalendarPanel : UserControl
         var header = Ui.Ui.Columns(
             (Ui.Ui.Px(36), Ui.Ui.IconButton(Glyphs.ChevronLeft, Strings.Get(R.Calendar_Previous), () => _ = vm.MoveCalendarAsync(-1), 11)),
             (Ui.Ui.Px(36), Ui.Ui.IconButton(Glyphs.ChevronRight, Strings.Get(R.Calendar_Next), () => _ = vm.MoveCalendarAsync(1), 11)),
-            (Ui.Ui.Px(76), Ui.Ui.TagButton(Strings.Get(R.Common_Today), () => _ = vm.SelectDayAsync(vm.Today))),
+            (Ui.Ui.Px(76), Ui.Ui.TagButton(Strings.Get(R.Common_Today), () => _ = vm.GoToTodayAsync())),
             (Ui.Ui.Star, _title),
             (Ui.Ui.Px(36), _expand));
         header.ColumnSpacing = 4;

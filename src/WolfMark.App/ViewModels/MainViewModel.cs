@@ -125,7 +125,11 @@ internal sealed partial class MainViewModel : ObservableObject
         await CheckClaudeCleanupAsync();
     }
 
-    public async Task SelectDayAsync(DateOnly day, bool openLatest = true)
+    /// <summary>"Today": back to the start-up mode – today selected, history of all notes (no day filter).</summary>
+    public Task GoToTodayAsync() => SelectDayAsync(Today, openLatest: true, filterHistory: false);
+
+    /// <param name="filterHistory">True when the user picked a specific day: history shows only that day.</param>
+    public async Task SelectDayAsync(DateOnly day, bool openLatest = true, bool filterHistory = true)
     {
         SelectedDay = day;
         if (day < Week.Monday || day > Week.Monday.AddDays(6))
@@ -137,7 +141,7 @@ internal sealed partial class MainViewModel : ObservableObject
             Week.Select(day);
         }
 
-        await History.SetDayFilterAsync(day);
+        await History.SetDayFilterAsync(filterHistory ? day : null);
         await SyncCalendarMonthAsync();
 
         if (!openLatest)
@@ -236,7 +240,8 @@ internal sealed partial class MainViewModel : ObservableObject
         Today = today;
         if (followToday)
         {
-            await SelectDayAsync(today, openLatest: false);
+            // Keep the history mode the user was in (filtered by the day, or all notes).
+            await SelectDayAsync(today, openLatest: false, filterHistory: History.DayFilter is not null);
         }
         else
         {
