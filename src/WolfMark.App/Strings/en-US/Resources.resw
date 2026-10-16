@@ -369,4 +369,46 @@
   <data name="Toolbar_NewNoteShort" xml:space="preserve">
     <value>New</value>
   </data>
+  <data name="Format_Bold" xml:space="preserve">
+    <value>Bold (Ctrl+B)</value>
+  </data>
+  <data name="Format_Italic" xml:space="preserve">
+    <value>Italic (Ctrl+I)</value>
+  </data>
+  <data name="Format_Strike" xml:space="preserve">
+    <value>Strikethrough</value>
+  </data>
+  <data name="Format_Code" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Format_Link" xml:space="preserve">
+    <value>Link (select text + Ctrl+K)</value>
+  </data>
+  <data name="Format_Task" xml:space="preserve">
+    <value>Task (Ctrl+Shift+L)</value>
+  </data>
+  <data name="Format_Paragraph" xml:space="preserve">
+    <value>Paragraph</value>
+  </data>
+  <data name="Format_H1" xml:space="preserve">
+    <value>Heading 1</value>
+  </data>
+  <data name="Format_H2" xml:space="preserve">
+    <value>Heading 2</value>
+  </data>
+  <data name="Format_H3" xml:space="preserve">
+    <value>Heading 3</value>
+  </data>
+  <data name="Format_Quote" xml:space="preserve">
+    <value>Quote</value>
+  </data>
+  <data name="Format_Bullet" xml:space="preserve">
+    <value>Bulleted list</value>
+  </data>
+  <data name="Format_Numbered" xml:space="preserve">
+    <value>Numbered list</value>
+  </data>
+  <data name="Proofing_Toggle" xml:space="preserve">
+    <value>Spell check</value>
+  </data>
 </root>

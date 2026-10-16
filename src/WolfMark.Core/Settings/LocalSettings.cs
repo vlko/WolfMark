@@ -44,6 +44,9 @@ public sealed class LocalSettings
 
     public EditorMode DefaultEditorMode { get; set; } = EditorMode.Formatted;
 
+    /// <summary>Proofing (spell check) in the editor, toggled from the toolbar.</summary>
+    public bool SpellCheckEnabled { get; set; } = true;
+
     /// <summary>"sk-SK", "en-US" or null for system.</summary>
     public string? Language { get; set; }
 

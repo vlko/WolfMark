@@ -42,6 +42,7 @@ public sealed partial class MarkdownEditor : UserControl
     private string _text = string.Empty;
     private int _version;
     private int _activeLine = -1;
+    private int _appliedVersion;
     private int _applying;
     private double _maxLineWidth = 760;
 
@@ -84,9 +85,17 @@ public sealed partial class MarkdownEditor : UserControl
         _box.PreviewKeyDown += OnPreviewKeyDown;
         _box.LostFocus += (_, _) => EditorLostFocus?.Invoke(this, EventArgs.Empty);
         _box.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnPointerReleased), handledEventsToo: true);
-        SizeChanged += (_, _) => UpdatePadding();
+        SizeChanged += (_, _) =>
+        {
+            UpdatePadding();
+            UpdateOverlay();
+        };
 
-        Content = _box;
+        var host = new Grid();
+        host.Children.Add(_box);
+        host.Children.Add(_overlay);
+        Content = host;
+        InitContextMenu();
         IsTabStop = false;
         Unloaded += (_, _) => _cts.Cancel();
         _box.Loaded += (_, _) =>
@@ -140,6 +149,7 @@ public sealed partial class MarkdownEditor : UserControl
             _mode = value;
             RequestHighlight(full: true);
             ModeChanged?.Invoke(this, value);
+            UpdateOverlay();
         }
     }
 
@@ -194,6 +204,7 @@ public sealed partial class MarkdownEditor : UserControl
 
         _text = ReadBoxText();
         _undo.Clear();
+        _lineTokens.Clear();
         _activeLine = LineOf(_text, caretToEnd ? _text.Length : 0);
         RequestHighlight(full: true);
     }
@@ -214,14 +225,24 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         var (start, length) = GetSelection();
-        TextEdit? edit = command switch
+        var unwrap = length == 0 && _activeFormats.Contains(command) ? UnwrapAtCaret(command) : null;
+        TextEdit? edit = unwrap ?? command switch
         {
             EditorCommand.Bold => MarkdownEditing.ToggleWrap(_text, start, length, "**"),
             EditorCommand.Italic => MarkdownEditing.ToggleWrap(_text, start, length, "*"),
             EditorCommand.Code => MarkdownEditing.ToggleWrap(_text, start, length, "`"),
             EditorCommand.Strikethrough => MarkdownEditing.ToggleWrap(_text, start, length, "~~"),
             EditorCommand.Link => MarkdownEditing.InsertLink(_text, start, length),
-            EditorCommand.Task => MarkdownEditing.ToggleTask(_text, start),
+            EditorCommand.Task => MarkdownEditing.GetBlock(_text, start) == BlockKind.Task
+                ? MarkdownEditing.SetBlock(_text, start, BlockKind.Paragraph)
+                : MarkdownEditing.SetBlock(_text, start, BlockKind.Task),
+            EditorCommand.Heading1 => MarkdownEditing.ToggleHeading(_text, start, 1),
+            EditorCommand.Heading2 => MarkdownEditing.ToggleHeading(_text, start, 2),
+            EditorCommand.Heading3 => MarkdownEditing.ToggleHeading(_text, start, 3),
+            EditorCommand.Paragraph => MarkdownEditing.SetBlock(_text, start, BlockKind.Paragraph),
+            EditorCommand.Quote => MarkdownEditing.SetBlock(_text, start, MarkdownEditing.GetBlock(_text, start) == BlockKind.Quote ? BlockKind.Paragraph : BlockKind.Quote),
+            EditorCommand.BulletList => MarkdownEditing.SetBlock(_text, start, MarkdownEditing.GetBlock(_text, start) == BlockKind.Bullet ? BlockKind.Paragraph : BlockKind.Bullet),
+            EditorCommand.NumberedList => MarkdownEditing.SetBlock(_text, start, MarkdownEditing.GetBlock(_text, start) == BlockKind.Numbered ? BlockKind.Paragraph : BlockKind.Numbered),
             EditorCommand.Indent => MarkdownEditing.Indent(_text, start, length, outdent: false),
             EditorCommand.Outdent => MarkdownEditing.Indent(_text, start, length, outdent: true),
             _ => null,
@@ -282,10 +303,10 @@ public sealed partial class MarkdownEditor : UserControl
                 Mode = Mode == MarkdownEditorMode.Raw ? MarkdownEditorMode.Formatted : MarkdownEditorMode.Raw;
                 break;
             case VirtualKey.B when ctrl && !shift && !_box.IsReadOnly:
-                edit = MarkdownEditing.ToggleWrap(_text, start, length, "**");
+                Execute(EditorCommand.Bold); // same toggle logic as the toolbar (unwraps when active)
                 break;
             case VirtualKey.I when ctrl && !shift && !_box.IsReadOnly:
-                edit = MarkdownEditing.ToggleWrap(_text, start, length, "*");
+                Execute(EditorCommand.Italic);
                 break;
             case VirtualKey.K when ctrl && !shift && length > 0 && !_box.IsReadOnly:
                 // With a selection Ctrl+K creates a link; without one it bubbles up to open search.
@@ -478,13 +499,11 @@ public sealed partial class MarkdownEditor : UserControl
         if (line != _activeLine)
         {
             _undo.Seal();
-            var previous = _activeLine;
             _activeLine = line;
-            if (_mode == MarkdownEditorMode.Formatted)
-            {
-                RequestHighlight(full: false, extraLine: previous);
-            }
         }
+
+        // Markers stay hidden; the caret line only gets overlay chips and toolbar state.
+        RefreshCaretState();
     }
 
     private static int LineOf(string text, int offset)
@@ -526,7 +545,11 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _scrollViewer = sv;
-        sv.ViewChanged += (_, _) => UpdateOverflow();
+        sv.ViewChanged += (_, _) =>
+        {
+            UpdateOverflow();
+            UpdateOverlay();
+        };
         sv.RegisterPropertyChangedCallback(ScrollViewer.ScrollableHeightProperty, (_, _) => UpdateOverflow());
         UpdateOverflow();
     }
@@ -572,6 +595,10 @@ public sealed partial class MarkdownEditor : UserControl
 
     private async Task HighlightLoopAsync(CancellationToken ct)
     {
+        // Lines dispatched for a version the UI has not finished applying (it drops stale batches).
+        // They are carried forward through each edit so fast typing never leaves lines unstyled.
+        var pending = new SortedSet<int>();
+        var dispatchedVersion = 0;
         try
         {
             while (await _snapshots.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
@@ -596,7 +623,20 @@ public sealed partial class MarkdownEditor : UserControl
                 }
 
                 var update = _model.Update(latest.Text);
+                if (Volatile.Read(ref _appliedVersion) >= dispatchedVersion)
+                {
+                    pending.Clear();
+                }
+
                 var lines = new SortedSet<int>(extras);
+                foreach (var old in pending)
+                {
+                    if (update.MapLine(old) is var mapped and >= 0)
+                    {
+                        lines.Add(mapped);
+                    }
+                }
+
                 if (full)
                 {
                     for (var i = 0; i < _model.LineCount; i++)
@@ -629,6 +669,8 @@ public sealed partial class MarkdownEditor : UserControl
 
                 if (styles.Count > 0)
                 {
+                    pending = [.. styles.Select(st => st.Line)];
+                    dispatchedVersion = latest.Version;
                     DispatchStyles(latest, styles, 0);
                 }
             }
@@ -658,6 +700,7 @@ public sealed partial class MarkdownEditor : UserControl
                 for (var i = from; i < to; i++)
                 {
                     ApplyLineStyle(styles[i], snapshot.Mode, styles[i].Line == _activeLine);
+                    CacheLine(styles[i]);
                 }
             }
             finally
@@ -670,6 +713,11 @@ public sealed partial class MarkdownEditor : UserControl
             if (to < styles.Count)
             {
                 DispatchStyles(snapshot, styles, to);
+            }
+            else
+            {
+                Volatile.Write(ref _appliedVersion, snapshot.Version);
+                RefreshCaretState();
             }
         });
     }
@@ -703,7 +751,8 @@ public sealed partial class MarkdownEditor : UserControl
 
         var lineRange = doc.GetRange(style.Start, style.Start + style.Length);
         ResetFormat(lineRange.CharacterFormat);
-        var hideSyntax = mode == MarkdownEditorMode.Formatted && !isActiveLine;
+        // Formatted mode hides delimiters on every line – revealing them would shift the text (ADR 0001).
+        var hideSyntax = mode == MarkdownEditorMode.Formatted;
 
         foreach (var token in style.Tokens)
         {
@@ -809,4 +858,11 @@ public enum EditorCommand
     Task,
     Indent,
     Outdent,
+    Paragraph,
+    Heading1,
+    Heading2,
+    Heading3,
+    Quote,
+    BulletList,
+    NumberedList,
 }

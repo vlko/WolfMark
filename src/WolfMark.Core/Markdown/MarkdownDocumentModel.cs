@@ -1,9 +1,22 @@
 namespace WolfMark.Core.Markdown;
 
 /// <summary>Result of <see cref="MarkdownDocumentModel.Update"/>: which lines got new tokens.</summary>
-/// <param name="FirstLine">First retokenized line.</param>
+/// <param name="FirstLine">First retokenized line (= first changed line).</param>
 /// <param name="LineCount">Number of retokenized lines (0 = nothing changed).</param>
-public readonly record struct MarkdownUpdate(int FirstLine, int LineCount);
+public readonly record struct MarkdownUpdate(int FirstLine, int LineCount)
+{
+    /// <summary>Lines removed at <see cref="FirstLine"/> by the edit.</summary>
+    public int RemovedLines { get; init; }
+
+    /// <summary>Lines inserted at <see cref="FirstLine"/> by the edit.</summary>
+    public int InsertedLines { get; init; }
+
+    /// <summary>Maps a line index from before the edit to after it; -1 if that line was replaced.</summary>
+    public int MapLine(int oldLine) =>
+        oldLine < FirstLine ? oldLine
+        : oldLine >= FirstLine + RemovedLines ? oldLine + InsertedLines - RemovedLines
+        : -1;
+}
 
 /// <summary>
 /// Incremental, line-based tokenisation of a whole document. Keeps the lexer state at each line
@@ -79,6 +92,8 @@ public sealed class MarkdownDocumentModel
             return new MarkdownUpdate(prefix, 0);
         }
 
+        var diff = new MarkdownUpdate(prefix, 0) { RemovedLines = removed, InsertedLines = inserted };
+
         _lines.RemoveRange(prefix, removed);
         var insertedLines = new Line[inserted];
         for (var k = 0; k < inserted; k++)
@@ -111,7 +126,7 @@ public sealed class MarkdownDocumentModel
             i++;
         }
 
-        return new MarkdownUpdate(prefix, i - prefix);
+        return diff with { LineCount = i - prefix };
     }
 
     private void EnsureLineStarts()

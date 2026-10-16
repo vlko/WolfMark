@@ -137,3 +137,53 @@ public sealed class UndoHistoryTests
         Assert.Equal("hello world", t);
     }
 }
+
+public sealed class BlockEditingTests
+{
+    private static string Apply(string text, TextEdit edit) => edit.ApplyTo(text);
+
+    [Theory]
+    [InlineData("text", BlockKind.Heading2, "## text")]
+    [InlineData("# text", BlockKind.Heading3, "### text")]
+    [InlineData("### text", BlockKind.Paragraph, "text")]
+    [InlineData("- item", BlockKind.Heading1, "# item")]
+    [InlineData("  - item", BlockKind.Numbered, "  1. item")]
+    [InlineData("- [x] done", BlockKind.Bullet, "- done")]
+    [InlineData("> quote", BlockKind.Task, "- [ ] quote")]
+    [InlineData("1. one", BlockKind.Quote, "> one")]
+    [InlineData("", BlockKind.Heading1, "# ")]
+    public void Set_block_replaces_prefix(string line, BlockKind kind, string expected)
+    {
+        Assert.Equal(expected, Apply(line, MarkdownEditing.SetBlock(line, line.Length, kind)));
+    }
+
+    [Theory]
+    [InlineData("# a", BlockKind.Heading1)]
+    [InlineData("## a", BlockKind.Heading2)]
+    [InlineData("#tag", BlockKind.Paragraph)]
+    [InlineData("> a", BlockKind.Quote)]
+    [InlineData("- [ ] a", BlockKind.Task)]
+    [InlineData("3) a", BlockKind.Numbered)]
+    [InlineData("* a", BlockKind.Bullet)]
+    public void Detects_block(string line, BlockKind kind) => Assert.Equal(kind, MarkdownEditing.GetBlock(line, 1));
+
+    [Fact]
+    public void Heading_toggle_and_caret()
+    {
+        var text = "a\nhello\nb";
+        var edit = MarkdownEditing.ToggleHeading(text, 5, 2);
+        var t1 = Apply(text, edit);
+        Assert.Equal("a\n## hello\nb", t1);
+        Assert.Equal(8, edit.SelectionStart);
+        Assert.Equal(text, Apply(t1, MarkdownEditing.ToggleHeading(t1, 6, 2)));
+    }
+
+    [Fact]
+    public void Unwrap_removes_delimiters_and_keeps_caret_in_content()
+    {
+        var text = "x **bold** y";
+        var edit = MarkdownEditing.Unwrap(text, 2, 2, 8, 2, caret: 6);
+        Assert.Equal("x bold y", Apply(text, edit));
+        Assert.Equal(4, edit.SelectionStart);
+    }
+}

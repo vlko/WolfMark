@@ -24,6 +24,17 @@ SPEC §4.4 požaduje dva režimy (raw / formátovaný) nad jedným textovým mod
   aplikuje na podrozsah (zachová kurzor/scroll) – všetko pokryté unit testami.
 - Vkladanie: vždy plain text; obrázok zo schránky → PNG → `assets/` dňa → `![](assets/HHmm-NN.png)`.
 - `Ctrl+K` s označeným textom vytvorí odkaz, bez výberu otvorí vyhľadávanie (SPEC má Ctrl+K pre oboje).
+- **Formátovaný režim neodkrýva značky ani na riadku s kurzorom** (odkrytie posúvalo text). Namiesto
+  toho: tlačidlá v toolbare (H1–H3, B, I, S, kód, odkaz, úloha) ukazujú formát na pozícii kurzora
+  a stlačenie aktívneho formát odstráni (`MarkdownEditing.Unwrap`); značky riadku s kurzorom sa kreslia
+  ako malé čipy v overlay `Canvas` v horných rohoch pred a za textom (`ITextRange.GetRect`).
+- Kontextové menu (pravý klik) dopĺňa štandardný `TextCommandBarFlyout` o zmenu typu riadku
+  (`MarkdownEditing.SetBlock`: odsek, H1–H3, citácia, zoznamy, úloha) a inline formáty – kopírovanie
+  a návrhy pravopisu ostávajú.
+- Kontrola pravopisu sa zapína/vypína tlačidlom v toolbare (`LocalSettings.SpellCheckEnabled`).
+- Zvýrazňovanie: riadky odoslané na UI, ktoré UI ešte neaplikovalo (zastaraná dávka sa zahodí), sa
+  prenášajú cez `MarkdownUpdate.MapLine` do ďalšej dávky – rýchle písanie po vložení viacerých
+  riadkov nenechá riadky bez farbenia.
 
 ## Merania
 

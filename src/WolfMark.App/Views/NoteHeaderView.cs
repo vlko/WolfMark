@@ -23,13 +23,13 @@ internal sealed partial class NoteHeaderView
 {
     private readonly MainViewModel _vm;
     private readonly TagBrushes _brushes;
-    private readonly Action<EditorCommand> _execute;
+    private readonly MarkdownEditor _editor;
 
-    public NoteHeaderView(MainViewModel vm, TagBrushes brushes, Action<EditorCommand> execute)
+    public NoteHeaderView(MainViewModel vm, TagBrushes brushes, MarkdownEditor editor)
     {
         _vm = vm;
         _brushes = brushes;
-        _execute = execute;
+        _editor = editor;
         Heading = BuildDayHeading();
         NotePanel = Ui.Ui.VStack(6, BuildToolbar(), BuildInfoBars());
     }
@@ -122,15 +122,13 @@ internal sealed partial class NoteHeaderView
             stateIcon.Foreground = editor.SaveState == SaveState.Error ? new SolidColorBrush(Microsoft.UI.Colors.IndianRed) : Palette.InkTertiary;
         });
 
-        var format = Ui.Ui.HStack(
-            0,
-            Ui.Ui.IconButton(Glyphs.Bold, "Bold (Ctrl+B)", () => _execute(EditorCommand.Bold), 14),
-            Ui.Ui.IconButton(Glyphs.Italic, "Italic (Ctrl+I)", () => _execute(EditorCommand.Italic), 14),
-            Ui.Ui.IconButton(Glyphs.CheckboxComposite, "Task (Ctrl+Shift+L)", () => _execute(EditorCommand.Task), 14),
-            Ui.Ui.IconButton(Glyphs.Code, "Code", () => _execute(EditorCommand.Code), 14),
-            Ui.Ui.IconButton(Glyphs.Link, "Link (Ctrl+K)", () => _execute(EditorCommand.Link), 14));
-        format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () => format.Opacity = editor.IsReadOnly ? 0.3 : 1);
-        format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () => format.IsHitTestVisible = !editor.IsReadOnly);
+        var format = BuildFormatToggles();
+        format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () =>
+        {
+            format.Opacity = editor.IsReadOnly ? 0.3 : 1;
+            format.IsHitTestVisible = !editor.IsReadOnly;
+        });
+        var proofing = BuildProofingToggle();
 
         var raw = SegmentButton(Strings.Get(R.Mode_Raw));
         var formatted = SegmentButton(Strings.Get(R.Mode_Formatted));
@@ -152,10 +150,122 @@ internal sealed partial class NoteHeaderView
             (Ui.Ui.Px(170), Ui.Ui.HStack(6, stateIcon, stateText)),
             (Ui.Ui.Star, null),
             (Ui.Ui.Auto, format),
+            (Ui.Ui.Auto, proofing),
             (Ui.Ui.Auto, segments),
             (Ui.Ui.Auto, add));
         grid.ColumnSpacing = 12;
         return grid;
+    }
+
+    /// <summary>
+    /// Format toggles: pressed when the format is active at the caret (instead of revealing the markdown
+    /// delimiters inline); pressing an active one removes the format.
+    /// </summary>
+    private StackPanel BuildFormatToggles()
+    {
+        var toggles = new List<(EditorCommand Command, ToggleButton Button)>();
+        ToggleButton Toggle(EditorCommand command, UIElement content, string tooltip)
+        {
+            var button = new ToggleButton
+            {
+                Content = content,
+                MinWidth = 32,
+                MinHeight = 32,
+                Padding = new Thickness(6, 4, 6, 4),
+                CornerRadius = Radius.Control,
+                BorderThickness = new Thickness(0),
+                Background = Palette.Transparent,
+            };
+            ToolTipService.SetToolTip(button, tooltip);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, tooltip);
+            button.Click += (_, _) =>
+            {
+                _editor.Execute(command);
+                Sync();
+            };
+            toggles.Add((command, button));
+            return button;
+        }
+
+        FontIcon Icon(EditorCommand command)
+        {
+            var icon = FormatIcons.Create(command);
+            icon.Foreground = Palette.Ink;
+            return icon;
+        }
+
+        var panel = Ui.Ui.HStack(
+            0,
+            Toggle(EditorCommand.Heading1, Icon(EditorCommand.Heading1), Strings.Get(R.Format_H1)),
+            Toggle(EditorCommand.Heading2, Icon(EditorCommand.Heading2), Strings.Get(R.Format_H2)),
+            Toggle(EditorCommand.Heading3, Icon(EditorCommand.Heading3), Strings.Get(R.Format_H3)),
+            new Border { Width = 1, Height = 18, Background = Palette.Divider, Margin = new Thickness(6, 0, 6, 0) },
+            Toggle(EditorCommand.Bold, Icon(EditorCommand.Bold), Strings.Get(R.Format_Bold)),
+            Toggle(EditorCommand.Italic, Icon(EditorCommand.Italic), Strings.Get(R.Format_Italic)),
+            Toggle(EditorCommand.Strikethrough, Icon(EditorCommand.Strikethrough), Strings.Get(R.Format_Strike)),
+            Toggle(EditorCommand.Code, Icon(EditorCommand.Code), Strings.Get(R.Format_Code)),
+            Toggle(EditorCommand.Link, Icon(EditorCommand.Link), Strings.Get(R.Format_Link)),
+            Toggle(EditorCommand.Task, Icon(EditorCommand.Task), Strings.Get(R.Format_Task)));
+        panel.VerticalAlignment = VerticalAlignment.Center;
+
+        void Sync()
+        {
+            foreach (var (command, button) in toggles)
+            {
+                button.IsChecked = _editor.ActiveFormats.Contains(command);
+            }
+        }
+
+        _editor.ActiveFormatsChanged += (_, _) => Sync();
+        Sync();
+        return panel;
+    }
+
+    /// <summary>Spell check on/off: "abc" over a red squiggle, remembered in the settings.</summary>
+    private ToggleButton BuildProofingToggle()
+    {
+        var squiggle = new Microsoft.UI.Xaml.Shapes.Polyline
+        {
+            Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xE5, 0x39, 0x35)),
+            StrokeThickness = 1.4,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        for (var x = 0; x <= 20; x += 2)
+        {
+            squiggle.Points.Add(new Windows.Foundation.Point(x, x % 4 == 0 ? 3 : 0));
+        }
+
+        var abc = new TextBlock { Text = "abc", FontFamily = Typo.CondensedMedium, FontSize = 13, Foreground = Palette.Ink, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, -2, 0, 0) };
+        var settings = _vm.Host.Settings.Current;
+        var button = new ToggleButton
+        {
+            Content = Ui.Ui.VStack(0, abc, squiggle),
+            MinWidth = 36,
+            MinHeight = 32,
+            Padding = new Thickness(6, 3, 6, 4),
+            CornerRadius = Radius.Control,
+            BorderThickness = new Thickness(0),
+            IsChecked = settings.SpellCheckEnabled,
+        };
+        var tip = Strings.Get(R.Proofing_Toggle);
+        ToolTipService.SetToolTip(button, tip);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, tip);
+
+        void Apply()
+        {
+            var on = button.IsChecked == true;
+            _editor.IsSpellCheckEnabled = on;
+            squiggle.Opacity = on ? 1 : 0.3;
+        }
+
+        button.Click += (_, _) =>
+        {
+            Apply();
+            settings.SpellCheckEnabled = button.IsChecked == true;
+            _ = _vm.Host.SaveSettingsAsync();
+        };
+        Apply();
+        return button;
     }
 
     private static ToggleButton SegmentButton(string text) => new()

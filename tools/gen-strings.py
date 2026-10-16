@@ -121,6 +121,20 @@ S = {
  "Editor_Modified": ("edited {0}", "upravené {0}"),
  "Editor_Continues": ("continues", "pokračuje"),
  "Toolbar_NewNoteShort": ("New", "Nová"),
+ "Format_Bold": ("Bold (Ctrl+B)", "Tučné (Ctrl+B)"),
+ "Format_Italic": ("Italic (Ctrl+I)", "Kurzíva (Ctrl+I)"),
+ "Format_Strike": ("Strikethrough", "Prečiarknuté"),
+ "Format_Code": ("Code", "Kód"),
+ "Format_Link": ("Link (select text + Ctrl+K)", "Odkaz (označ text + Ctrl+K)"),
+ "Format_Task": ("Task (Ctrl+Shift+L)", "Úloha (Ctrl+Shift+L)"),
+ "Format_Paragraph": ("Paragraph", "Odsek"),
+ "Format_H1": ("Heading 1", "Nadpis 1"),
+ "Format_H2": ("Heading 2", "Nadpis 2"),
+ "Format_H3": ("Heading 3", "Nadpis 3"),
+ "Format_Quote": ("Quote", "Citácia"),
+ "Format_Bullet": ("Bulleted list", "Odrážkový zoznam"),
+ "Format_Numbered": ("Numbered list", "Číslovaný zoznam"),
+ "Proofing_Toggle": ("Spell check", "Kontrola pravopisu"),
 }
 
 import os, sys, html

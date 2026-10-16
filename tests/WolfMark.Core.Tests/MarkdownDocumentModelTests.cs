@@ -15,7 +15,7 @@ public sealed class MarkdownDocumentModelTests
 
         lines[50] = "line 50 changed";
         var update = model.Update(string.Join('\n', lines));
-        Assert.Equal(new MarkdownUpdate(50, 1), update);
+        Assert.Equal((50, 1), (update.FirstLine, update.LineCount));
         Assert.Equal(101, model.TokenizedLines);
     }
 
@@ -45,6 +45,21 @@ public sealed class MarkdownDocumentModelTests
         Assert.Equal(6, model.GetLineStart(2));
         Assert.Equal(2, model.GetLineAtOffset(7));
         Assert.Equal(1, model.GetLineAtOffset(3));
+    }
+
+    [Fact]
+    public void Map_line_follows_inserted_lines()
+    {
+        var model = new MarkdownDocumentModel();
+        model.Update("a\nb\nc\nd");
+        var update = model.Update("a\nx\ny\nb\nc\nd");
+        Assert.Equal(0, update.MapLine(0));
+        Assert.Equal(3, update.MapLine(1));
+        Assert.Equal(5, update.MapLine(3));
+
+        var replace = model.Update("a\nZ\nb\nc\nd");
+        Assert.Equal(-1, replace.MapLine(1));
+        Assert.Equal(2, replace.MapLine(3));
     }
 
     [Fact]

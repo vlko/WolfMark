@@ -369,4 +369,46 @@
   <data name="Toolbar_NewNoteShort" xml:space="preserve">
     <value>Nová</value>
   </data>
+  <data name="Format_Bold" xml:space="preserve">
+    <value>Tučné (Ctrl+B)</value>
+  </data>
+  <data name="Format_Italic" xml:space="preserve">
+    <value>Kurzíva (Ctrl+I)</value>
+  </data>
+  <data name="Format_Strike" xml:space="preserve">
+    <value>Prečiarknuté</value>
+  </data>
+  <data name="Format_Code" xml:space="preserve">
+    <value>Kód</value>
+  </data>
+  <data name="Format_Link" xml:space="preserve">
+    <value>Odkaz (označ text + Ctrl+K)</value>
+  </data>
+  <data name="Format_Task" xml:space="preserve">
+    <value>Úloha (Ctrl+Shift+L)</value>
+  </data>
+  <data name="Format_Paragraph" xml:space="preserve">
+    <value>Odsek</value>
+  </data>
+  <data name="Format_H1" xml:space="preserve">
+    <value>Nadpis 1</value>
+  </data>
+  <data name="Format_H2" xml:space="preserve">
+    <value>Nadpis 2</value>
+  </data>
+  <data name="Format_H3" xml:space="preserve">
+    <value>Nadpis 3</value>
+  </data>
+  <data name="Format_Quote" xml:space="preserve">
+    <value>Citácia</value>
+  </data>
+  <data name="Format_Bullet" xml:space="preserve">
+    <value>Odrážkový zoznam</value>
+  </data>
+  <data name="Format_Numbered" xml:space="preserve">
+    <value>Číslovaný zoznam</value>
+  </data>
+  <data name="Proofing_Toggle" xml:space="preserve">
+    <value>Kontrola pravopisu</value>
+  </data>
 </root>

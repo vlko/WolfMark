@@ -122,4 +122,18 @@ internal static class R
     public const string Editor_Modified = nameof(Editor_Modified);
     public const string Editor_Continues = nameof(Editor_Continues);
     public const string Toolbar_NewNoteShort = nameof(Toolbar_NewNoteShort);
+    public const string Format_Bold = nameof(Format_Bold);
+    public const string Format_Italic = nameof(Format_Italic);
+    public const string Format_Strike = nameof(Format_Strike);
+    public const string Format_Code = nameof(Format_Code);
+    public const string Format_Link = nameof(Format_Link);
+    public const string Format_Task = nameof(Format_Task);
+    public const string Format_Paragraph = nameof(Format_Paragraph);
+    public const string Format_H1 = nameof(Format_H1);
+    public const string Format_H2 = nameof(Format_H2);
+    public const string Format_H3 = nameof(Format_H3);
+    public const string Format_Quote = nameof(Format_Quote);
+    public const string Format_Bullet = nameof(Format_Bullet);
+    public const string Format_Numbered = nameof(Format_Numbered);
+    public const string Proofing_Toggle = nameof(Proofing_Toggle);
 }

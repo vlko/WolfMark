@@ -61,7 +61,7 @@ internal sealed partial class MainWindow : Window
         _search = new SearchPalette(vm, brushes) { Visibility = Visibility.Collapsed };
 
         _historyRow = new RowDefinition { Height = new GridLength(_host.Settings.Current.HistoryPaneHeight) };
-        var header = new NoteHeaderView(vm, brushes, _editor.Execute);
+        var header = new NoteHeaderView(vm, brushes, _editor);
         var splitter = new SplitterHandle(
             () => _historyRow.Height.Value,
             h => _historyRow.Height = new GridLength(h),
@@ -300,6 +300,24 @@ internal sealed partial class MainWindow : Window
     {
         var editorVm = _vm.Editor;
         _editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
+        _editor.CommandIcon = FormatIcons.CreateForMenu;
+        _editor.CommandText = command => command switch
+        {
+            EditorCommand.Paragraph => Strings.Get(R.Format_Paragraph),
+            EditorCommand.Heading1 => Strings.Get(R.Format_H1),
+            EditorCommand.Heading2 => Strings.Get(R.Format_H2),
+            EditorCommand.Heading3 => Strings.Get(R.Format_H3),
+            EditorCommand.Quote => Strings.Get(R.Format_Quote),
+            EditorCommand.BulletList => Strings.Get(R.Format_Bullet),
+            EditorCommand.NumberedList => Strings.Get(R.Format_Numbered),
+            EditorCommand.Task => Strings.Get(R.Format_Task),
+            EditorCommand.Bold => Strings.Get(R.Format_Bold),
+            EditorCommand.Italic => Strings.Get(R.Format_Italic),
+            EditorCommand.Strikethrough => Strings.Get(R.Format_Strike),
+            EditorCommand.Code => Strings.Get(R.Format_Code),
+            EditorCommand.Link => Strings.Get(R.Format_Link),
+            _ => command.ToString(),
+        };
         _editor.Mode = editorVm.Mode == EditorMode.Raw ? MarkdownEditorMode.Raw : MarkdownEditorMode.Formatted;
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();

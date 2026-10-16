@@ -1,5 +1,18 @@
 namespace WolfMark.Core.Markdown;
 
+/// <summary>Block type of a line, changed from the toolbar or the editor's context menu.</summary>
+public enum BlockKind
+{
+    Paragraph,
+    Heading1,
+    Heading2,
+    Heading3,
+    Quote,
+    Bullet,
+    Numbered,
+    Task,
+}
+
 /// <summary>
 /// Pure-text implementations of the editor shortcuts (SPEC §4.4, M4-06). Offsets assume '\n' line
 /// breaks (one character), matching RichEdit positions. Each method returns null when the default
@@ -196,6 +209,116 @@ public static class MarkdownEditing
         var newSelStart = Math.Max(blockStart, selStart + firstDelta);
         var newSelLength = Math.Max(0, selLength + totalDelta - firstDelta);
         return new TextEdit(blockStart, block.Length, newBlock, newSelStart, selLength == 0 ? 0 : newSelLength);
+    }
+
+    /// <summary>Current block type of the line containing <paramref name="caret"/>.</summary>
+    public static BlockKind GetBlock(string text, int caret)
+    {
+        var (lineStart, lineEnd) = LineAt(text, caret);
+        return ParsePrefix(text.AsSpan(lineStart, lineEnd - lineStart)).Kind;
+    }
+
+    /// <summary>Replaces the line's block prefix (heading, quote, list, task) with the one of <paramref name="kind"/>.</summary>
+    public static TextEdit SetBlock(string text, int caret, BlockKind kind)
+    {
+        var (lineStart, lineEnd) = LineAt(text, caret);
+        var line = text.AsSpan(lineStart, lineEnd - lineStart);
+        var prefix = ParsePrefix(line);
+
+        // Lists keep their indentation; headings, quotes and paragraphs start at the margin.
+        var keepIndent = kind is BlockKind.Bullet or BlockKind.Numbered or BlockKind.Task;
+        var indent = keepIndent ? new string(' ', prefix.Indent) : string.Empty;
+        var newPrefix = indent + kind switch
+        {
+            BlockKind.Heading1 => "# ",
+            BlockKind.Heading2 => "## ",
+            BlockKind.Heading3 => "### ",
+            BlockKind.Quote => "> ",
+            BlockKind.Bullet => "- ",
+            BlockKind.Numbered => "1. ",
+            BlockKind.Task => "- [ ] ",
+            _ => string.Empty,
+        };
+
+        var newCaret = Math.Max(lineStart + newPrefix.Length, caret - prefix.Length + newPrefix.Length);
+        return new TextEdit(lineStart, prefix.Length, newPrefix, newCaret, 0);
+    }
+
+    /// <summary>H1–H3 toolbar buttons: set the heading level, or back to a paragraph if it is already that level.</summary>
+    public static TextEdit ToggleHeading(string text, int caret, int level)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(level, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(level, 3);
+        var kind = BlockKind.Heading1 + (level - 1);
+        return SetBlock(text, caret, GetBlock(text, caret) == kind ? BlockKind.Paragraph : kind);
+    }
+
+    /// <summary>
+    /// Removes the delimiters around an inline span (toggling bold/italic/code off while the caret is
+    /// inside it). The caret keeps its position relative to the content.
+    /// </summary>
+    public static TextEdit Unwrap(string text, int openStart, int openLength, int closeStart, int closeLength, int caret)
+    {
+        var content = text.Substring(openStart + openLength, closeStart - (openStart + openLength));
+        var relative = Math.Clamp(caret - (openStart + openLength), 0, content.Length);
+        return new TextEdit(openStart, closeStart + closeLength - openStart, content, openStart + relative, 0);
+    }
+
+    private readonly record struct Prefix(BlockKind Kind, int Indent, int Length);
+
+    private static Prefix ParsePrefix(ReadOnlySpan<char> line)
+    {
+        var indent = CountIndent(line);
+        var i = indent;
+
+        var hashes = 0;
+        while (i + hashes < line.Length && line[i + hashes] == '#')
+        {
+            hashes++;
+        }
+
+        if (hashes is >= 1 and <= 6 && (i + hashes == line.Length || line[i + hashes] == ' '))
+        {
+            var end = i + hashes;
+            while (end < line.Length && line[end] == ' ')
+            {
+                end++;
+            }
+
+            var kind = hashes switch { 1 => BlockKind.Heading1, 2 => BlockKind.Heading2, 3 => BlockKind.Heading3, _ => BlockKind.Heading3 };
+            return new Prefix(kind, indent, end);
+        }
+
+        if (i < line.Length && line[i] == '>')
+        {
+            while (i < line.Length && line[i] is '>' or ' ')
+            {
+                i++;
+            }
+
+            return new Prefix(BlockKind.Quote, indent, i);
+        }
+
+        var marker = MarkdownLineLexer.ListMarkerLength(line, i);
+        if (marker > 0)
+        {
+            var numbered = char.IsAsciiDigit(line[i]);
+            i += marker;
+            if (i + 3 <= line.Length && line[i] == '[' && line[i + 2] == ']' && line[i + 1] is ' ' or 'x' or 'X')
+            {
+                i += 3;
+                if (i < line.Length && line[i] == ' ')
+                {
+                    i++;
+                }
+
+                return new Prefix(BlockKind.Task, indent, i);
+            }
+
+            return new Prefix(numbered ? BlockKind.Numbered : BlockKind.Bullet, indent, i);
+        }
+
+        return new Prefix(BlockKind.Paragraph, indent, 0);
     }
 
     public static (int Start, int End) LineAt(string text, int offset)
