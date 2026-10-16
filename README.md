@@ -161,6 +161,19 @@ files.
 
 ---
 
+## Download
+
+Ready-to-run builds for **x64** and **ARM64** are on the [Releases](https://github.com/vlko/WolfMark/releases) page:
+unzip and run `WolfMark.exe` – no installer, no .NET runtime needed (Native AOT, self-contained). The builds are not
+signed yet, so Windows SmartScreen asks for confirmation on the first start.
+
+Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed:
+
+```powershell
+git tag v0.2.0          # v0.2.0-rc.1 for a pre-release
+git push origin v0.2.0
+```
+
 ## Building from source
 
 Requirements: Windows 11 22H2 or later (build 22621), Visual Studio 2026 or the .NET 11 SDK from

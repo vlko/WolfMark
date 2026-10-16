@@ -1,0 +1,88 @@
+name: Release
+
+# Push a tag like v0.2.0 (or v0.2.0-rc.1 for a pre-release) to build both architectures
+# and publish a GitHub Release with the zipped Native AOT builds attached.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Publish ${{ matrix.rid }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - rid: win-x64
+            platform: x64
+          - rid: win-arm64
+            platform: ARM64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $full = "${{ github.ref_name }}".TrimStart('v')          # 0.2.0 or 0.2.0-rc.1
+          $numeric = ($full -split '[-+]')[0]                        # 0.2.0
+          if ($numeric -notmatch '^\d+\.\d+\.\d+$') { throw "Tag '${{ github.ref_name }}' is not vMAJOR.MINOR.PATCH[-suffix]" }
+          "full=$full" >> $env:GITHUB_OUTPUT
+          "numeric=$numeric" >> $env:GITHUB_OUTPUT
+
+      - name: AOT publish
+        # Platform must match the RID (see ci.yml – otherwise WolfMark.pri is not found).
+        run: >
+          dotnet publish src/WolfMark.App -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }}
+          -p:Version=${{ steps.version.outputs.full }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric }}.0
+          -p:FileVersion=${{ steps.version.outputs.numeric }}.0
+          -o publish/${{ matrix.rid }}
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          # Debug symbols stay out of the download.
+          Get-ChildItem publish/${{ matrix.rid }} -Recurse -Include *.pdb | Remove-Item
+          Compress-Archive -Path publish/${{ matrix.rid }}/* -DestinationPath WolfMark-${{ steps.version.outputs.full }}-${{ matrix.rid }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zip-${{ matrix.rid }}
+          path: WolfMark-*.zip
+
+  release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zip-*
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          # A suffix (v0.2.0-rc.1) or the .NET 11 release candidate SDK means pre-release.
+          if [[ "$TAG" == *-* ]] || grep -q '"version": *"[0-9.]*-' global.json; then prerelease="--prerelease"; fi
+          gh release create "$TAG" WolfMark-*.zip \
+            --title "WolfMark ${TAG#v}" \
+            --generate-notes \
+            $prerelease
