@@ -96,6 +96,7 @@ public sealed partial class MarkdownEditor : UserControl
         host.Children.Add(_overlay);
         Content = host;
         InitContextMenu();
+        InitClipboard();
         IsTabStop = false;
         Unloaded += (_, _) => _cts.Cancel();
         _box.Loaded += (_, _) =>
@@ -219,8 +220,14 @@ public sealed partial class MarkdownEditor : UserControl
     /// <summary>Applies an editing command at the current selection (toolbar buttons call this).</summary>
     public void Execute(EditorCommand command)
     {
-        if (_box.IsReadOnly)
+        if (_box.IsReadOnly && command is not (EditorCommand.CopyPlainText or EditorCommand.CopyHtml))
         {
+            return;
+        }
+
+        if (command is EditorCommand.CopyPlainText or EditorCommand.CopyHtml)
+        {
+            _ = CopyAsync(command == EditorCommand.CopyHtml ? CopyKind.Html : CopyKind.PlainText, cut: false);
             return;
         }
 
@@ -865,4 +872,6 @@ public enum EditorCommand
     Quote,
     BulletList,
     NumberedList,
+    CopyPlainText,
+    CopyHtml,
 }

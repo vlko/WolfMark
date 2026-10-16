@@ -414,4 +414,10 @@
   <data name="History_Created" xml:space="preserve">
     <value>vznik {0}</value>
   </data>
+  <data name="Copy_Plain" xml:space="preserve">
+    <value>Kopírovať ako text</value>
+  </data>
+  <data name="Copy_Html" xml:space="preserve">
+    <value>Kopírovať ako HTML</value>
+  </data>
 </root>

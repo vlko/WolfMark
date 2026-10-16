@@ -32,6 +32,8 @@ internal static class FormatIcons
         EditorCommand.Code => Glyph(Glyphs.Code, glyphSize),
         EditorCommand.Link => Glyph(Glyphs.Link, glyphSize),
         EditorCommand.Task => Glyph(Glyphs.CheckboxComposite, glyphSize),
+        EditorCommand.CopyPlainText => Glyph("\uE8C8", glyphSize),
+        EditorCommand.CopyHtml => Glyph("\uE774", glyphSize),
         _ => Glyph(Glyphs.Edit, glyphSize),
     };
 

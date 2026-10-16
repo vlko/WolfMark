@@ -137,4 +137,6 @@ internal static class R
     public const string Format_Numbered = nameof(Format_Numbered);
     public const string Proofing_Toggle = nameof(Proofing_Toggle);
     public const string History_Created = nameof(History_Created);
+    public const string Copy_Plain = nameof(Copy_Plain);
+    public const string Copy_Html = nameof(Copy_Html);
 }

@@ -317,6 +317,8 @@ internal sealed partial class MainWindow : Window
             EditorCommand.Strikethrough => Strings.Get(R.Format_Strike),
             EditorCommand.Code => Strings.Get(R.Format_Code),
             EditorCommand.Link => Strings.Get(R.Format_Link),
+            EditorCommand.CopyPlainText => Strings.Get(R.Copy_Plain),
+            EditorCommand.CopyHtml => Strings.Get(R.Copy_Html),
             _ => command.ToString(),
         };
         _editor.Mode = editorVm.Mode == EditorMode.Raw ? MarkdownEditorMode.Raw : MarkdownEditorMode.Formatted;

@@ -264,6 +264,63 @@ public static class MarkdownEditing
         return new TextEdit(openStart, closeStart + closeLength - openStart, content, openStart + relative, 0);
     }
 
+    /// <summary>
+    /// Widens a selection to include the markdown delimiters right around it (the hidden "**", "## ",
+    /// "](url)" in formatted mode), so copying a visibly formatted span copies its markdown.
+    /// </summary>
+    public static (int Start, int End) ExpandToMarkup(string text, int start, int end)
+    {
+        if (end <= start)
+        {
+            return (start, end);
+        }
+
+        var tokens = new List<MarkdownToken>();
+        var (startLine, _) = LineAt(text, start);
+        var startTokens = TokensOf(text, startLine, tokens);
+        var col = start - startLine;
+        for (var changed = true; changed;)
+        {
+            changed = false;
+            foreach (var t in startTokens)
+            {
+                if (t.Kind == MarkdownTokenKind.Syntax && t.Length > 0 && t.End == col)
+                {
+                    col = t.Start;
+                    changed = true;
+                }
+            }
+        }
+
+        var newStart = startLine + col;
+
+        var (endLine, _) = LineAt(text, end);
+        var endTokens = endLine == startLine ? startTokens : TokensOf(text, endLine, new List<MarkdownToken>());
+        col = end - endLine;
+        for (var changed = true; changed;)
+        {
+            changed = false;
+            foreach (var t in endTokens)
+            {
+                if (t.Kind is MarkdownTokenKind.Syntax or MarkdownTokenKind.LinkUrl && t.Length > 0 && t.Start == col)
+                {
+                    col = t.End;
+                    changed = true;
+                }
+            }
+        }
+
+        return (newStart, endLine + col);
+    }
+
+    private static MarkdownToken[] TokensOf(string text, int lineStart, List<MarkdownToken> buffer)
+    {
+        var lineEnd = text.IndexOf('\n', lineStart);
+        buffer.Clear();
+        MarkdownLineLexer.Tokenize(text.AsSpan(lineStart, (lineEnd < 0 ? text.Length : lineEnd) - lineStart), LineState.Normal, buffer);
+        return [.. buffer];
+    }
+
     private readonly record struct Prefix(BlockKind Kind, int Indent, int Length);
 
     private static Prefix ParsePrefix(ReadOnlySpan<char> line)

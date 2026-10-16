@@ -136,6 +136,8 @@ S = {
  "Format_Numbered": ("Numbered list", "Číslovaný zoznam"),
  "Proofing_Toggle": ("Spell check", "Kontrola pravopisu"),
  "History_Created": ("created {0}", "vznik {0}"),
+ "Copy_Plain": ("Copy as plain text", "Kopírovať ako text"),
+ "Copy_Html": ("Copy as HTML", "Kopírovať ako HTML"),
 }
 
 import os, sys, html

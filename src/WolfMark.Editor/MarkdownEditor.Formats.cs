@@ -1,4 +1,5 @@
 using Microsoft.UI.Text;
+using Windows.ApplicationModel.DataTransfer;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -299,6 +300,84 @@ public sealed partial class MarkdownEditor
         return new Point(_box.BorderThickness.Left + _box.Padding.Left, _box.BorderThickness.Top + _box.Padding.Top);
     }
 
+    // ---------------------------------------------------------------- clipboard
+
+    private enum CopyKind
+    {
+        Markdown,
+        PlainText,
+        Html,
+    }
+
+    /// <summary>
+    /// Copy/cut always produce markdown from the text model (RichEdit would drop delimiters hidden in
+    /// formatted mode). Covers Ctrl+C/Ctrl+X and the menu's Copy/Cut.
+    /// </summary>
+    private void InitClipboard()
+    {
+        _box.CopyingToClipboard += (sender, e) =>
+        {
+            e.Handled = true;
+            _ = CopyAsync(CopyKind.Markdown, cut: false);
+        };
+        _box.CuttingToClipboard += (sender, e) =>
+        {
+            e.Handled = true;
+            _ = CopyAsync(CopyKind.Markdown, cut: !_box.IsReadOnly);
+        };
+    }
+
+    private async Task CopyAsync(CopyKind kind, bool cut)
+    {
+        var (start, length) = GetSelection();
+        if (length == 0)
+        {
+            return;
+        }
+
+        var text = _text;
+        // Selection widening and conversion are parsing – off the UI thread (CLAUDE.md rule 3).
+        var (from, to, payload, plain) = await Task.Run(() =>
+        {
+            var (s, e) = MarkdownEditing.ExpandToMarkup(text, start, start + length);
+            var markdown = text[s..e];
+            return kind switch
+            {
+                CopyKind.PlainText => (s, e, MarkdownConvert.ToPlainText(markdown), (string?)null),
+                CopyKind.Html => (s, e, MarkdownConvert.ToHtml(markdown), MarkdownConvert.ToPlainText(markdown)),
+                _ => (s, e, markdown, (string?)null),
+            };
+        });
+
+        static string Crlf(string s) => s.Replace("\n", "\r\n", StringComparison.Ordinal);
+        var data = new DataPackage();
+        if (kind == CopyKind.Html)
+        {
+            data.SetHtmlFormat(HtmlFormatHelper.CreateHtmlFormat(payload));
+            data.SetText(Crlf(plain!));
+        }
+        else
+        {
+            data.SetText(Crlf(payload));
+        }
+
+        try
+        {
+            Clipboard.SetContent(data);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return; // clipboard locked by another process
+        }
+
+        if (cut && ReferenceEquals(text, _text))
+        {
+            _undo.Seal();
+            ApplyEdit(new TextEdit(from, to - from, string.Empty, from, 0), recordUndo: true);
+            _undo.Seal();
+        }
+    }
+
     // ---------------------------------------------------------------- context menu
 
     /// <summary>Adds "change markdown tag" items to the standard text context menu (spelling and clipboard stay).</summary>
@@ -322,12 +401,29 @@ public sealed partial class MarkdownEditor
         }
 
         _menuItems.Clear();
+        var (selectionStart, selectionLength) = GetSelection();
+        if (selectionLength > 0)
+        {
+            _menuItems.Add(new AppBarSeparator());
+            foreach (var copy in new[] { EditorCommand.CopyPlainText, EditorCommand.CopyHtml })
+            {
+                var item = new AppBarButton { Label = Label(copy), Icon = CommandIcon?.Invoke(copy) };
+                item.Click += (_, _) => Execute(copy);
+                _menuItems.Add(item);
+            }
+        }
+
         if (_box.IsReadOnly)
         {
+            foreach (var item in _menuItems)
+            {
+                commands.Add(item);
+            }
+
             return;
         }
 
-        var block = MarkdownEditing.GetBlock(_text, GetSelection().Start);
+        var block = MarkdownEditing.GetBlock(_text, selectionStart);
         // Plain AppBarButtons like the built-in items: in the overflow menu AppBarToggleButton reserves a
         // check column and lays its icon out higher than the label. The current state is shown as "✓"
         // in the accelerator column on the right instead.
@@ -374,6 +470,8 @@ public sealed partial class MarkdownEditor
         EditorCommand.BulletList => "Bulleted list",
         EditorCommand.NumberedList => "Numbered list",
         EditorCommand.Task => "Task",
+        EditorCommand.CopyPlainText => "Copy as plain text",
+        EditorCommand.CopyHtml => "Copy as HTML",
         _ => command.ToString(),
     };
 }
