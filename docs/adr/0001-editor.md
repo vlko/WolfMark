@@ -11,7 +11,7 @@ SPEC §4.4 požaduje dva režimy (raw / formátovaný) nad jedným textovým mod
 
 ## Rozhodnutie
 
-**`RichEditBox` + vlastný inkrementálny lexer na pozadí** (`Zapisnik.Editor.MarkdownEditor`).
+**`RichEditBox` + vlastný inkrementálny lexer na pozadí** (`WolfMark.Editor.MarkdownEditor`).
 
 - Text je jediný model (`GetText(UseLf)`), formátovanie je len prezentácia – round-trip je bezstratový
   aj vo formátovanom režime (značky sú `Hidden`, nie odstránené).

@@ -12,7 +12,7 @@
 
 ## Rozhodnutie
 
-1. **Celé UI je postavené v C#** (`Zapisnik.App/Views`, helpery v `Ui/Ui.cs`): žiadne `.xaml` súbory.
+1. **Celé UI je postavené v C#** (`WolfMark.App/Views`, helpery v `Ui/Ui.cs`): žiadne `.xaml` súbory.
    `App` implementuje `IXamlMetadataProvider` delegovaním na `XamlControlsXamlMetaDataProvider`.
    - Väzby sú explicitné: `element.Bind(vm, nameof(Prop), () => …)` – bez reflexie, AOT-safe.
    - Zoznamy sú `ItemsRepeater` s vlastným `IElementFactory` (`ElementFactory<TItem,TView>`) –
@@ -23,7 +23,7 @@
      `R.cs` generuje `tools/gen-strings.py` z jednej tabuľky.
 2. **Composition root bez DI kontajnera** (`AppHost`): konštruktory, žiadna reflexia, nulová réžia pri štarte.
 3. Na ne-Windows hostoch `Directory.Build.props` vypne PRI a self-contained manifest kroky, takže
-   `dotnet build Zapisnik.sln -p:Platform=x64` na Linuxe **typovo skontroluje celé UI** (vrátane
+   `dotnet build WolfMark.sln -p:Platform=x64` na Linuxe **typovo skontroluje celé UI** (vrátane
    CsWinRT AOT analyzérov). Skutočný build/publish je na Windows (CI job `windows`).
 
 ## Dôsledky

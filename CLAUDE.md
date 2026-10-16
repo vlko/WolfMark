@@ -1,4 +1,4 @@
-# CLAUDE.md – pravidlá pre prácu na projekte Zápisník
+# CLAUDE.md – pravidlá pre prácu na projekte WolfMark
 
 Čítaj najprv `SPEC.md` (čo a prečo) a `BACKLOG.md` (poradie práce). Pracuj vždy na jednej položke backlogu (`M2-04` a pod.), po dokončení over akceptačné kritériá a odškrtni ju.
 
@@ -24,13 +24,13 @@
 
 ## Príkazy
 ```powershell
-dotnet build Zapisnik.sln -p:Platform=x64
-dotnet test --solution Zapisnik.CrossPlatform.slnf          # všetky testy (bez WinUI projektov)
-dotnet publish src/Zapisnik.App -c Release -r win-x64      # AOT build
-dotnet publish src/Zapisnik.App -c Release -r win-arm64
-python3 tools/gen-strings.py src/Zapisnik.App/Strings      # po zmene UI textov (sk/en .resw + R.cs)
+dotnet build WolfMark.sln -p:Platform=x64
+dotnet test --solution WolfMark.CrossPlatform.slnf          # všetky testy (bez WinUI projektov)
+dotnet publish src/WolfMark.App -c Release -r win-x64      # AOT build
+dotnet publish src/WolfMark.App -c Release -r win-arm64
+python3 tools/gen-strings.py src/WolfMark.App/Strings      # po zmene UI textov (sk/en .resw + R.cs)
 ```
-Na Linuxe/WSL: testy cez `Zapisnik.CrossPlatform.slnf`; `dotnet build Zapisnik.sln -p:Platform=x64`
+Na Linuxe/WSL: testy cez `WolfMark.CrossPlatform.slnf`; `dotnet build WolfMark.sln -p:Platform=x64`
 typovo skontroluje aj WinUI projekty (PRI/manifest kroky sú mimo Windows vypnuté), spustiť sa nedajú.
 
 ## UI

@@ -1,8 +1,8 @@
-# Generates src/Zapisnik.App/Strings/*/Resources.resw, R.cs and the English fallback.
-# Usage: python3 tools/gen-strings.py src/Zapisnik.App/Strings
+# Generates src/WolfMark.App/Strings/*/Resources.resw, R.cs and the English fallback.
+# Usage: python3 tools/gen-strings.py src/WolfMark.App/Strings
 # key: (en, sk)
 S = {
- "AppTitle": ("Zápisník", "Zápisník"),
+ "AppTitle": ("WolfMark", "WolfMark"),
  "Search_Placeholder": ("Search…   #tag   @2026-10", "Hľadať…   #tag   @2026-10"),
  "Search_NoResults": ("No results", "Žiadne výsledky"),
  "Search_Semantic": ("similar", "podobné"),
@@ -143,7 +143,7 @@ for lang, idx in (("en-US", 0), ("sk-SK", 1)):
 
 # Keys class
 keys = "\n".join(f"    public const string {k} = nameof({k});" for k in S)
-cs = f'''namespace Zapisnik.App.Infrastructure;
+cs = f'''namespace WolfMark.App.Infrastructure;
 
 /// <summary>Resource keys of <c>Strings/*/Resources.resw</c> (generated from one table so sk/en stay in sync).</summary>
 internal static class R
@@ -154,7 +154,7 @@ internal static class R
 open(os.path.join(out, "..", "Infrastructure", "R.cs"), "w", encoding="utf-8").write(cs)
 # English fallback (used when resources.pri is missing, e.g. tests/dev hosts)
 fallback = "\n".join(f'        [R.{k}] = "{v[0].replace(chr(92), chr(92)*2).replace(chr(34), chr(92)+chr(34))}",' for k, v in S.items())
-cs2 = f'''namespace Zapisnik.App.Infrastructure;
+cs2 = f'''namespace WolfMark.App.Infrastructure;
 
 internal static partial class Strings
 {{

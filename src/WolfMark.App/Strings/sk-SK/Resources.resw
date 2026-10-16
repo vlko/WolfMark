@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>WolfMark</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Hľadať…   #tag   @2026-10</value>
+  </data>
+  <data name="Search_NoResults" xml:space="preserve">
+    <value>Žiadne výsledky</value>
+  </data>
+  <data name="Search_Semantic" xml:space="preserve">
+    <value>podobné</value>
+  </data>
+  <data name="Search_Hint" xml:space="preserve">
+    <value>↑↓ výber · Enter otvoriť · Esc zavrieť</value>
+  </data>
+  <data name="Toolbar_NewNote" xml:space="preserve">
+    <value>Nová poznámka (Ctrl+N)</value>
+  </data>
+  <data name="Toolbar_Calendar" xml:space="preserve">
+    <value>Kalendár (Ctrl+Shift+C)</value>
+  </data>
+  <data name="Toolbar_Search" xml:space="preserve">
+    <value>Hľadať (Ctrl+K)</value>
+  </data>
+  <data name="Toolbar_Settings" xml:space="preserve">
+    <value>Nastavenia</value>
+  </data>
+  <data name="Toolbar_PreviousWeek" xml:space="preserve">
+    <value>Predchádzajúci týždeň</value>
+  </data>
+  <data name="Toolbar_NextWeek" xml:space="preserve">
+    <value>Nasledujúci týždeň</value>
+  </data>
+  <data name="Mode_Raw" xml:space="preserve">
+    <value>Raw</value>
+  </data>
+  <data name="Mode_Formatted" xml:space="preserve">
+    <value>Formát</value>
+  </data>
+  <data name="Mode_Tooltip" xml:space="preserve">
+    <value>Prepnúť režim editora (Ctrl+E)</value>
+  </data>
+  <data name="Tag_None" xml:space="preserve">
+    <value>Bez tagu</value>
+  </data>
+  <data name="Tag_NewPlaceholder" xml:space="preserve">
+    <value>Názov tagu, Enter potvrdí</value>
+  </data>
+  <data name="Tag_Invalid" xml:space="preserve">
+    <value>Len písmená, číslice a '-'</value>
+  </data>
+  <data name="Tag_Color" xml:space="preserve">
+    <value>Farba tagu</value>
+  </data>
+  <data name="Tag_ShowLabels" xml:space="preserve">
+    <value>Zobraziť titulky v kalendári</value>
+  </data>
+  <data name="Save_Saved" xml:space="preserve">
+    <value>Uložené</value>
+  </data>
+  <data name="Save_Saving" xml:space="preserve">
+    <value>Ukladá sa…</value>
+  </data>
+  <data name="Save_Pending" xml:space="preserve">
+    <value>Upravené</value>
+  </data>
+  <data name="Save_Error" xml:space="preserve">
+    <value>Chyba ukladania</value>
+  </data>
+  <data name="Save_New" xml:space="preserve">
+    <value>Nová – vznikne prvým znakom</value>
+  </data>
+  <data name="Save_ReadOnly" xml:space="preserve">
+    <value>Len na čítanie</value>
+  </data>
+  <data name="Editor_Placeholder" xml:space="preserve">
+    <value>Začni písať…</value>
+  </data>
+  <data name="ReadOnly_ClaudeTitle" xml:space="preserve">
+    <value>Importované z Claude Code</value>
+  </data>
+  <data name="ReadOnly_ClaudeMessage" xml:space="preserve">
+    <value>Poznámku prepisuje synchronizácia, preto je len na čítanie.</value>
+  </data>
+  <data name="ReadOnly_CopyButton" xml:space="preserve">
+    <value>Skopírovať do vlastnej poznámky</value>
+  </data>
+  <data name="External_Title" xml:space="preserve">
+    <value>Zmenené mimo aplikácie</value>
+  </data>
+  <data name="External_Message" xml:space="preserve">
+    <value>Súbor sa zmenil na disku počas tvojich úprav.</value>
+  </data>
+  <data name="External_Reload" xml:space="preserve">
+    <value>Načítať z disku</value>
+  </data>
+  <data name="External_Keep" xml:space="preserve">
+    <value>Ponechať moje</value>
+  </data>
+  <data name="Deleted_Title" xml:space="preserve">
+    <value>Poznámka bola zmazaná</value>
+  </data>
+  <data name="Deleted_Message" xml:space="preserve">
+    <value>Súbor už neexistuje. Ďalšou úpravou sa vytvorí znova.</value>
+  </data>
+  <data name="Conflict_Title" xml:space="preserve">
+    <value>Konfliktná kópia OneDrive</value>
+  </data>
+  <data name="Conflict_Message" xml:space="preserve">
+    <value>Toto je konfliktná kópia súboru {0}.</value>
+  </data>
+  <data name="Conflict_OpenOriginal" xml:space="preserve">
+    <value>Otvoriť originál</value>
+  </data>
+  <data name="Conflict_Discard" xml:space="preserve">
+    <value>Presunúť kópiu do koša</value>
+  </data>
+  <data name="Conflicts_Count" xml:space="preserve">
+    <value>Konflikty OneDrive: {0}</value>
+  </data>
+  <data name="NonStandard_Title" xml:space="preserve">
+    <value>Neštandardný názov súboru</value>
+  </data>
+  <data name="NonStandard_Message" xml:space="preserve">
+    <value>Čas je podľa súboru; tag sa nedá zmeniť.</value>
+  </data>
+  <data name="History_Title" xml:space="preserve">
+    <value>HISTÓRIA</value>
+  </data>
+  <data name="History_Today" xml:space="preserve">
+    <value>DNES</value>
+  </data>
+  <data name="History_Yesterday" xml:space="preserve">
+    <value>VČERA</value>
+  </data>
+  <data name="History_Empty" xml:space="preserve">
+    <value>Zatiaľ tu nie sú poznámky</value>
+  </data>
+  <data name="History_OpenTasks" xml:space="preserve">
+    <value>Nedokončené</value>
+  </data>
+  <data name="History_ClearFilter" xml:space="preserve">
+    <value>Zrušiť filter</value>
+  </data>
+  <data name="Menu_ChangeTag" xml:space="preserve">
+    <value>Zmeniť tag</value>
+  </data>
+  <data name="Menu_OpenInExplorer" xml:space="preserve">
+    <value>Zobraziť v Prieskumníkovi</value>
+  </data>
+  <data name="Menu_CopyLink" xml:space="preserve">
+    <value>Kopírovať odkaz</value>
+  </data>
+  <data name="Menu_Delete" xml:space="preserve">
+    <value>Presunúť do koša</value>
+  </data>
+  <data name="Delete_ConfirmTitle" xml:space="preserve">
+    <value>Presunúť poznámku do koša?</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Zrušiť</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Zavrieť</value>
+  </data>
+  <data name="Common_Today" xml:space="preserve">
+    <value>Dnes</value>
+  </data>
+  <data name="Common_Yes" xml:space="preserve">
+    <value>Áno</value>
+  </data>
+  <data name="Calendar_Year" xml:space="preserve">
+    <value>Rok</value>
+  </data>
+  <data name="Calendar_Month" xml:space="preserve">
+    <value>Mesiac</value>
+  </data>
+  <data name="Calendar_Close" xml:space="preserve">
+    <value>Zavrieť kalendár (Esc)</value>
+  </data>
+  <data name="Calendar_AllTags" xml:space="preserve">
+    <value>Všetky tagy</value>
+  </data>
+  <data name="Calendar_Previous" xml:space="preserve">
+    <value>Predchádzajúci</value>
+  </data>
+  <data name="Calendar_Next" xml:space="preserve">
+    <value>Nasledujúci</value>
+  </data>
+  <data name="Notes_One" xml:space="preserve">
+    <value>{0} poznámka</value>
+  </data>
+  <data name="Notes_Few" xml:space="preserve">
+    <value>{0} poznámky</value>
+  </data>
+  <data name="Notes_Many" xml:space="preserve">
+    <value>{0} poznámok</value>
+  </data>
+  <data name="Notes_None" xml:space="preserve">
+    <value>bez poznámok</value>
+  </data>
+  <data name="Untagged" xml:space="preserve">
+    <value>bez tagu</value>
+  </data>
+  <data name="Indexing_Progress" xml:space="preserve">
+    <value>Indexujem {0}/{1}</value>
+  </data>
+  <data name="Index_Ready" xml:space="preserve">
+    <value>Index pripravený</value>
+  </data>
+  <data name="Claude_CleanupTitle" xml:space="preserve">
+    <value>Claude Code maže staré prepisy</value>
+  </data>
+  <data name="Claude_CleanupMessage" xml:space="preserve">
+    <value>cleanupPeriodDays je {0}; staršie prompty sa nedajú naimportovať.</value>
+  </data>
+  <data name="Claude_CleanupFix" xml:space="preserve">
+    <value>Uchovávať 365 dní</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Nastavenia</value>
+  </data>
+  <data name="Settings_Notes" xml:space="preserve">
+    <value>Priečinok poznámok</value>
+  </data>
+  <data name="Settings_Browse" xml:space="preserve">
+    <value>Zmeniť…</value>
+  </data>
+  <data name="Settings_MoveTitle" xml:space="preserve">
+    <value>Zmena priečinka poznámok</value>
+  </data>
+  <data name="Settings_MoveMessage" xml:space="preserve">
+    <value>Presunúť existujúce poznámky do nového priečinka, alebo len prepnúť?</value>
+  </data>
+  <data name="Settings_Move" xml:space="preserve">
+    <value>Presunúť poznámky</value>
+  </data>
+  <data name="Settings_Switch" xml:space="preserve">
+    <value>Len prepnúť</value>
+  </data>
+  <data name="Settings_RestartRequired" xml:space="preserve">
+    <value>Zmena sa prejaví po reštarte aplikácie.</value>
+  </data>
+  <data name="Settings_Restart" xml:space="preserve">
+    <value>Reštartovať</value>
+  </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Vzhľad</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Téma</value>
+  </data>
+  <data name="Settings_ThemeSystem" xml:space="preserve">
+    <value>Systém</value>
+  </data>
+  <data name="Settings_ThemeLight" xml:space="preserve">
+    <value>Svetlá</value>
+  </data>
+  <data name="Settings_ThemeDark" xml:space="preserve">
+    <value>Tmavá</value>
+  </data>
+  <data name="Settings_Backdrop" xml:space="preserve">
+    <value>Pozadie okna</value>
+  </data>
+  <data name="Settings_BackdropNone" xml:space="preserve">
+    <value>Žiadne</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Jazyk</value>
+  </data>
+  <data name="Settings_LanguageSystem" xml:space="preserve">
+    <value>Podľa systému</value>
+  </data>
+  <data name="Settings_Editor" xml:space="preserve">
+    <value>Editor</value>
+  </data>
+  <data name="Settings_FontFamily" xml:space="preserve">
+    <value>Písmo</value>
+  </data>
+  <data name="Settings_FontSize" xml:space="preserve">
+    <value>Veľkosť písma</value>
+  </data>
+  <data name="Settings_LineWidth" xml:space="preserve">
+    <value>Maximálna šírka riadku</value>
+  </data>
+  <data name="Settings_DefaultMode" xml:space="preserve">
+    <value>Predvolený režim</value>
+  </data>
+  <data name="Settings_ClaudeCode" xml:space="preserve">
+    <value>Import z Claude Code</value>
+  </data>
+  <data name="Settings_ClaudeEnabled" xml:space="preserve">
+    <value>Importovať prompty</value>
+  </data>
+  <data name="Settings_ClaudePath" xml:space="preserve">
+    <value>Priečinok .claude (prázdne = predvolený)</value>
+  </data>
+  <data name="Settings_ClaudeExcluded" xml:space="preserve">
+    <value>Vylúčené projekty – jedna cesta na riadok</value>
+  </data>
+  <data name="Settings_ClaudeRedact" xml:space="preserve">
+    <value>Skryť citlivé údaje (API kľúče, heslá)</value>
+  </data>
+  <data name="Settings_ClaudeInterval" xml:space="preserve">
+    <value>Interval synchronizácie (minúty)</value>
+  </data>
+  <data name="Settings_ClaudeWatch" xml:space="preserve">
+    <value>Sledovať prepisy v reálnom čase</value>
+  </data>
+  <data name="Settings_ClaudeSyncNow" xml:space="preserve">
+    <value>Synchronizovať teraz</value>
+  </data>
+  <data name="Settings_Index" xml:space="preserve">
+    <value>Index</value>
+  </data>
+  <data name="Settings_IndexRebuild" xml:space="preserve">
+    <value>Znovu postaviť index</value>
+  </data>
+  <data name="Settings_IndexSemanticOn" xml:space="preserve">
+    <value>Sémantické vyhľadávanie: zapnuté</value>
+  </data>
+  <data name="Settings_IndexSemanticOff" xml:space="preserve">
+    <value>Sémantické vyhľadávanie: vypnuté – chýba embedding model</value>
+  </data>
+  <data name="Settings_Tags" xml:space="preserve">
+    <value>Tagy</value>
+  </data>
+  <data name="Settings_Saved" xml:space="preserve">
+    <value>Nastavenia uložené</value>
+  </data>
+  <data name="Status_Synced" xml:space="preserve">
+    <value>Claude Code: {0} nových, {1} aktualizovaných</value>
+  </data>
+  <data name="Week_Label" xml:space="preserve">
+    <value>Týždeň {0}</value>
+  </data>
+</root>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(WolfMarkCoreTargetFramework)</TargetFramework>
+    <RootNamespace>WolfMark.Index</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WolfMark.Core\WolfMark.Core.csproj" />
+    <ProjectReference Include="..\WolfMark.Storage\WolfMark.Storage.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <!-- Only the native vec0 binaries are needed; we load the extension ourselves. -->
+    <PackageReference Include="sqlite-vec" ExcludeAssets="contentFiles;build" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfMark.Index.Tests" />
+  </ItemGroup>
+</Project>

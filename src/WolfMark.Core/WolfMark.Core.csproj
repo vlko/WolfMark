@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(WolfMarkCoreTargetFramework)</TargetFramework>
+    <RootNamespace>WolfMark.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfMark.Core.Tests" />
+  </ItemGroup>
+</Project>

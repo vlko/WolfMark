@@ -1,4 +1,4 @@
-# Generates src/Zapisnik.App/Assets/Zapisnik.ico (paper card with a mini tag-coloured calendar).
+# Generates src/WolfMark.App/Assets/WolfMark.ico (paper card with a mini tag-coloured calendar).
 # Pure Python (zlib + struct) so it runs anywhere. Usage: python3 tools/gen-icon.py
 import struct, zlib, os
 
@@ -69,9 +69,9 @@ entries = b""
 for s, img in zip(sizes, images):
     entries += struct.pack("<BBBBHHII", s % 256, s % 256, 0, 0, 1, 32, len(img), offset)
     offset += len(img)
-out = os.path.join(os.path.dirname(__file__), "..", "src", "Zapisnik.App", "Assets", "Zapisnik.ico")
+out = os.path.join(os.path.dirname(__file__), "..", "src", "WolfMark.App", "Assets", "WolfMark.ico")
 with open(out, "wb") as f:
     f.write(header + entries + b"".join(images))
-with open(os.path.join(os.path.dirname(out), "Zapisnik-256.png"), "wb") as f:
+with open(os.path.join(os.path.dirname(out), "WolfMark-256.png"), "wb") as f:
     f.write(images[-1])
 print("wrote", out)

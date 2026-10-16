@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(WolfMarkCoreTargetFramework)</TargetFramework>
+    <RootNamespace>WolfMark.Sync.ClaudeCode</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WolfMark.Core\WolfMark.Core.csproj" />
+    <ProjectReference Include="..\WolfMark.Storage\WolfMark.Storage.csproj" />
+    <ProjectReference Include="..\WolfMark.Index\WolfMark.Index.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfMark.Sync.ClaudeCode.Tests" />
+  </ItemGroup>
+</Project>

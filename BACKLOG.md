@@ -1,4 +1,4 @@
-# Zápisník – backlog
+# WolfMark – backlog
 
 Backlog je zoradený podľa míľnikov. Každý míľnik končí **funkčným, otestovaným stavom**, ktorý sa dá spustiť. Položky majú ID (`M1-03`), aby sa na ne dalo odkazovať v promptoch pre Claude Code („implementuj M2-04“).
 
@@ -18,7 +18,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M0-02 – Prázdna WinUI 3 aplikácia s Native AOT.** Okno s Mica a vlastným title barom, `PublishAot=true`, `WindowsAppSDKSelfContained=true`, RID `win-x64` a `win-arm64`.
   *Stav:* Mica, vlastný title bar, `PublishAot`, self-contained, x64+ARM64. IL trimmer nad celou aplikáciou bez warningov; AOT publish treba spustiť na Windows (CI).
   *AK:* `dotnet publish -c Release -r win-x64` vyprodukuje spustiteľný AOT binár; aplikácia sa spustí na čistom stroji bez nainštalovaného .NET.
-- ✅ **M0-03 – Logovanie a DI.** Composition root, `ILogger` so súborovým sinkom v `%LOCALAPPDATA%\Zapisnik\logs`, globálny handler neošetrených výnimiek.
+- ✅ **M0-03 – Logovanie a DI.** Composition root, `ILogger` so súborovým sinkom v `%LOCALAPPDATA%\WolfMark\logs`, globálny handler neošetrených výnimiek.
   *Stav:* `AppHost` (ADR 0002), `FileLoggerProvider`, `BackgroundRunner` – test: výnimka sa zaloguje. Globálne handlery v `App`.
   *AK:* Výnimka v background tasku sa zaloguje a nezhodí aplikáciu.
 - 🟨 **M0-04 – CI.** GitHub Actions: build, testy, AOT publish pre x64 (artefakt).
@@ -48,7 +48,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M1-06 – Detekcia OneDrive konfliktných kópií.**
   *Stav:* `praca_1403-PC.md` → `ConflictOriginal`; v UI InfoBar + počítadlo konfliktov.
   *AK:* Súbor `praca_1403-PC.md` je rozpoznaný ako konflikt k `praca_1403.md`.
-- ✅ **M1-07 – Tagy a farby.** Načítanie/zápis `.zapisnik/tags.json`, deterministické priradenie farby z palety, reakcia na externú zmenu súboru.
+- ✅ **M1-07 – Tagy a farby.** Načítanie/zápis `.wolfmark/tags.json`, deterministické priradenie farby z palety, reakcia na externú zmenu súboru.
   *Stav:* FNV-1a hash → paleta 14 farieb; test „dva čisté stroje“.
   *AK:* Dva čisté stroje priradia novému tagu rovnakú farbu.
 
@@ -151,13 +151,13 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M7-06 – Filter citlivých údajov** a vylúčenie projektov.
 - ✅ **M7-07 – Upozornenie na `cleanupPeriodDays`.**
   *Stav:* Kontrola + zápis do `settings.json` (test); InfoBar v UI.
-- ⬜ **M7-08 – ⚪ Hook `UserPromptSubmit`** + malý CLI `zapisnik-cli capture` pre real-time zápis.
+- ⬜ **M7-08 – ⚪ Hook `UserPromptSubmit`** + malý CLI `wolfmark-cli capture` pre real-time zápis.
 
 ## M8 – Pohodlie a integrácia s Windows 🟡
 
 - ⬜ **M8-01 – Globálna skratka rýchleho zápisu** (malé okno, Enter uloží a skryje).
 - ⬜ **M8-02 – Tray ikona**, minimalizácia do tray, štart s Windows.
-- ⬜ **M8-03 – Jump list** a protokol `zapisnik://`.
+- ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
   *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor, Claude Code, rebuild indexu.
 - ⬜ **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).

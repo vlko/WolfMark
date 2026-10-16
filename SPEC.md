@@ -1,6 +1,6 @@
-# Zápisník – špecifikácia natívnej Windows aplikácie
+# WolfMark – špecifikácia natívnej Windows aplikácie
 
-> Pracovný názov: **Zápisník** (kódové meno `Zapisnik`). Názov je placeholder, dá sa zmeniť pred štartom projektu.
+> Názov: **WolfMark** (kódové meno `WolfMark`, pôvodný pracovný názov Zápisník).
 > Dokument je písaný pre Claude Code: popisuje *čo* a *prečo*, backlog v `BACKLOG.md` popisuje *v akom poradí*, `CLAUDE.md` obsahuje pravidlá pre implementáciu.
 
 ---
@@ -35,24 +35,24 @@ Rýchly, natívny denný zápisník pre Windows. Otvorím aplikáciu → okamži
 | Vektory | **sqlite-vec** (NuGet `sqlite-vec`, alt. `LightStudio.sqlite-vec`) | Načítať ako extension cez `SqliteConnection.LoadExtension`. |
 | Embeddingy | ONNX Runtime + malý multilingválny model (napr. `multilingual-e5-small`) + `Microsoft.ML.Tokenizers` | Lokálne, offline. Rozhranie `IEmbeddingProvider`, aby sa dal vymeniť (Windows AI API na Copilot+ PC, prípadne vzdialené API). Overiť AOT kompatibilitu v M2. |
 | Markdown parsing | **Markdig** (overiť AOT) alebo vlastný inkrementálny lexer | Pre zvýrazňovanie syntaxe je potrebný vlastný rýchly riadkový lexer; Markdig len na export/plný parse. |
-| Logovanie | `Microsoft.Extensions.Logging` + jednoduchý súborový sink | Logy v `%LOCALAPPDATA%\Zapisnik\logs`. |
+| Logovanie | `Microsoft.Extensions.Logging` + jednoduchý súborový sink | Logy v `%LOCALAPPDATA%\WolfMark\logs`. |
 | Testy | xUnit v3 (alebo MSTest), testy doménovej vrstvy bez UI | Directory engine a indexer musia byť testovateľné bez WinUI. |
 
 ### Štruktúra riešenia
 
 ```
-Zapisnik.sln
+WolfMark.sln
 ├─ src/
-│  ├─ Zapisnik.Core/          # doména: Note, Tag, NotePath parsing, udalosti – čistá knižnica, žiadne závislosti na UI
-│  ├─ Zapisnik.Storage/       # directory engine, file watcher, atomické zápisy
-│  ├─ Zapisnik.Index/         # SQLite, FTS5, sqlite-vec, embeddingy, kalendárové agregácie
-│  ├─ Zapisnik.Sync.ClaudeCode/ # import promptov z Claude Code
-│  ├─ Zapisnik.Editor/        # vlastný markdown editor control (WinUI)
-│  └─ Zapisnik.App/           # WinUI 3 aplikácia, views, viewmodels, composition root
+│  ├─ WolfMark.Core/          # doména: Note, Tag, NotePath parsing, udalosti – čistá knižnica, žiadne závislosti na UI
+│  ├─ WolfMark.Storage/       # directory engine, file watcher, atomické zápisy
+│  ├─ WolfMark.Index/         # SQLite, FTS5, sqlite-vec, embeddingy, kalendárové agregácie
+│  ├─ WolfMark.Sync.ClaudeCode/ # import promptov z Claude Code
+│  ├─ WolfMark.Editor/        # vlastný markdown editor control (WinUI)
+│  └─ WolfMark.App/           # WinUI 3 aplikácia, views, viewmodels, composition root
 └─ tests/
-   ├─ Zapisnik.Core.Tests/
-   ├─ Zapisnik.Storage.Tests/
-   └─ Zapisnik.Index.Tests/
+   ├─ WolfMark.Core.Tests/
+   ├─ WolfMark.Storage.Tests/
+   └─ WolfMark.Index.Tests/
 ```
 
 ---
@@ -61,7 +61,7 @@ Zapisnik.sln
 
 ### 3.1 Koreňový adresár
 
-- Predvolene: `%OneDrive%\Zapisnik` (zistiť z premennej prostredia `OneDrive`, fallback `OneDriveConsumer` / `OneDriveCommercial`, fallback `Documents\Zapisnik`).
+- Predvolene: `%OneDrive%\WolfMark` (zistiť z premennej prostredia `OneDrive`, fallback `OneDriveConsumer` / `OneDriveCommercial`, fallback `Documents\WolfMark`).
 - Meniteľný v nastaveniach. Pri zmene: ponúknuť **presun existujúcich poznámok** alebo **len prepnúť** (a reindexovať).
 
 ### 3.2 Štruktúra
@@ -76,16 +76,16 @@ Zapisnik.sln
 │        ├─ ClaudeCode_1655.md      # importovaný prompt
 │        └─ assets/                 # obrázky vložené do poznámok daného dňa
 │           └─ 1403-01.png
-└─ .zapisnik/
+└─ .wolfmark/
    ├─ tags.json                     # farby a poradie tagov (synchronizuje sa s poznámkami!)
    └─ settings.shared.json          # nastavenia, ktoré majú cestovať medzi počítačmi
 ```
 
-Lokálne (nesynchronizované) dáta: `%LOCALAPPDATA%\Zapisnik\` – SQLite index, embedding model, logy, pozícia okna.
+Lokálne (nesynchronizované) dáta: `%LOCALAPPDATA%\WolfMark\` – SQLite index, embedding model, logy, pozícia okna.
 
 ### 3.3 Konvencia názvov súborov
 
-Gramatika (`NotePath` parser v `Zapisnik.Core`, pokrytý testami):
+Gramatika (`NotePath` parser v `WolfMark.Core`, pokrytý testami):
 
 ```
 <tag>_<HHmm>[ss][-n].md      # s tagom
@@ -112,7 +112,7 @@ Indexer ich zozbiera; kalendár farbí podľa primárneho tagu, vyhľadávanie a
 
 ### 3.5 Farby tagov
 
-- Uložené v `<root>/.zapisnik/tags.json` (cestuje s poznámkami cez OneDrive).
+- Uložené v `<root>/.wolfmark/tags.json` (cestuje s poznámkami cez OneDrive).
 - Nový tag dostane automaticky farbu z palety (12–16 farieb, kontrastné v light aj dark móde, deterministický výber podľa hashu názvu, aby dva počítače bez synchronizácie zvolili rovnakú farbu).
 - Užívateľ môže farbu zmeniť; rezervovaný tag `ClaudeCode` má predvolenú farbu.
 
@@ -120,7 +120,7 @@ Indexer ich zozbiera; kalendár farbí podľa primárneho tagu, vyhľadávanie a
 
 ## 4. Moduly a funkcionalita
 
-### 4.1 Directory engine (`Zapisnik.Storage`)
+### 4.1 Directory engine (`WolfMark.Storage`)
 
 Zodpovednosti:
 - **Enumerácia** adresára asynchrónne (`IAsyncEnumerable<NoteFile>`), paralelne po rokoch/mesiacoch.
@@ -131,9 +131,9 @@ Zodpovednosti:
 - **OneDrive Files On-Demand:** súbory môžu byť len placeholdery. Enumerácia nesmie spustiť stiahnutie všetkého naraz – metadáta (názov, cesta, mtime) stačia pre kalendár; obsah sťahovať lenivo pri indexovaní na pozadí s nízkou prioritou. Rozpoznať atribút `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` / `OFFLINE`. Zvážiť ponuku „Vždy ponechať na tomto zariadení“ pre koreňový priečinok.
 - **OneDrive konflikty:** detegovať súbory typu `praca_1403-NAZOVPC.md` (konfliktné kópie) a zobraziť ich v UI ako konflikt s možnosťou porovnať/zlúčiť.
 
-### 4.2 Index (`Zapisnik.Index`)
+### 4.2 Index (`WolfMark.Index`)
 
-SQLite súbor v `%LOCALAPPDATA%\Zapisnik\index.db`, WAL mód, jedno zapisovacie spojenie (single writer na dedikovanom vlákne/kanáli), čítacie spojenia podľa potreby.
+SQLite súbor v `%LOCALAPPDATA%\WolfMark\index.db`, WAL mód, jedno zapisovacie spojenie (single writer na dedikovanom vlákne/kanáli), čítacie spojenia podľa potreby.
 
 Schéma (orientačná):
 
@@ -174,7 +174,7 @@ Pravidlá:
 - Týždeň začína pondelkom, čísla týždňov podľa ISO 8601, lokalizácia mesiacov a dní (sk-SK, en-US).
 - Voliteľne: slovenské sviatky a mená (meniny) ako vrstva v kalendári.
 
-### 4.4 Markdown editor (`Zapisnik.Editor`)
+### 4.4 Markdown editor (`WolfMark.Editor`)
 
 Dva režimy nad **jedným textovým modelom**:
 1. **Raw** – čistý markdown so zvýraznením syntaxe (nadpisy väčšie/tučné, `**bold**`, `*italic*`, `` `code` ``, odkazy, zoznamy, úlohy `- [ ]`, citácie, bloky kódu). Značky zostávajú viditeľné, ale stlmené.
@@ -234,7 +234,7 @@ Správanie:
 - Spúšťanie pri štarte Windows, globálna skratka rýchleho zápisu.
 - Index: stav, „Znovu postaviť“, voľba embedding modelu.
 
-### 4.7 Synchronizácia z Claude Code (`Zapisnik.Sync.ClaudeCode`)
+### 4.7 Synchronizácia z Claude Code (`WolfMark.Sync.ClaudeCode`)
 
 Zdroje dát (lokálne súbory Claude Code, formát sa medzi verziami mení – parser musí byť tolerantný a ignorovať neznáme polia):
 - `%USERPROFILE%\.claude\history.jsonl` – história promptov naprieč sedeniami (timestamp, projekt).
@@ -248,7 +248,7 @@ Pravidlá importu:
 - Spúšťanie: pri štarte, periodicky (napr. každých 10 min) a voliteľne v reálnom čase cez `FileSystemWatcher` na `~/.claude/projects`.
 - **Dôležité:** Claude Code štandardne maže staré transkripty (nastavenie `cleanupPeriodDays` v `~/.claude/settings.json`). Aplikácia by na to mala upozorniť a ponúknuť zvýšenie hodnoty.
 - **Súkromie:** prompty môžu obsahovať citlivé údaje (tokeny, heslá, interné cesty). Pred zápisom do OneDrive aplikovať voliteľný filter (regex na API kľúče, `sk-…`, `ghp_…`, connection stringy) a umožniť vylúčiť konkrétne projekty.
-- Alternatíva/rozšírenie: Claude Code **hook `UserPromptSubmit`**, ktorý zapíše prompt priamo (malý CLI `zapisnik-cli capture`) – real-time bez parsovania transkriptov.
+- Alternatíva/rozšírenie: Claude Code **hook `UserPromptSubmit`**, ktorý zapíše prompt priamo (malý CLI `wolfmark-cli capture`) – real-time bez parsovania transkriptov.
 
 ---
 
@@ -317,7 +317,7 @@ Rozdelené podľa priority; zaradené do backlogu ako samostatné míľniky aleb
 - **Denný prehľad:** pohľad na celý deň – všetky poznámky dňa za sebou ako jedna stránka (Journal štýl).
 - **Export** dňa/týždňa/tagu do jedného `.md` alebo PDF (napr. pre týždenný report).
 - **Podobné poznámky** pod editorom – využitie vektorového indexu („k tejto téme si písal 3. 9.“).
-- Jump list v taskbare (Nová poznámka, Dnes, Vyhľadať) a protokol `zapisnik://` (otvorenie konkrétneho dňa/poznámky z iných aplikácií).
+- Jump list v taskbare (Nová poznámka, Dnes, Vyhľadať) a protokol `wolfmark://` (otvorenie konkrétneho dňa/poznámky z iných aplikácií).
 
 **Neskôr / voliteľné**
 - **MCP server** (lokálny), cez ktorý môže Claude Code/Claude Desktop čítať a vyhľadávať v zápisníku – prirodzené doplnenie importu promptov opačným smerom.

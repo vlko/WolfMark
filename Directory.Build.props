@@ -10,8 +10,8 @@
     <SatelliteResourceLanguages>en;sk</SatelliteResourceLanguages>
 
     <!-- Domain libraries are plain net11.0 so they build and test on any OS (CI, Linux dev boxes). -->
-    <ZapisnikCoreTargetFramework>net11.0</ZapisnikCoreTargetFramework>
-    <ZapisnikWindowsTargetFramework>net11.0-windows10.0.22621.0</ZapisnikWindowsTargetFramework>
+    <WolfMarkCoreTargetFramework>net11.0</WolfMarkCoreTargetFramework>
+    <WolfMarkWindowsTargetFramework>net11.0-windows10.0.22621.0</WolfMarkWindowsTargetFramework>
   </PropertyGroup>
 
   <!--
