@@ -164,5 +164,6 @@ internal static partial class Strings
         [R.Icon_WolfMark] = "Wolf + Mark",
         [R.Error_Title] = "Something went wrong",
         [R.Error_Settings] = "Settings could not be opened: {0}",
+        [R.Week_NoTag] = "No tag",
     };
 }

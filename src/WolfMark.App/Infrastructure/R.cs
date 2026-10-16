@@ -163,4 +163,5 @@ internal static class R
     public const string Icon_WolfMark = nameof(Icon_WolfMark);
     public const string Error_Title = nameof(Error_Title);
     public const string Error_Settings = nameof(Error_Settings);
+    public const string Week_NoTag = nameof(Week_NoTag);
 }

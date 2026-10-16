@@ -492,4 +492,7 @@
   <data name="Error_Settings" xml:space="preserve">
     <value>Settings could not be opened: {0}</value>
   </data>
+  <data name="Week_NoTag" xml:space="preserve">
+    <value>No tag</value>
+  </data>
 </root>

@@ -84,9 +84,24 @@ public sealed class IndexerTests
         Assert.Contains(day.Tags, t => t is { Tag: "", Count: 1 });
         Assert.Equal(2, week.Count);
 
-        var highlight = await f.Calendar.GetWeekHighlightAsync(new DateOnly(2026, 10, 12), Ct);
-        Assert.Equal("praca", highlight!.Tag);
-        Assert.Equal(3, highlight.Count);
+        var topics = await f.Calendar.GetWeekTopicsAsync(new DateOnly(2026, 10, 12), Ct);
+        Assert.Equal([("praca", 3), ("rodina", 1), ("", 1)], topics.Select(t => (t.Name, t.Count)));
+        Assert.Null(topics[2].Tag);
+    }
+
+    [Fact]
+    public async Task Week_topics_count_claude_notes_per_project()
+    {
+        await using var f = await IndexFixture.CreateAsync();
+        f.Write("2026/10/13/ClaudeCode_0900.md", "# WolfMark\n\nx");
+        f.Write("2026/10/14/ClaudeCode_0900.md", "# WolfMark\n\ny");
+        f.Write("2026/10/14/ClaudeCode_1000.md", "# finstat-api\n\nz");
+        f.Write("2026/10/15/praca_0900.md", "a");
+        await f.Indexer.FullScanAsync(null, Ct);
+
+        var topics = await f.Calendar.GetWeekTopicsAsync(new DateOnly(2026, 10, 15), Ct);
+        Assert.Equal([("WolfMark", 2), ("finstat-api", 1), ("praca", 1)], topics.Select(t => (t.Name, t.Count)));
+        Assert.All(topics.Take(2), t => Assert.Equal("ClaudeCode", t.Tag, ignoreCase: true));
     }
 
     [Fact]

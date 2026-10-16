@@ -162,6 +162,7 @@ S = {
  "Icon_WolfMark": ("Wolf + Mark", "Wolf + Mark"),
  "Error_Title": ("Something went wrong", "Niečo sa pokazilo"),
  "Error_Settings": ("Settings could not be opened: {0}", "Nastavenia sa nepodarilo otvoriť: {0}"),
+ "Week_NoTag": ("No tag", "No tag"),
 }
 
 import os, sys, html

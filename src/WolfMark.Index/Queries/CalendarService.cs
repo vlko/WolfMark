@@ -10,7 +10,11 @@ namespace WolfMark.Index.Queries;
 public sealed record CalendarLabel(DateOnly Day, string Tag, string Title, string RelativePath);
 
 /// <summary>What the week "loupe" shows: dominant tag of the week and its first title.</summary>
-public sealed record WeekHighlight(string Tag, int Count, string? Title);
+/// <summary>
+/// One entry of the week summary: a tag, or for Claude Code notes a project (<see cref="Name"/>);
+/// notes without a tag have a null tag and an empty name.
+/// </summary>
+public sealed record WeekTopic(string? Tag, string Name, int Count);
 
 public sealed record TagUsage(string Tag, int Count);
 
@@ -95,25 +99,40 @@ public sealed class CalendarService(IndexDatabase db)
             ct);
     }
 
-    public Task<WeekHighlight?> GetWeekHighlightAsync(DateOnly anyDay, CancellationToken ct)
+    /// <summary>
+    /// Note counts of the week per primary tag (untagged notes as one entry), most used first. Claude Code
+    /// notes are counted per project (their title, the first line in the history) instead of under one tag.
+    /// </summary>
+    public Task<IReadOnlyList<WeekTopic>> GetWeekTopicsAsync(DateOnly anyDay, CancellationToken ct)
     {
         var monday = CalendarMath.StartOfWeek(anyDay);
-        return db.ReadAsync(
+        return db.ReadAsync<IReadOnlyList<WeekTopic>>(
             c =>
             {
                 using var cmd = c.Command(
                     """
-                    SELECT MIN(n.primary_tag), COUNT(*),
-                           (SELECT n2.title FROM notes n2 WHERE n2.primary_tag_key = n.primary_tag_key
-                              AND n2.day BETWEEN $f AND $t ORDER BY n2.created_at LIMIT 1)
+                    SELECT MIN(n.primary_tag),
+                           CASE WHEN n.source = $cc THEN n.title END AS project,
+                           COUNT(*) AS cnt
                     FROM notes n
-                    WHERE n.day BETWEEN $f AND $t AND n.primary_tag_key IS NOT NULL
-                    GROUP BY n.primary_tag_key ORDER BY COUNT(*) DESC LIMIT 1;
+                    WHERE n.day BETWEEN $f AND $t
+                    GROUP BY n.primary_tag_key, project
+                    ORDER BY cnt DESC, MIN(n.created_at);
                     """)
                     .With("$f", SqliteExtensions.FormatDay(monday))
-                    .With("$t", SqliteExtensions.FormatDay(monday.AddDays(6)));
+                    .With("$t", SqliteExtensions.FormatDay(monday.AddDays(6)))
+                    .With("$cc", NoteSources.ClaudeCode);
                 using var r = cmd.ExecuteReader();
-                return r.Read() ? new WeekHighlight(r.GetString(0), r.GetInt32(1), r.GetStringOrNull(2)) : null;
+                var list = new List<WeekTopic>();
+                while (r.Read())
+                {
+                    var tag = r.GetStringOrNull(0);
+                    var name = r.GetStringOrNull(1) is { Length: > 0 } project ? project
+                        : tag ?? (r.IsDBNull(1) ? string.Empty : TagName.ClaudeCode);
+                    list.Add(new WeekTopic(tag, name, r.GetInt32(2)));
+                }
+
+                return list;
             },
             ct);
     }

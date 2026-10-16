@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using WolfMark.App.Infrastructure;
 using WolfMark.Core.Calendar;
 using WolfMark.Core.Tags;
+using WolfMark.Index.Queries;
 
 namespace WolfMark.App.ViewModels;
 
@@ -31,15 +32,9 @@ internal sealed partial class WeekStripViewModel : ObservableObject
     [ObservableProperty]
     public partial string WeekLabel { get; private set; } = string.Empty;
 
-    /// <summary>Label under the band ("■ FINAL POLISH"): a calendar label or the week's dominant topic.</summary>
+    /// <summary>Line under the band ("■ PRÁCA 3  ■ WOLFMARK 5"): note counts per tag, Claude Code per project.</summary>
     [ObservableProperty]
-    public partial string? LabelText { get; private set; }
-
-    [ObservableProperty]
-    public partial string? LabelTag { get; private set; }
-
-    [ObservableProperty]
-    public partial int LabelDayIndex { get; private set; }
+    public partial IReadOnlyList<WeekTopic> Topics { get; private set; } = [];
 
     public async Task LoadAsync(DateOnly anyDay, DateOnly selected)
     {
@@ -60,8 +55,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
 
         await _host.DatabaseReady;
         var days = await _host.Calendar.GetWeekAsync(monday, _host.ShutdownToken);
-        var labels = await _host.Calendar.GetLabelsAsync(monday, monday.AddDays(6), _host.Tags.LabelTags, _host.ShutdownToken);
-        var highlight = labels.Count == 0 ? await _host.Calendar.GetWeekHighlightAsync(monday, _host.ShutdownToken) : null;
+        var topics = await _host.Calendar.GetWeekTopicsAsync(monday, _host.ShutdownToken);
         if (generation != _generation)
         {
             return;
@@ -73,25 +67,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
             Days[i].Set(date, names[i], today, date == selected, days.GetValueOrDefault(date) ?? CalendarDay.Empty(date));
         }
 
-        if (labels.Count > 0)
-        {
-            LabelTag = labels[0].Tag;
-            LabelText = labels[0].Title;
-            LabelDayIndex = labels[0].Day.DayNumber - monday.DayNumber;
-        }
-        else if (highlight is not null)
-        {
-            LabelTag = highlight.Tag;
-            LabelText = highlight.Title is { Length: > 0 } t ? t : highlight.Tag;
-            var first = Days.FirstOrDefault(d => d.Day.Tags.Any(x => TagName.Comparer.Equals(x.Tag, highlight.Tag)));
-            LabelDayIndex = first is null ? 0 : first.Date.DayNumber - monday.DayNumber;
-        }
-        else
-        {
-            LabelTag = null;
-            LabelText = null;
-            LabelDayIndex = 0;
-        }
+        Topics = topics;
     }
 
     public void Select(DateOnly selected)

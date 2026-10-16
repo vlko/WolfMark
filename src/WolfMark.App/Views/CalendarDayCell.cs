@@ -34,6 +34,9 @@ internal sealed partial class CalendarDayCell : ContentControl
     private readonly Rectangle _frame = new() { StrokeThickness = 3, Stroke = Palette.TodayFrame, IsHitTestVisible = false };
     private readonly Rectangle _frameDash = new() { StrokeThickness = 3, Stroke = Palette.TodayFrameDash, StrokeDashArray = [2, 2], IsHitTestVisible = false };
     private readonly Border _selection = new() { BorderBrush = Palette.Ink, BorderThickness = new Thickness(0, 0, 0, 3), IsHitTestVisible = false };
+    // Own keyboard-focus marker instead of the system focus visual: the system's black/white frame came and
+    // went with the focus, so the selected day looked lighter as soon as the editor took the focus.
+    private readonly Rectangle _focus = new() { StrokeThickness = 2, Stroke = Palette.Accent, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
     private readonly TextBlock _number = new() { FontFamily = Typo.DayNumber, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom };
     private DayCellState _state;
@@ -52,6 +55,7 @@ internal sealed partial class CalendarDayCell : ContentControl
         grid.Children.Add(_selection);
         grid.Children.Add(_frame);
         grid.Children.Add(_frameDash);
+        grid.Children.Add(_focus);
         grid.Children.Add(_number);
         grid.Children.Add(_dots);
 
@@ -61,7 +65,9 @@ internal sealed partial class CalendarDayCell : ContentControl
         VerticalContentAlignment = VerticalAlignment.Stretch;
         HorizontalAlignment = HorizontalAlignment.Stretch;
         IsTabStop = true;
-        UseSystemFocusVisuals = true;
+        UseSystemFocusVisuals = false;
+        GotFocus += (_, _) => _focus.Visibility = FocusState == FocusState.Keyboard ? Visibility.Visible : Visibility.Collapsed;
+        LostFocus += (_, _) => _focus.Visibility = Visibility.Collapsed;
         CornerRadius = Radius.None;
 
         PointerEntered += (_, _) => _fill.Opacity = 0.85;

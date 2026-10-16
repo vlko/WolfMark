@@ -262,7 +262,8 @@ internal sealed partial class NoteHeaderView
         {
             var on = button.IsChecked == true;
             _editor.IsSpellCheckEnabled = on;
-            squiggle.Opacity = on ? 1 : 0.3;
+            squiggle.Opacity = on ? 1 : 0.25;
+            abc.Opacity = on ? 1 : 0.45;
         }
 
         button.Click += (_, _) =>

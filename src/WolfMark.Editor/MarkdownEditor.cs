@@ -210,6 +210,38 @@ public sealed partial class MarkdownEditor : UserControl
         RequestHighlight(full: true);
     }
 
+    /// <summary>
+    /// RichEdit only proofs text typed after spell check was switched on; putting the same text back makes it
+    /// check the whole note. Selection, scroll position and our undo history stay as they were.
+    /// </summary>
+    private void Reproof()
+    {
+        var selection = _box.TextDocument.Selection;
+        var (start, end) = (selection.StartPosition, selection.EndPosition);
+        var offset = _scrollViewer?.VerticalOffset;
+        Interlocked.Increment(ref _applying);
+        try
+        {
+            var wasReadOnly = _box.IsReadOnly;
+            _box.IsReadOnly = false;
+            _box.TextDocument.SetText(TextSetOptions.None, _text);
+            _box.IsReadOnly = wasReadOnly;
+            ResetAllFormatting();
+            _box.TextDocument.Selection.SetRange(start, end);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _applying);
+        }
+
+        _lineTokens.Clear();
+        RequestHighlight(full: true);
+        if (offset is { } y)
+        {
+            _scrollViewer?.ChangeView(null, y, null, disableAnimation: true);
+        }
+    }
+
     public void FocusEditor() => _box.Focus(FocusState.Programmatic);
 
     public void ScrollToCaret()

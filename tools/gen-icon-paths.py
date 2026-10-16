@@ -136,10 +136,12 @@ def outline(text, strike):
     if strike:
         xs = [p[0] for c in cs for p in c]
         ys = [p[1] for c in cs for p in c]
-        mid, h = (min(ys) + max(ys)) / 2, units_per_em * 0.07
+        mid, h = (min(ys) + max(ys)) / 2, units_per_em * 0.04
         pad = units_per_em * 0.06
         l, r = min(xs) - pad, max(xs) + pad
-        cs.append([(l, mid - h, True), (r, mid - h, True), (r, mid + h, True), (l, mid + h, True)])
+        # Same winding as the glyph outlines: with the Nonzero fill rule an opposite-wound bar would
+        # cancel out where it overlaps the letter (holes instead of a line through the S).
+        cs.append([(l, mid - h, True), (l, mid + h, True), (r, mid + h, True), (r, mid - h, True)])
     return cs
 
 def to_path(cs, factor, box=16.0, margin=1.5):

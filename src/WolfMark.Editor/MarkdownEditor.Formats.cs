@@ -35,7 +35,15 @@ public sealed partial class MarkdownEditor
     public bool IsSpellCheckEnabled
     {
         get => _box.IsSpellCheckEnabled;
-        set => _box.IsSpellCheckEnabled = value;
+        set
+        {
+            var turnedOn = value && !_box.IsSpellCheckEnabled;
+            _box.IsSpellCheckEnabled = value;
+            if (turnedOn)
+            {
+                Reproof();
+            }
+        }
     }
 
     private static readonly Dictionary<MarkdownTokenKind, EditorCommand> InlineCommands = new()

@@ -57,7 +57,7 @@ internal sealed partial class CalendarPanel : UserControl
 
         vm.Week.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(WeekStripViewModel.LabelText) or nameof(WeekStripViewModel.LabelTag) or nameof(WeekStripViewModel.LabelDayIndex))
+            if (e.PropertyName is nameof(WeekStripViewModel.Topics))
             {
                 RenderBandLabel();
             }
@@ -191,19 +191,38 @@ internal sealed partial class CalendarPanel : UserControl
         }
     }
 
+    /// <summary>"■ PRÁCA 3  ■ WOLFMARK 5 ————": counts of the week; what does not fit is clipped.</summary>
     private void RenderBandLabel()
     {
         _bandLabel.Children.Clear();
-        if (_vm.Week.LabelText is not { Length: > 0 } text)
+        var topics = _vm.Week.Topics;
+        if (topics.Count == 0)
         {
             return;
         }
 
-        var label = LabelLine(_vm.Week.LabelTag, text);
-        Grid.SetColumn(label, Math.Clamp(_vm.Week.LabelDayIndex, 0, 6));
-        Grid.SetColumnSpan(label, 7 - Math.Clamp(_vm.Week.LabelDayIndex, 0, 6));
-        _bandLabel.Children.Add(label);
+        var items = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14 };
+        foreach (var topic in topics)
+        {
+            var name = topic.Name.Length > 0 ? topic.Name : Strings.Get(R.Week_NoTag);
+            var caps = Typo.Caps(name, 12.5, Palette.InkSecondary);
+            caps.MaxWidth = 180;
+            caps.TextTrimming = TextTrimming.CharacterEllipsis;
+            var count = Typo.Caps(topic.Count.ToString(CultureInfo.CurrentCulture), 12.5, Palette.Ink);
+            count.Margin = new Thickness(5, 0, 0, 0);
+            var item = Ui.Ui.HStack(0, Square(topic.Tag), caps, count);
+            ToolTipService.SetToolTip(item, $"{name}: {topic.Count}");
+            items.Children.Add(item);
+        }
+
+        var line = new Border { Height = 1, MinWidth = 16, Background = Palette.Accent, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 1, 0, 0) };
+        var row = Ui.Ui.Columns((Ui.Ui.Auto, items), (Ui.Ui.Star, line));
+        Grid.SetColumnSpan(row, 7);
+        _bandLabel.Children.Add(row);
     }
+
+    private Rectangle Square(string? tag) =>
+        new() { Width = 8, Height = 8, Fill = _brushes.BrushOf(tag), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) };
 
     /// <summary>"■ FINAL POLISH ————" – coloured square, condensed caps, hairline to the end.</summary>
     private Grid LabelLine(string? tag, string text)
@@ -213,7 +232,7 @@ internal sealed partial class CalendarPanel : UserControl
         caps.TextTrimming = TextTrimming.CharacterEllipsis;
         var line = new Border { Height = 1, Background = Palette.Accent, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 1, 0, 0) };
         var grid = Ui.Ui.Columns(
-            (Ui.Ui.Auto, new Rectangle { Width = 8, Height = 8, Fill = _brushes.BrushOf(tag), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) }),
+            (Ui.Ui.Auto, Square(tag)),
             (Ui.Ui.Auto, caps),
             (Ui.Ui.Star, line));
         return grid;
