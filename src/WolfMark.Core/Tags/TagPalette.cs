@@ -10,27 +10,27 @@ public static class TagPalette
 {
     public static IReadOnlyList<TagColor> Colors { get; } =
     [
-        TagColor.FromHex("#3D6FE0"), // blue
-        TagColor.FromHex("#F4C531"), // yellow
-        TagColor.FromHex("#F28C28"), // orange
-        TagColor.FromHex("#E5484D"), // red
-        TagColor.FromHex("#3FA65C"), // green
-        TagColor.FromHex("#22A6A0"), // teal
-        TagColor.FromHex("#8E5BE8"), // purple
-        TagColor.FromHex("#E25C9C"), // pink
-        TagColor.FromHex("#3AA7E8"), // sky
-        TagColor.FromHex("#9CC43A"), // lime
-        TagColor.FromHex("#4B4FC4"), // indigo
-        TagColor.FromHex("#F2715A"), // coral
-        TagColor.FromHex("#A8754A"), // brown
-        TagColor.FromHex("#64748B"), // slate
+        TagColor.FromHex("#1E88F5"), // blue
+        TagColor.FromHex("#F7C62F"), // yellow
+        TagColor.FromHex("#F5922A"), // orange
+        TagColor.FromHex("#F2564B"), // red
+        TagColor.FromHex("#5CCB86"), // green
+        TagColor.FromHex("#12A5B5"), // teal
+        TagColor.FromHex("#A47BF2"), // purple
+        TagColor.FromHex("#F07AB8"), // pink
+        TagColor.FromHex("#45BDF2"), // sky
+        TagColor.FromHex("#9FD13F"), // lime
+        TagColor.FromHex("#4C5FD7"), // indigo
+        TagColor.FromHex("#F57F72"), // salmon
+        TagColor.FromHex("#C08552"), // brown
+        TagColor.FromHex("#6F8197"), // slate
     ];
 
     /// <summary>Default colour of the reserved <see cref="TagName.ClaudeCode"/> tag.</summary>
     public static TagColor ClaudeCode { get; } = TagColor.FromHex("#D97757");
 
     /// <summary>Neutral colour for notes without a tag.</summary>
-    public static TagColor Untagged { get; } = TagColor.FromHex("#B8B2A7");
+    public static TagColor Untagged { get; } = TagColor.FromHex("#C6C2B8");
 
     public static TagColor ForTag(string? tag)
     {

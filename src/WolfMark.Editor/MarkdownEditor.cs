@@ -89,7 +89,11 @@ public sealed partial class MarkdownEditor : UserControl
         Content = _box;
         IsTabStop = false;
         Unloaded += (_, _) => _cts.Cancel();
-        _box.Loaded += (_, _) => _box.TextDocument.UndoLimit = 0; // the template may reset it
+        _box.Loaded += (_, _) =>
+        {
+            _box.TextDocument.UndoLimit = 0; // the template may reset it
+            HookScrollViewer();
+        };
 
         _ = Task.Run(() => HighlightLoopAsync(_cts.Token));
     }
@@ -100,6 +104,17 @@ public sealed partial class MarkdownEditor : UserControl
     public event EventHandler? EditorLostFocus;
 
     public event EventHandler<MarkdownEditorMode>? ModeChanged;
+
+    /// <summary>True when text continues below the visible area (raised on the UI thread).</summary>
+    public event EventHandler<bool>? OverflowChanged;
+
+    public bool HasMoreBelow { get; private set; }
+
+    /// <summary>
+    /// Left-aligned text with a fixed small left margin (used next to the time gutter) instead of a
+    /// centred column.
+    /// </summary>
+    public bool AlignLeft { get; set; }
 
     /// <summary>Stores a pasted image (PNG bytes) and returns the markdown link target, or null.</summary>
     public Func<byte[], Task<string?>>? ImagePasteHandler { get; set; }
@@ -486,8 +501,65 @@ public sealed partial class MarkdownEditor : UserControl
             return;
         }
 
+        if (AlignLeft)
+        {
+            _box.Padding = new Thickness(18, 6, Math.Max(24, width - _maxLineWidth - 18), 24);
+            return;
+        }
+
         var side = Math.Max(24, (width - _maxLineWidth) / 2);
         _box.Padding = new Thickness(side, 12, side, 48);
+    }
+
+    public void ScrollToEnd()
+    {
+        _scrollViewer?.ChangeView(null, _scrollViewer.ScrollableHeight, null);
+    }
+
+    private ScrollViewer? _scrollViewer;
+
+    private void HookScrollViewer()
+    {
+        if (_scrollViewer is not null || FindDescendant<ScrollViewer>(_box) is not { } sv)
+        {
+            return;
+        }
+
+        _scrollViewer = sv;
+        sv.ViewChanged += (_, _) => UpdateOverflow();
+        sv.RegisterPropertyChangedCallback(ScrollViewer.ScrollableHeightProperty, (_, _) => UpdateOverflow());
+        UpdateOverflow();
+    }
+
+    private void UpdateOverflow()
+    {
+        var more = _scrollViewer is { } sv && sv.VerticalOffset < sv.ScrollableHeight - 1;
+        if (more != HasMoreBelow)
+        {
+            HasMoreBelow = more;
+            OverflowChanged?.Invoke(this, more);
+        }
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindDescendant<T>(child) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------------ highlighting

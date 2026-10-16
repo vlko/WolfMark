@@ -348,4 +348,25 @@
   <data name="Week_Label" xml:space="preserve">
     <value>Týždeň {0}</value>
   </data>
+  <data name="Calendar_Expand" xml:space="preserve">
+    <value>Zobraziť celý mesiac (Ctrl+Shift+C)</value>
+  </data>
+  <data name="Calendar_Collapse" xml:space="preserve">
+    <value>Zobraziť týždeň (Ctrl+Shift+C)</value>
+  </data>
+  <data name="Rail_All" xml:space="preserve">
+    <value>Všetko</value>
+  </data>
+  <data name="Rail_Show" xml:space="preserve">
+    <value>Zobraziť všetky tagy</value>
+  </data>
+  <data name="Editor_Modified" xml:space="preserve">
+    <value>upravené {0}</value>
+  </data>
+  <data name="Editor_Continues" xml:space="preserve">
+    <value>pokračuje</value>
+  </data>
+  <data name="Toolbar_NewNoteShort" xml:space="preserve">
+    <value>Nová</value>
+  </data>
 </root>

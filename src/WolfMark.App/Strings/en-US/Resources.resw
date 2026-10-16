@@ -348,4 +348,25 @@
   <data name="Week_Label" xml:space="preserve">
     <value>Week {0}</value>
   </data>
+  <data name="Calendar_Expand" xml:space="preserve">
+    <value>Show the whole month (Ctrl+Shift+C)</value>
+  </data>
+  <data name="Calendar_Collapse" xml:space="preserve">
+    <value>Show the week (Ctrl+Shift+C)</value>
+  </data>
+  <data name="Rail_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Rail_Show" xml:space="preserve">
+    <value>Show all tags</value>
+  </data>
+  <data name="Editor_Modified" xml:space="preserve">
+    <value>edited {0}</value>
+  </data>
+  <data name="Editor_Continues" xml:space="preserve">
+    <value>continues</value>
+  </data>
+  <data name="Toolbar_NewNoteShort" xml:space="preserve">
+    <value>New</value>
+  </data>
 </root>

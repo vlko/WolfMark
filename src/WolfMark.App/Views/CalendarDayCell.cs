@@ -1,146 +1,100 @@
 using System.Globalization;
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
-using Windows.UI;
 using WolfMark.App.Theming;
-using WolfMark.App.Ui;
-using WolfMark.App.ViewModels;
 using WolfMark.Core.Calendar;
 
 namespace WolfMark.App.Views;
 
+/// <summary>State a day cell renders (shared by the week band and the month grid).</summary>
+internal readonly record struct DayCellState(
+    DateOnly Date,
+    CalendarDay Day,
+    bool IsToday,
+    bool IsPast,
+    bool IsSelected,
+    bool InMonth,
+    bool IsDimmed,
+    string AutomationName);
+
 /// <summary>
-/// One day of the full calendar (SPEC §5.2): rounded cell filled with tag colours (diagonal bands for
-/// several tags), count dots, hatched "today". Focusable and announced by Narrator (M6-05).
+/// Flat, square day cell (ADR 0004, reference <c>expected_calendar.png</c>): tag colours as diagonal
+/// bands, heavy numerals, note-count dots, hatched past days (band only), two-tone dashed frame for today.
+/// Focusable and announced by Narrator (M6-05).
 /// </summary>
 internal sealed partial class CalendarDayCell : ContentControl
 {
-    private readonly Border _fill = new() { CornerRadius = new CornerRadius(8) };
-    private readonly TextBlock _number = new()
-    {
-        FontFamily = Typo.Display,
-        FontWeight = FontWeights.SemiBold,
-        HorizontalAlignment = HorizontalAlignment.Center,
-        VerticalAlignment = VerticalAlignment.Center,
-    };
-    private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 3, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 5) };
-    private readonly StackPanel _titles = new() { Spacing = 1, Margin = new Thickness(6, 26, 6, 4) };
     private readonly TagBrushes _brushes;
-    private readonly bool _large;
-    private DayCellViewModel? _vm;
+    private readonly bool _hatchPast;
+    private readonly Border _fill = new();
+    private readonly Border _hatch = new() { Background = Palette.PastHatch, IsHitTestVisible = false };
+    private readonly Rectangle _frame = new() { StrokeThickness = 3, Stroke = Palette.TodayFrame, IsHitTestVisible = false };
+    private readonly Rectangle _frameDash = new() { StrokeThickness = 3, Stroke = Palette.TodayFrameDash, StrokeDashArray = [2, 2], IsHitTestVisible = false };
+    private readonly Border _selection = new() { BorderBrush = Palette.Ink, BorderThickness = new Thickness(0, 0, 0, 3), IsHitTestVisible = false };
+    private readonly TextBlock _number = new() { FontFamily = Typo.DayNumber, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom };
+    private DayCellState _state;
 
-    public CalendarDayCell(TagBrushes brushes, bool large)
+    public CalendarDayCell(TagBrushes brushes, double height, double numberSize, bool hatchPast)
     {
         _brushes = brushes;
-        _large = large;
-        _number.FontSize = large ? 15 : 14;
-        if (large)
-        {
-            _number.HorizontalAlignment = HorizontalAlignment.Left;
-            _number.VerticalAlignment = VerticalAlignment.Top;
-            _number.Margin = new Thickness(8, 5, 0, 0);
-        }
+        _hatchPast = hatchPast;
+        _number.FontSize = numberSize;
+        _number.Margin = new Thickness(0, 0, 0, height * 0.12);
+        _dots.Margin = new Thickness(0, 0, 0, height * 0.12);
 
         var grid = new Grid();
         grid.Children.Add(_fill);
+        grid.Children.Add(_hatch);
+        grid.Children.Add(_selection);
+        grid.Children.Add(_frame);
+        grid.Children.Add(_frameDash);
         grid.Children.Add(_number);
-        grid.Children.Add(large ? _titles : _dots);
+        grid.Children.Add(_dots);
 
         Content = grid;
-        Height = large ? 104 : 42;
-        Margin = new Thickness(2.5);
+        Height = height;
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
         VerticalContentAlignment = VerticalAlignment.Stretch;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
         IsTabStop = true;
         UseSystemFocusVisuals = true;
-        CornerRadius = new CornerRadius(8);
+        CornerRadius = Radius.None;
 
         PointerEntered += (_, _) => _fill.Opacity = 0.85;
         PointerExited += (_, _) => _fill.Opacity = 1;
     }
 
-    public DayCellViewModel? ViewModel => _vm;
+    public DateOnly Date => _state.Date;
 
-    public double NumberFontSize
+    public void Update(DayCellState state)
     {
-        get => _number.FontSize;
-        set => _number.FontSize = value;
+        _state = state;
+        var day = state.Day;
+        Opacity = !state.InMonth ? 0 : state.IsDimmed ? 0.2 : 1;
+        IsTabStop = state.InMonth;
+        IsHitTestVisible = state.InMonth;
+        _number.Text = state.Date.Day.ToString(CultureInfo.CurrentCulture);
+
+        _fill.Background = _brushes.DayFill(day.Tags, Palette.EmptyCell);
+        _hatch.Visibility = _hatchPast && state.IsPast ? Visibility.Visible : Visibility.Collapsed;
+        _frame.Visibility = _frameDash.Visibility = state.IsToday ? Visibility.Visible : Visibility.Collapsed;
+        _selection.Visibility = state.IsSelected && !state.IsToday ? Visibility.Visible : Visibility.Collapsed;
+
+        Brush ink = day.HasNotes
+            ? new SolidColorBrush(Palette.ForegroundOn(_brushes.ColorOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag)))
+            : Palette.InkTertiary;
+        _number.Foreground = ink;
+
+        _dots.Children.Clear();
+        for (var i = 0; i < Math.Min(day.NoteCount, 5) && day.NoteCount > 1; i++)
+        {
+            _dots.Children.Add(new Rectangle { Width = 4, Height = 4, Fill = ink, Opacity = 0.8 });
+        }
+
+        AutomationProperties.SetName(this, state.AutomationName);
     }
-
-    public void Bind(DayCellViewModel vm)
-    {
-        if (_vm is not null)
-        {
-            _vm.PropertyChanged -= OnChanged;
-        }
-
-        _vm = vm;
-        vm.PropertyChanged += OnChanged;
-        Update();
-    }
-
-    private void OnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => Update();
-
-    public void Update()
-    {
-        if (_vm is not { } vm)
-        {
-            return;
-        }
-
-        Visibility = vm.InMonth ? Visibility.Visible : Visibility.Collapsed;
-        IsTabStop = vm.InMonth;
-        _number.Text = vm.Date.Day.ToString(CultureInfo.CurrentCulture);
-        var day = vm.Day;
-
-        if (vm.IsToday)
-        {
-            _fill.Background = TagBrushes.Hatch(Palette.TodayFill.Color, Blend(Palette.TodayFill.Color, Palette.TodayInk.Color, 0.14));
-            _fill.BorderBrush = day.Tags.Count > 0 ? _brushes.BrushOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag) : Palette.Accent;
-            _fill.BorderThickness = new Thickness(2.5);
-            _number.Foreground = Palette.TodayInk;
-        }
-        else
-        {
-            _fill.Background = _brushes.DayFill(day.Tags, Palette.EmptyCell);
-            _fill.BorderThickness = new Thickness(0);
-            _number.Foreground = day.HasNotes
-                ? new SolidColorBrush(Palette.ForegroundOn(_brushes.ColorOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag)))
-                : vm.IsWeekend ? Palette.InkTertiary : Palette.InkSecondary;
-        }
-
-        Opacity = vm.IsDimmed ? 0.18 : 1;
-
-        if (_large)
-        {
-            _titles.Children.Clear();
-            foreach (var t in vm.Titles)
-            {
-                var line = Typo.Body(t.Title, 11, _number.Foreground);
-                line.TextTrimming = TextTrimming.CharacterEllipsis;
-                _titles.Children.Add(line);
-            }
-        }
-        else
-        {
-            _dots.Children.Clear();
-            var dotBrush = _number.Foreground;
-            for (var i = 0; i < Math.Min(day.NoteCount, 3) && day.NoteCount > 1; i++)
-            {
-                _dots.Children.Add(new Ellipse { Width = 3.5, Height = 3.5, Fill = dotBrush, Opacity = 0.75 });
-            }
-        }
-
-        AutomationProperties.SetName(this, vm.AutomationName);
-    }
-
-    private static Color Blend(Color a, Color b, double t) => Color.FromArgb(
-        255,
-        (byte)(a.R + ((b.R - a.R) * t)),
-        (byte)(a.G + ((b.G - a.G) * t)),
-        (byte)(a.B + ((b.B - a.B) * t)));
 }

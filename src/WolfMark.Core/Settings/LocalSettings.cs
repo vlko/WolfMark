@@ -33,7 +33,8 @@ public sealed class LocalSettings
 
     public AppTheme Theme { get; set; } = AppTheme.System;
 
-    public BackdropKind Backdrop { get; set; } = BackdropKind.Mica;
+    /// <summary>The flat design uses a solid paper colour; Mica/Acrylic are optional.</summary>
+    public BackdropKind Backdrop { get; set; } = BackdropKind.None;
 
     public string EditorFontFamily { get; set; } = "Cascadia Text, Segoe UI Variable Text, Segoe UI";
 
@@ -47,6 +48,9 @@ public sealed class LocalSettings
     public string? Language { get; set; }
 
     public double HistoryPaneHeight { get; set; } = 260;
+
+    /// <summary>Calendar panel shows the full month (true) or only the week band.</summary>
+    public bool CalendarExpanded { get; set; }
 
     public WindowPlacement? Window { get; set; }
 

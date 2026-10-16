@@ -102,18 +102,18 @@ internal static class Ui
 
     public static GridLength Stars(double v) => new(v, GridUnitType.Star);
 
-    /// <summary>Flat icon button used in toolbars.</summary>
+    /// <summary>Flat icon button used in toolbars (slightly rounded, like tags).</summary>
     public static Button IconButton(string glyph, string tooltip, Action onClick, double size = 16)
     {
         var button = new Button
         {
             Content = Typo.Icon(glyph, size),
             Padding = new Thickness(8),
-            MinWidth = 36,
-            MinHeight = 36,
+            MinWidth = 34,
+            MinHeight = 34,
             Background = Palette.Transparent,
             BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = Radius.Control,
         };
         ToolTipService.SetToolTip(button, tooltip);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, tooltip);
@@ -121,32 +121,54 @@ internal static class Ui
         return button;
     }
 
-    /// <summary>Pill-shaped button: coloured dot + label (+ optional count) – the tag pill of SPEC §5.1.</summary>
+    /// <summary>Tag-style button: flat fill, condensed caps label, slight rounding.</summary>
+    public static Button TagButton(string text, Action onClick, Brush? fill = null, Brush? ink = null, string? glyph = null)
+    {
+        var label = Typo.Caps(text, 13, ink ?? Palette.Ink);
+        UIElement content = glyph is null ? label : HStack(6, Typo.Icon(glyph, 12, ink ?? Palette.Ink), label);
+        var button = new Button
+        {
+            Content = content,
+            Padding = new Thickness(10, 4, 10, 4),
+            MinHeight = 30,
+            CornerRadius = Radius.Control,
+            BorderThickness = new Thickness(0),
+            Background = fill ?? Palette.SubtleFill,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, text);
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
+    /// <summary>Tag chip: coloured square + label (+ optional count).</summary>
     public static Button Pill(Brush dot, string label, string? count, Action onClick, bool active = false)
     {
         var content = HStack(6,
-            new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 8, Height = 8, Fill = dot, VerticalAlignment = VerticalAlignment.Center },
-            Typo.Body(label, 12.5, Palette.Ink));
+            new Microsoft.UI.Xaml.Shapes.Rectangle { Width = 9, Height = 9, Fill = dot, VerticalAlignment = VerticalAlignment.Center },
+            Typo.Caps(label, 13, Palette.Ink));
         if (count is not null)
         {
-            content.Children.Add(Typo.Body(count, 12, Palette.InkTertiary));
+            content.Children.Add(Typo.Caps(count, 12.5, Palette.InkTertiary));
         }
 
         var button = new Button
         {
             Content = content,
-            Padding = new Thickness(10, 4, 12, 4),
+            Padding = new Thickness(9, 3, 10, 3),
             MinHeight = 28,
-            CornerRadius = new CornerRadius(14),
-            BorderThickness = new Thickness(active ? 1.5 : 1),
-            BorderBrush = active ? dot : Palette.Divider,
-            Background = active ? Palette.SubtleFillHover : Palette.Card,
+            CornerRadius = Radius.Control,
+            BorderThickness = new Thickness(0),
+            Background = active ? Palette.SubtleFillHover : Palette.SubtleFill,
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, count is null ? label : $"{label} {count}");
         button.Click += (_, _) => onClick();
         return button;
     }
 
+    /// <summary>Vertical dotted separator (time gutter ┆ content).</summary>
+    public static Border DottedLine() => new() { Width = 1, VerticalAlignment = VerticalAlignment.Stretch, Background = Palette.Dotted };
+
+    /// <summary>Rounded card – only for floating surfaces (search palette); the main UI is flat.</summary>
     public static Border Card(UIElement child, double radius = 18) => new()
     {
         Child = child,

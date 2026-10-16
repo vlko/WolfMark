@@ -22,6 +22,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+/temp_design/
 
 # .NET Core
 project.lock.json

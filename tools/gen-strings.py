@@ -114,6 +114,13 @@ S = {
  "Settings_Saved": ("Settings saved", "Nastavenia uložené"),
  "Status_Synced": ("Claude Code: {0} new, {1} updated", "Claude Code: {0} nových, {1} aktualizovaných"),
  "Week_Label": ("Week {0}", "Týždeň {0}"),
+ "Calendar_Expand": ("Show the whole month (Ctrl+Shift+C)", "Zobraziť celý mesiac (Ctrl+Shift+C)"),
+ "Calendar_Collapse": ("Show the week (Ctrl+Shift+C)", "Zobraziť týždeň (Ctrl+Shift+C)"),
+ "Rail_All": ("All", "Všetko"),
+ "Rail_Show": ("Show all tags", "Zobraziť všetky tagy"),
+ "Editor_Modified": ("edited {0}", "upravené {0}"),
+ "Editor_Continues": ("continues", "pokračuje"),
+ "Toolbar_NewNoteShort": ("New", "Nová"),
 }
 
 import os, sys, html

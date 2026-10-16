@@ -17,8 +17,9 @@ using WolfMark.Editor;
 namespace WolfMark.App.Views;
 
 /// <summary>
-/// Main window (SPEC §4.5): custom title bar (date · search · settings), week strip, the note card
-/// (header, editor, splitter, history) and the calendar / search overlays.
+/// Main window (SPEC §4.5, ADR 0004): flat paper surface with the title bar, day heading, calendar panel,
+/// note toolbar, editor with its time gutter, history, and the tag rail on the right. Only the search
+/// palette floats above.
 /// </summary>
 internal sealed partial class MainWindow : Window
 {
@@ -29,8 +30,11 @@ internal sealed partial class MainWindow : Window
     private readonly Grid _titleBar;
     private readonly List<FrameworkElement> _titleBarInteractive = [];
     private readonly MarkdownEditor _editor = new();
-    private readonly CalendarView _calendar;
+    private readonly CalendarPanel _calendar;
     private readonly SearchPalette _search;
+    private readonly Action<DateTime?> _setCreated;
+    private readonly TextBlock _modified = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
+    private readonly Button _continues;
     private readonly RowDefinition _historyRow;
     private bool _closing;
 
@@ -49,11 +53,13 @@ internal sealed partial class MainWindow : Window
             AppWindow.SetIcon(icon);
         }
 
+        // Palette first, so every view is built with the right colours.
+        Palette.Apply(InitialTheme(), translucent: _host.Settings.Current.Backdrop != BackdropKind.None);
+
         _titleBar = BuildTitleBar();
-        _calendar = new CalendarView(vm, brushes) { Margin = new Thickness(12, 0, 12, 12), Visibility = Visibility.Collapsed };
+        _calendar = new CalendarPanel(vm, brushes);
         _search = new SearchPalette(vm, brushes) { Visibility = Visibility.Collapsed };
 
-        // Note card
         _historyRow = new RowDefinition { Height = new GridLength(_host.Settings.Current.HistoryPaneHeight) };
         var header = new NoteHeaderView(vm, brushes, _editor.Execute);
         var splitter = new SplitterHandle(
@@ -66,33 +72,54 @@ internal sealed partial class MainWindow : Window
             });
         var history = new HistoryView(vm, brushes);
 
-        var cardGrid = new Grid();
-        cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        cardGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 120 });
-        cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        cardGrid.RowDefinitions.Add(_historyRow);
-        Add(cardGrid, header, 0);
-        Add(cardGrid, _editor, 1);
-        Add(cardGrid, splitter, 2);
-        Add(cardGrid, history, 3);
+        // Editor with time gutter: created time on top, last modification on the last visible line.
+        var created = Typo.LeadTime(out _setCreated, 32, Palette.InkSecondary);
+        created.Margin = new Thickness(0, 4, 0, 0);
+        _modified.HorizontalAlignment = HorizontalAlignment.Right;
+        _modified.TextAlignment = TextAlignment.Right;
+        _modified.TextWrapping = TextWrapping.Wrap;
+        _continues = new Button
+        {
+            Content = Ui.Ui.HStack(4, Typo.Caps(Strings.Get(R.Editor_Continues), 11.5, Palette.Accent), Typo.Icon(Glyphs.ChevronDown, 10, Palette.Accent)),
+            Padding = new Thickness(4, 2, 0, 2),
+            Background = Palette.Transparent,
+            BorderThickness = new Thickness(0),
+            CornerRadius = Radius.Control,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Visibility = Visibility.Collapsed,
+        };
+        _continues.Click += (_, _) => _editor.ScrollToEnd();
+        var gutter = Ui.Ui.Rows((Ui.Ui.Auto, created), (Ui.Ui.Star, null), (Ui.Ui.Auto, Ui.Ui.VStack(2, _continues, _modified)));
+        gutter.Padding = new Thickness(0, 0, 10, 26);
+        _editor.AlignLeft = true;
+        var editorPane = Ui.Ui.Columns((Ui.Ui.Px(78), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, _editor));
 
-        var card = Ui.Ui.Card(cardGrid, radius: 20);
-        card.Margin = new Thickness(12, 0, 12, 12);
-        card.Translation = new System.Numerics.Vector3(0, 0, 16);
-        card.Shadow = new ThemeShadow();
+        var main = new Grid { Padding = new Thickness(24, 4, 8, 0) };
+        main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // day heading
+        main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // calendar panel
+        main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // note panel (tag, formatting)
+        main.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 120 });
+        main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        main.RowDefinitions.Add(_historyRow);
+        header.Heading.Margin = new Thickness(0, 0, 0, 10);
+        _calendar.Margin = new Thickness(0, 0, 0, 12);
+        header.NotePanel.Margin = new Thickness(0, 0, 0, 10);
+        Add(main, header.Heading, 0);
+        Add(main, _calendar, 1);
+        Add(main, header.NotePanel, 2);
+        Add(main, editorPane, 3);
+        Add(main, splitter, 4);
+        Add(main, history, 5);
 
-        var content = new Grid();
-        content.Children.Add(card);
-        content.Children.Add(_calendar);
+        var rail = new TagRail(vm, brushes) { Margin = new Thickness(0, 8, 0, 0) };
+        var content = Ui.Ui.Columns((Ui.Ui.Star, main), (Ui.Ui.Auto, rail));
 
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(48) });
-        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         _root.Background = Palette.WindowTint;
         Add(_root, _titleBar, 0);
-        Add(_root, new WeekStripView(vm, brushes), 1);
-        Add(_root, content, 2);
-        Grid.SetRowSpan(_search, 3);
+        Add(_root, content, 1);
+        Grid.SetRowSpan(_search, 2);
         _root.Children.Add(_search);
         Content = _root;
         SetTitleBar(_titleBar);
@@ -151,7 +178,8 @@ internal sealed partial class MainWindow : Window
 
     private Grid BuildTitleBar()
     {
-        var appName = Typo.Caps(Strings.Get(R.AppTitle), 11.5, Palette.InkSecondary);
+        var appName = Typo.Caps(Strings.Get(R.AppTitle), 16, Palette.Ink);
+        appName.FontFamily = Typo.CondensedBold;
         var searchBox = new Button
         {
             Content = Ui.Ui.Columns(
@@ -219,10 +247,32 @@ internal sealed partial class MainWindow : Window
         InputNonClientPointerSource.GetForWindowId(AppWindow.Id).SetRegionRects(NonClientRegionKind.Passthrough, [.. rects]);
     }
 
+    private ElementTheme InitialTheme() => _host.Settings.Current.Theme switch
+    {
+        AppTheme.Light => ElementTheme.Light,
+        AppTheme.Dark => ElementTheme.Dark,
+        _ => Application.Current.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Dark : ElementTheme.Light,
+    };
+
     private void OnThemeChanged()
     {
         var theme = _root.ActualTheme;
-        Palette.Apply(theme);
+        Palette.Apply(theme, translucent: _host.Settings.Current.Backdrop != BackdropKind.None);
+        UpdateEditorTheme();
+        _brushes.Refresh(); // views that compute colours re-render
+
+        var tb = AppWindow.TitleBar;
+        tb.ButtonBackgroundColor = Colors.Transparent;
+        tb.ButtonInactiveBackgroundColor = Colors.Transparent;
+        tb.ButtonForegroundColor = Palette.Ink.Color;
+        tb.ButtonHoverBackgroundColor = Palette.SubtleFill.Color;
+        tb.ButtonHoverForegroundColor = Palette.Ink.Color;
+        tb.ButtonInactiveForegroundColor = Palette.InkTertiary.Color;
+    }
+
+    private void UpdateEditorTheme()
+    {
+        var theme = Palette.CurrentTheme;
         var s = _host.Settings.Current;
         Func<string, Windows.UI.Color> tagColor = tag => Palette.ToColor(_host.Tags.GetColor(tag));
         var baseTheme = theme == ElementTheme.Dark ? MarkdownTheme.Dark(tagColor) : MarkdownTheme.Light(tagColor);
@@ -242,14 +292,6 @@ internal sealed partial class MainWindow : Window
             FontSize = s.EditorFontSize,
         };
         _editor.MaxLineWidth = s.EditorMaxLineWidth;
-
-        var tb = AppWindow.TitleBar;
-        tb.ButtonBackgroundColor = Colors.Transparent;
-        tb.ButtonInactiveBackgroundColor = Colors.Transparent;
-        tb.ButtonForegroundColor = Palette.Ink.Color;
-        tb.ButtonHoverBackgroundColor = Palette.SubtleFill.Color;
-        tb.ButtonHoverForegroundColor = Palette.Ink.Color;
-        tb.ButtonInactiveForegroundColor = Palette.InkTertiary.Color;
     }
 
     // ---------------------------------------------------------------- wiring
@@ -286,12 +328,36 @@ internal sealed partial class MainWindow : Window
                 case nameof(NoteEditorViewModel.IsReadOnly):
                     _editor.IsReadOnly = editorVm.IsReadOnly;
                     break;
+                case nameof(NoteEditorViewModel.CreatedAt) or nameof(NoteEditorViewModel.ModifiedAt):
+                    UpdateGutter();
+                    break;
             }
         };
+        _editor.OverflowChanged += (_, more) => _continues.Visibility = more ? Visibility.Visible : Visibility.Collapsed;
+        UpdateGutter();
 
-        _brushes.Changed += (_, _) => OnThemeChanged();
+        _brushes.Changed += (_, _) => UpdateEditorTheme();
         _host.Tags.Changed += (_, _) => UiThread.Post(_brushes.Refresh);
         _root.ActualThemeChanged += (_, _) => OnThemeChanged();
+    }
+
+    /// <summary>Created time on top of the gutter; "edited 14:20" on the last visible line.</summary>
+    private void UpdateGutter()
+    {
+        var editor = _vm.Editor;
+        _setCreated(editor.CreatedAt);
+        if (editor.ModifiedAt is { } modified)
+        {
+            var c = System.Globalization.CultureInfo.CurrentCulture;
+            var when = DateOnly.FromDateTime(modified) == DateOnly.FromDateTime(editor.CreatedAt)
+                ? modified.ToString("t", c)
+                : modified.ToString("d", c) + " " + modified.ToString("t", c);
+            _modified.Text = Strings.Format(R.Editor_Modified, when).ToUpper(c);
+        }
+        else
+        {
+            _modified.Text = string.Empty;
+        }
     }
 
     private void WireOverlays()
@@ -300,14 +366,6 @@ internal sealed partial class MainWindow : Window
         {
             switch (e.PropertyName)
             {
-                case nameof(MainViewModel.IsCalendarOpen):
-                    _calendar.Visibility = _vm.IsCalendarOpen ? Visibility.Visible : Visibility.Collapsed;
-                    if (!_vm.IsCalendarOpen)
-                    {
-                        _editor.FocusEditor();
-                    }
-
-                    break;
                 case nameof(MainViewModel.IsSearchOpen):
                     _search.Visibility = _vm.IsSearchOpen ? Visibility.Visible : Visibility.Collapsed;
                     if (_vm.IsSearchOpen)
@@ -326,33 +384,20 @@ internal sealed partial class MainWindow : Window
 
     private void WireAccelerators()
     {
-        _vm.CalendarLoaded += (_, _) =>
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => _calendar.FocusDay(_vm.SelectedDay));
-
         Accelerator(VirtualKey.N, VirtualKeyModifiers.Control, () => _ = _vm.NewNoteAsync());
         Accelerator(VirtualKey.K, VirtualKeyModifiers.Control, _vm.OpenSearch);
         Accelerator(VirtualKey.F, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, _vm.OpenSearch);
-        Accelerator(VirtualKey.C, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, () =>
+        Accelerator(VirtualKey.C, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift, async () =>
         {
-            if (_vm.IsCalendarOpen)
-            {
-                _vm.IsCalendarOpen = false;
-            }
-            else
-            {
-                _ = _vm.OpenCalendarAsync();
-            }
+            await _vm.ToggleCalendarAsync();
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, _calendar.FocusSelectedDay);
         });
         Accelerator(VirtualKey.E, VirtualKeyModifiers.Control, () =>
             _vm.Editor.Mode = _vm.Editor.Mode == EditorMode.Raw ? EditorMode.Formatted : EditorMode.Raw);
         Accelerator((VirtualKey)188, VirtualKeyModifiers.Control, () => _ = OpenSettingsAsync()); // Ctrl+,
-        Accelerator(VirtualKey.Escape, VirtualKeyModifiers.None, () =>
-        {
-            _vm.IsSearchOpen = false;
-            _vm.IsCalendarOpen = false;
-        });
-        Accelerator(VirtualKey.Left, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu, () => _ = _vm.MoveWeekAsync(-1));
-        Accelerator(VirtualKey.Right, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu, () => _ = _vm.MoveWeekAsync(1));
+        Accelerator(VirtualKey.Escape, VirtualKeyModifiers.None, () => _vm.IsSearchOpen = false);
+        Accelerator(VirtualKey.Left, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu, () => _ = _vm.MoveCalendarAsync(-1));
+        Accelerator(VirtualKey.Right, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu, () => _ = _vm.MoveCalendarAsync(1));
 
         void Accelerator(VirtualKey key, VirtualKeyModifiers modifiers, Action action)
         {

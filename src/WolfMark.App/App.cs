@@ -39,6 +39,10 @@ public sealed partial class App : Application, IXamlMetadataProvider
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         Resources.MergedDictionaries.Add(new XamlControlsResources());
+
+        // Flat design (ADR 0004): controls only slightly rounded, like the tags.
+        Resources["ControlCornerRadius"] = new CornerRadius(3);
+        Resources["OverlayCornerRadius"] = new CornerRadius(4);
         UiThread.Initialize(DispatcherQueue.GetForCurrentThread());
 
         var host = await AppHost.CreateAsync();

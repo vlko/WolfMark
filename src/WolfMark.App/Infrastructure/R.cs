@@ -115,4 +115,11 @@ internal static class R
     public const string Settings_Saved = nameof(Settings_Saved);
     public const string Status_Synced = nameof(Status_Synced);
     public const string Week_Label = nameof(Week_Label);
+    public const string Calendar_Expand = nameof(Calendar_Expand);
+    public const string Calendar_Collapse = nameof(Calendar_Collapse);
+    public const string Rail_All = nameof(Rail_All);
+    public const string Rail_Show = nameof(Rail_Show);
+    public const string Editor_Modified = nameof(Editor_Modified);
+    public const string Editor_Continues = nameof(Editor_Continues);
+    public const string Toolbar_NewNoteShort = nameof(Toolbar_NewNoteShort);
 }

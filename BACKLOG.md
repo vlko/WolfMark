@@ -126,7 +126,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 ## M6 – Kalendár v UI 🟢
 
 - 🟨 **M6-01 – Kompaktná týždenná lišta** pod title barom: dni s počtom záznamov a farebnými prúžkami tagov, navigácia týždňov, dnešok zvýraznený.
-  *Stav:* Krúžky dní s farebnými segmentmi tagov a progresom úloh.
+  *Stav:* Týždenný pás podľa ADR 0004 (hranaté bunky, šrafované minulé dni, rám dneška, štítok).
 - 🟨 **M6-02 – Plný kalendár (ročný pohľad)** podľa SPEC §5.2: mriežka mesiacov s číslami týždňov, bunky vyplnené farbami tagov, dnešok, legenda tagov s filtrovaním.
   *AK:* Plynulý scroll celým rokom; klik na deň otvorí deň.
 - 🟨 **M6-03 – „Lupa“ na týždeň** a štítky pod týždňom.

@@ -60,6 +60,10 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     [ObservableProperty]
     public partial DateTime CreatedAt { get; private set; }
 
+    /// <summary>Last modification (file mtime, or the last save); null for a note not yet created.</summary>
+    [ObservableProperty]
+    public partial DateTime? ModifiedAt { get; private set; }
+
     [ObservableProperty]
     public partial SaveState SaveState { get; private set; } = SaveState.New;
 
@@ -102,12 +106,9 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
             return;
         }
 
-        var created = path.CreatedAt;
-        if (created is null)
-        {
-            var file = await Task.Run(() => _host.Engine.GetFile(path));
-            created = file?.CreatedAtLocal ?? DateTime.Now;
-        }
+        var file = await Task.Run(() => _host.Engine.GetFile(path));
+        var created = path.CreatedAt ?? file?.CreatedAtLocal ?? DateTime.Now;
+        ModifiedAt = file?.LastWriteTimeUtc.ToLocalTime().DateTime;
 
         _useCrLf = text.Contains("\r\n", StringComparison.Ordinal);
         Text = text.Replace("\r\n", "\n");
@@ -115,7 +116,7 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         Path = path;
         IsPersisted = true;
         Tag = path.Tag;
-        CreatedAt = created.Value;
+        CreatedAt = created;
         IsNonStandard = !path.IsStandard;
         ConflictOriginal = path.ConflictOriginal;
         IsClaudeCode = IsClaudeCodeNote(path, Text);
@@ -138,6 +139,7 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         IsPersisted = false;
         Tag = tag;
         CreatedAt = now;
+        ModifiedAt = null;
         IsNonStandard = false;
         ConflictOriginal = null;
         IsClaudeCode = false;
@@ -215,6 +217,7 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
                 await Task.Run(() => _host.Engine.SaveAsync(path, content, CancellationToken.None), CancellationToken.None);
             }
 
+            ModifiedAt = DateTime.Now;
             _dirty = !ReferenceEquals(text, Text) && !string.Equals(text, Text, StringComparison.Ordinal);
             IsDeletedExternally = false;
             SaveState = _dirty ? SaveState.Pending : SaveState.Saved;

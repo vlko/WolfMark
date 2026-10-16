@@ -116,5 +116,12 @@ internal static partial class Strings
         [R.Settings_Saved] = "Settings saved",
         [R.Status_Synced] = "Claude Code: {0} new, {1} updated",
         [R.Week_Label] = "Week {0}",
+        [R.Calendar_Expand] = "Show the whole month (Ctrl+Shift+C)",
+        [R.Calendar_Collapse] = "Show the week (Ctrl+Shift+C)",
+        [R.Rail_All] = "All",
+        [R.Rail_Show] = "Show all tags",
+        [R.Editor_Modified] = "edited {0}",
+        [R.Editor_Continues] = "continues",
+        [R.Toolbar_NewNoteShort] = "New",
     };
 }

@@ -5,6 +5,7 @@ using WolfMark.App.Infrastructure;
 using WolfMark.Core.Calendar;
 using WolfMark.Core.Events;
 using WolfMark.Core.Notes;
+using WolfMark.Core.Tags;
 using WolfMark.Index.Indexing;
 using WolfMark.Index.Queries;
 using WolfMark.Sync.ClaudeCode;
@@ -31,6 +32,7 @@ internal sealed partial class MainViewModel : ObservableObject
         Search = new SearchViewModel(host);
         Today = DateOnly.FromDateTime(DateTime.Now);
         SelectedDay = Today;
+        IsCalendarExpanded = host.Settings.Current.CalendarExpanded;
 
         Editor.PathChanged += (_, _) => History.MarkCurrent(Editor.IsPersisted ? Editor.Path?.RelativePath : null);
         Search.ResultInvoked += async (_, note) =>
@@ -62,8 +64,8 @@ internal sealed partial class MainViewModel : ObservableObject
 
     public SearchViewModel Search { get; }
 
-    /// <summary>Tag pills of the selected day ("● praca 3").</summary>
-    public ObservableCollection<DayTagViewModel> DayTags { get; } = [];
+    /// <summary>Tags of the right-hand rail, most used first.</summary>
+    public ObservableCollection<RailTagViewModel> RailTags { get; } = [];
 
     [ObservableProperty]
     public partial DateOnly Today { get; private set; }
@@ -80,8 +82,13 @@ internal sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial CleanupStatus? CleanupWarning { get; private set; }
 
+    /// <summary>Calendar panel shows the whole month instead of the week band.</summary>
     [ObservableProperty]
-    public partial bool IsCalendarOpen { get; set; }
+    public partial bool IsCalendarExpanded { get; private set; }
+
+    /// <summary>Tag chosen in the rail: filters history and dims other days; new notes get it.</summary>
+    [ObservableProperty]
+    public partial string? ActiveTag { get; private set; }
 
     [ObservableProperty]
     public partial bool IsSearchOpen { get; set; }
@@ -112,7 +119,8 @@ internal sealed partial class MainViewModel : ObservableObject
         await Week.LoadAsync(SelectedDay, SelectedDay);
         await History.ReloadAsync();
         History.MarkCurrent(Editor.IsPersisted ? Editor.Path?.RelativePath : null);
-        await LoadDayTagsAsync();
+        await SyncCalendarMonthAsync(force: true);
+        await LoadRailTagsAsync();
         await RefreshConflictsAsync();
         await CheckClaudeCleanupAsync();
     }
@@ -130,7 +138,7 @@ internal sealed partial class MainViewModel : ObservableObject
         }
 
         await History.SetDayFilterAsync(day);
-        await LoadDayTagsAsync();
+        await SyncCalendarMonthAsync();
 
         if (!openLatest)
         {
@@ -164,35 +172,46 @@ internal sealed partial class MainViewModel : ObservableObject
         {
             SelectedDay = day;
             await Week.LoadAsync(day, day);
-            await LoadDayTagsAsync();
+            await SyncCalendarMonthAsync();
         }
     }
 
     public async Task NewNoteAsync()
     {
-        await Editor.NewAsync(History.TagFilter);
+        await Editor.NewAsync(ActiveTag);
         if (SelectedDay != Today)
         {
             SelectedDay = Today;
             await Week.LoadAsync(Today, Today);
-            await LoadDayTagsAsync();
+            await SyncCalendarMonthAsync();
         }
     }
 
-    /// <summary>Raised after the calendar finished loading for <see cref="OpenCalendarAsync"/>.</summary>
-    public event EventHandler? CalendarLoaded;
-
-    public async Task OpenCalendarAsync()
+    public async Task ToggleCalendarAsync()
     {
-        IsSearchOpen = false;
-        IsCalendarOpen = true;
-        await Calendar.GoToAsync(SelectedDay);
-        CalendarLoaded?.Invoke(this, EventArgs.Empty);
+        IsCalendarExpanded = !IsCalendarExpanded;
+        _host.Settings.Current.CalendarExpanded = IsCalendarExpanded;
+        _ = _host.SaveSettingsAsync();
+        await SyncCalendarMonthAsync(force: true);
+    }
+
+    /// <summary>Previous/next: weeks in the band, months in the expanded grid.</summary>
+    public Task MoveCalendarAsync(int delta) => IsCalendarExpanded ? Calendar.MoveAsync(delta) : MoveWeekAsync(delta);
+
+    public async Task SetActiveTagAsync(string? tag)
+    {
+        ActiveTag = tag;
+        Calendar.SetFilter(tag);
+        foreach (var t in RailTags)
+        {
+            t.IsActive = tag is not null && TagName.Comparer.Equals(t.Tag, tag);
+        }
+
+        await History.SetTagFilterAsync(tag);
     }
 
     public void OpenSearch()
     {
-        IsCalendarOpen = false;
         Search.Reset();
         IsSearchOpen = true;
     }
@@ -232,12 +251,7 @@ internal sealed partial class MainViewModel : ObservableObject
             await Week.LoadAsync(Week.Monday, SelectedDay);
         }
 
-        if (e.IsFullScan || e.Days.Contains(SelectedDay))
-        {
-            await LoadDayTagsAsync();
-        }
-
-        if (IsCalendarOpen)
+        if (IsCalendarExpanded)
         {
             if (e.IsFullScan)
             {
@@ -254,6 +268,7 @@ internal sealed partial class MainViewModel : ObservableObject
         {
             _pendingDays.Clear();
             await History.ReloadAsync();
+            await LoadRailTagsAsync();
             await RefreshConflictsAsync();
         });
     }
@@ -282,17 +297,30 @@ internal sealed partial class MainViewModel : ObservableObject
         await Editor.OnNoteEventAsync(e);
     }
 
-    private async Task LoadDayTagsAsync()
+    /// <summary>Keeps the expanded month on the month of the selected day.</summary>
+    private async Task SyncCalendarMonthAsync(bool force = false)
+    {
+        if (IsCalendarExpanded && (force || Calendar.Year != SelectedDay.Year || Calendar.Month != SelectedDay.Month))
+        {
+            await Calendar.GoToAsync(SelectedDay);
+        }
+    }
+
+    private async Task LoadRailTagsAsync()
     {
         await _host.DatabaseReady;
-        var days = await _host.Calendar.GetDaysAsync(SelectedDay, SelectedDay, _host.ShutdownToken);
-        DayTags.Clear();
-        if (days.GetValueOrDefault(SelectedDay) is { } day)
+        var usage = await _host.Calendar.GetTagUsageAsync(null, null, _host.ShutdownToken);
+        var known = RailTags.Select(t => t.Tag).ToList();
+        var fresh = usage.Select(u => u.Tag).ToList();
+        if (known.SequenceEqual(fresh, TagName.Comparer))
         {
-            foreach (var t in day.Tags)
-            {
-                DayTags.Add(new DayTagViewModel(t.Tag.Length == 0 ? null : t.Tag, t.Count));
-            }
+            return; // unchanged – keep the views (and their fold state)
+        }
+
+        RailTags.Clear();
+        foreach (var u in usage)
+        {
+            RailTags.Add(new RailTagViewModel(u.Tag, u.Count) { IsActive = ActiveTag is not null && TagName.Comparer.Equals(ActiveTag, u.Tag) });
         }
     }
 
@@ -318,9 +346,12 @@ internal sealed partial class MainViewModel : ObservableObject
     private partial void LogSynced(int created, int updated);
 }
 
-internal sealed partial class DayTagViewModel(string? tag, int count) : ObservableObject
+internal sealed partial class RailTagViewModel(string tag, int count) : ObservableObject
 {
-    public string? Tag { get; } = tag;
+    public string Tag { get; } = tag;
 
     public int Count { get; } = count;
+
+    [ObservableProperty]
+    public partial bool IsActive { get; set; }
 }

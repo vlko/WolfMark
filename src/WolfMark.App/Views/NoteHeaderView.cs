@@ -15,10 +15,11 @@ using WolfMark.Editor;
 namespace WolfMark.App.Views;
 
 /// <summary>
-/// Day heading ("15 · OKTÓBER 2026 · STREDA" + tag pills of the day) and the note toolbar
-/// (tag, time, save state, formatting, Raw/Formatted, +) – SPEC §4.5, §5.1, M4-09.
+/// Builds the day heading ("15 · OKTÓBER 2026 · STREDA") and the note panel (tag, save state, formatting,
+/// Raw/Formatted, +, info bars) – SPEC §4.5, M4-09. The window places them separately: heading on top,
+/// calendar between, note panel right above the editor.
 /// </summary>
-internal sealed partial class NoteHeaderView : UserControl
+internal sealed partial class NoteHeaderView
 {
     private readonly MainViewModel _vm;
     private readonly TagBrushes _brushes;
@@ -29,102 +30,63 @@ internal sealed partial class NoteHeaderView : UserControl
         _vm = vm;
         _brushes = brushes;
         _execute = execute;
-        Content = Ui.Ui.VStack(8, BuildDayHeading(), BuildToolbar(), BuildInfoBars());
-        Padding = new Thickness(28, 18, 20, 4);
+        Heading = BuildDayHeading();
+        NotePanel = Ui.Ui.VStack(6, BuildToolbar(), BuildInfoBars());
     }
+
+    public FrameworkElement Heading { get; }
+
+    /// <summary>Tag selection, formatting and the note's info bars.</summary>
+    public FrameworkElement NotePanel { get; }
 
     // ---------------------------------------------------------------- day heading
 
+    /// <summary>"12" lead number in riso layers + "AUGUST 2026" thin caps + "WEDNESDAY" bold condensed.</summary>
     private Grid BuildDayHeading()
     {
-        var number = new TextBlock
-        {
-            FontFamily = Typo.Display,
-            FontSize = 58,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Palette.Accent,
-            LineHeight = 58,
-            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        var month = Typo.Caps(string.Empty, 12, Palette.InkSecondary);
-        var weekday = new TextBlock
-        {
-            FontFamily = Typo.Display,
-            FontSize = 20,
-            FontWeight = FontWeights.Bold,
-            Foreground = Palette.Ink,
-            CharacterSpacing = 30,
-        };
+        var number = Typo.RisoNumber(out var setNumber, 86);
+        var month = new TextBlock { FontFamily = Typo.Lead, FontSize = 23, CharacterSpacing = 60, Foreground = Palette.InkSecondary };
+        var weekday = new TextBlock { FontFamily = Typo.CondensedBold, FontSize = 32, CharacterSpacing = 20, Foreground = Palette.Ink, Margin = new Thickness(0, -6, 0, 0) };
         var dateText = Ui.Ui.VStack(0, month, weekday);
         dateText.VerticalAlignment = VerticalAlignment.Center;
+        dateText.Margin = new Thickness(0, 6, 0, 0);
 
         number.Bind(_vm, nameof(MainViewModel.SelectedDay), () =>
         {
             var d = _vm.SelectedDay;
             var c = CultureInfo.CurrentCulture;
-            number.Text = d.Day.ToString(c);
+            setNumber(d.Day.ToString(c));
             month.Text = (c.DateTimeFormat.GetMonthName(d.Month) + " " + d.Year).ToUpper(c);
             weekday.Text = c.DateTimeFormat.GetDayName(d.DayOfWeek).ToUpper(c);
         });
 
-        var pills = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        void RenderPills()
-        {
-            pills.Children.Clear();
-            foreach (var t in _vm.DayTags)
-            {
-                var tag = t.Tag;
-                pills.Children.Add(Ui.Ui.Pill(
-                    _brushes.BrushOf(tag),
-                    tag ?? Strings.Get(R.Untagged),
-                    t.Count.ToString(CultureInfo.CurrentCulture),
-                    () => _ = _vm.History.SetTagFilterAsync(tag),
-                    active: tag is not null && _vm.History.TagFilter is { } f && TagName.Comparer.Equals(f, tag)));
-            }
-        }
-
-        _vm.DayTags.CollectionChanged += (_, _) => RenderPills();
-        _vm.History.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(HistoryViewModel.TagFilter))
-            {
-                RenderPills();
-            }
-        };
-        _brushes.Changed += (_, _) => RenderPills();
-
-        var pillScroller = new ScrollViewer
-        {
-            Content = pills,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
-            HorizontalScrollMode = ScrollMode.Enabled,
-            VerticalScrollMode = ScrollMode.Disabled,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-
-        var grid = Ui.Ui.Columns((Ui.Ui.Auto, number), (Ui.Ui.Auto, dateText), (Ui.Ui.Star, pillScroller));
+        var grid = Ui.Ui.Columns((Ui.Ui.Auto, number), (Ui.Ui.Star, dateText));
         grid.ColumnSpacing = 14;
         return grid;
     }
 
     // ---------------------------------------------------------------- toolbar
 
+    /// <summary>
+    /// [tag ▾][save state] ……… [B I ☐ ‹› 🔗][RAW|FORMÁT][+ NOVÁ]. Fixed widths on the left so nothing
+    /// shifts when the tag name or state text changes; the rest is anchored to the right edge.
+    /// </summary>
     private Grid BuildToolbar()
     {
         var editor = _vm.Editor;
 
-        // Tag picker
-        var tagDot = new Microsoft.UI.Xaml.Shapes.Ellipse { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
-        var tagText = Typo.Body(string.Empty, 13.5);
-        tagText.FontWeight = FontWeights.SemiBold;
+        var tagSquare = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
+        var tagText = Typo.Caps(string.Empty, 14, Palette.Ink);
+        tagText.TextTrimming = TextTrimming.CharacterEllipsis;
+        var tagContent = Ui.Ui.Columns((Ui.Ui.Auto, tagSquare), (Ui.Ui.Star, tagText), (Ui.Ui.Auto, Typo.Icon(Glyphs.ChevronDown, 10, Palette.InkTertiary)));
+        tagContent.ColumnSpacing = 8;
         var tagButton = new Button
         {
-            Content = Ui.Ui.HStack(8, tagDot, tagText, Typo.Icon(Glyphs.ChevronDown, 10, Palette.InkTertiary)),
-            Padding = new Thickness(12, 5, 10, 5),
-            CornerRadius = new CornerRadius(15),
+            Content = tagContent,
+            Width = 180,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(10, 5, 10, 5),
+            CornerRadius = Radius.Control,
             Background = Palette.SubtleFill,
             BorderThickness = new Thickness(0),
         };
@@ -135,35 +97,31 @@ internal sealed partial class NoteHeaderView : UserControl
 
         void UpdateTag()
         {
-            tagDot.Fill = _brushes.BrushOf(editor.Tag);
-            tagText.Text = editor.Tag ?? Strings.Get(R.Tag_None);
+            tagSquare.Fill = _brushes.BrushOf(editor.Tag);
+            tagText.Text = (editor.Tag ?? Strings.Get(R.Tag_None)).ToUpper(CultureInfo.CurrentCulture);
             tagButton.IsEnabled = !editor.IsReadOnly && !editor.IsNonStandard;
         }
 
         tagButton.Bind(editor, [nameof(NoteEditorViewModel.Tag), nameof(NoteEditorViewModel.IsReadOnly), nameof(NoteEditorViewModel.IsNonStandard)], UpdateTag);
         _brushes.Changed += (_, _) => UpdateTag();
 
-        // Time + save state
-        var time = Typo.Body(string.Empty, 13, Palette.InkSecondary);
-        time.Bind(editor, nameof(NoteEditorViewModel.CreatedAt), () => time.Text = editor.CreatedAt.ToString("t", CultureInfo.CurrentCulture));
-
         var stateIcon = Typo.Icon(string.Empty, 12, Palette.InkTertiary);
-        var stateText = Typo.Body(string.Empty, 12, Palette.InkTertiary);
+        var stateText = Typo.Caps(string.Empty, 12.5, Palette.InkTertiary);
         stateText.Bind(editor, nameof(NoteEditorViewModel.SaveState), () =>
         {
             (stateIcon.Glyph, stateText.Text) = editor.SaveState switch
             {
-                SaveState.Saved => ("", Strings.Get(R.Save_Saved)),
+                SaveState.Saved => ("\uE73E", Strings.Get(R.Save_Saved)),
                 SaveState.Saving => (Glyphs.Sync, Strings.Get(R.Save_Saving)),
                 SaveState.Pending => (Glyphs.Edit, Strings.Get(R.Save_Pending)),
                 SaveState.Error => (Glyphs.Warning, Strings.Get(R.Save_Error)),
                 SaveState.ReadOnly => (Glyphs.Lock, Strings.Get(R.Save_ReadOnly)),
                 _ => (Glyphs.Add, Strings.Get(R.Save_New)),
             };
+            stateText.Text = stateText.Text.ToUpper(CultureInfo.CurrentCulture);
             stateIcon.Foreground = editor.SaveState == SaveState.Error ? new SolidColorBrush(Microsoft.UI.Colors.IndianRed) : Palette.InkTertiary;
         });
 
-        // Formatting
         var format = Ui.Ui.HStack(
             0,
             Ui.Ui.IconButton(Glyphs.Bold, "Bold (Ctrl+B)", () => _execute(EditorCommand.Bold), 14),
@@ -171,20 +129,14 @@ internal sealed partial class NoteHeaderView : UserControl
             Ui.Ui.IconButton(Glyphs.CheckboxComposite, "Task (Ctrl+Shift+L)", () => _execute(EditorCommand.Task), 14),
             Ui.Ui.IconButton(Glyphs.Code, "Code", () => _execute(EditorCommand.Code), 14),
             Ui.Ui.IconButton(Glyphs.Link, "Link (Ctrl+K)", () => _execute(EditorCommand.Link), 14));
-        format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () => format.Visibility = editor.IsReadOnly ? Visibility.Collapsed : Visibility.Visible);
+        format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () => format.Opacity = editor.IsReadOnly ? 0.3 : 1);
+        format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () => format.IsHitTestVisible = !editor.IsReadOnly);
 
-        // Raw | Formatted
         var raw = SegmentButton(Strings.Get(R.Mode_Raw));
         var formatted = SegmentButton(Strings.Get(R.Mode_Formatted));
         raw.Click += (_, _) => editor.Mode = EditorMode.Raw;
         formatted.Click += (_, _) => editor.Mode = EditorMode.Formatted;
-        var segments = new Border
-        {
-            Child = Ui.Ui.HStack(2, raw, formatted),
-            Background = Palette.SubtleFill,
-            CornerRadius = new CornerRadius(14),
-            Padding = new Thickness(2),
-        };
+        var segments = Ui.Ui.HStack(2, raw, formatted);
         ToolTipService.SetToolTip(segments, Strings.Get(R.Mode_Tooltip));
         segments.Bind(editor, nameof(NoteEditorViewModel.Mode), () =>
         {
@@ -192,24 +144,12 @@ internal sealed partial class NoteHeaderView : UserControl
             formatted.IsChecked = editor.Mode == EditorMode.Formatted;
         });
 
-        var add = new Button
-        {
-            Content = Typo.Icon(Glyphs.Add, 14, new SolidColorBrush(Microsoft.UI.Colors.White)),
-            Width = 34,
-            Height = 34,
-            Padding = new Thickness(0),
-            CornerRadius = new CornerRadius(17),
-            Background = Palette.Accent,
-            BorderThickness = new Thickness(0),
-        };
+        var add = Ui.Ui.TagButton(Strings.Get(R.Toolbar_NewNoteShort), () => _ = _vm.NewNoteAsync(), Palette.Accent, new SolidColorBrush(Microsoft.UI.Colors.White), Glyphs.Add);
         ToolTipService.SetToolTip(add, Strings.Get(R.Toolbar_NewNote));
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(add, Strings.Get(R.Toolbar_NewNote));
-        add.Click += async (_, _) => await _vm.NewNoteAsync();
 
         var grid = Ui.Ui.Columns(
-            (Ui.Ui.Auto, tagButton),
-            (Ui.Ui.Auto, time),
-            (Ui.Ui.Auto, Ui.Ui.HStack(5, stateIcon, stateText)),
+            (Ui.Ui.Px(180), tagButton),
+            (Ui.Ui.Px(170), Ui.Ui.HStack(6, stateIcon, stateText)),
             (Ui.Ui.Star, null),
             (Ui.Ui.Auto, format),
             (Ui.Ui.Auto, segments),
@@ -220,10 +160,10 @@ internal sealed partial class NoteHeaderView : UserControl
 
     private static ToggleButton SegmentButton(string text) => new()
     {
-        Content = Typo.Body(text, 12.5),
-        Padding = new Thickness(12, 3, 12, 3),
-        MinHeight = 26,
-        CornerRadius = new CornerRadius(12),
+        Content = Typo.Caps(text, 13, Palette.Ink),
+        Padding = new Thickness(10, 3, 10, 3),
+        MinHeight = 30,
+        CornerRadius = Radius.Control,
         BorderThickness = new Thickness(0),
     };
 
@@ -285,7 +225,7 @@ internal sealed partial class NoteHeaderView : UserControl
         {
             panel.Children.Add(new Border { Height = 1, Background = Palette.Divider, Margin = new Thickness(0, 4, 0, 4) });
             panel.Children.Add(Typo.Caps(Strings.Get(R.Tag_Color) + " · " + current));
-            var swatches = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 7, ItemWidth = 34, ItemHeight = 34 };
+            var swatches = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 7, ItemWidth = 32, ItemHeight = 32 };
             foreach (var color in TagPalette.Colors)
             {
                 var c = color;
@@ -294,7 +234,7 @@ internal sealed partial class NoteHeaderView : UserControl
                     Width = 28,
                     Height = 28,
                     Padding = new Thickness(0),
-                    CornerRadius = new CornerRadius(14),
+                    CornerRadius = Radius.Control,
                     Background = new SolidColorBrush(Palette.ToColor(c)),
                     BorderThickness = new Thickness(host.Tags.GetColor(current) == c ? 3 : 0),
                     BorderBrush = Palette.Ink,
