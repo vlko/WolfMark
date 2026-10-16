@@ -161,4 +161,6 @@ internal static class R
     public const string Icon_Wolf = nameof(Icon_Wolf);
     public const string Icon_CalendarPencil = nameof(Icon_CalendarPencil);
     public const string Icon_WolfMark = nameof(Icon_WolfMark);
+    public const string Error_Title = nameof(Error_Title);
+    public const string Error_Settings = nameof(Error_Settings);
 }

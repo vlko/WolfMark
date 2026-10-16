@@ -160,6 +160,8 @@ S = {
  "Icon_Wolf": ("Wolf", "Vlk"),
  "Icon_CalendarPencil": ("Calendar with pencil", "Kalendár s ceruzkou"),
  "Icon_WolfMark": ("Wolf + Mark", "Wolf + Mark"),
+ "Error_Title": ("Something went wrong", "Niečo sa pokazilo"),
+ "Error_Settings": ("Settings could not be opened: {0}", "Nastavenia sa nepodarilo otvoriť: {0}"),
 }
 
 import os, sys, html

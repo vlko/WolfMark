@@ -460,9 +460,17 @@ internal sealed partial class NoteHeaderView
         test.Bind(_vm, nameof(MainViewModel.IsTestNoticeOpen), () => test.IsOpen = _vm.IsTestNoticeOpen);
         test.Closed += (_, _) => _vm.IsTestNoticeOpen = false;
 
+        var error = Info(Strings.Get(R.Error_Title), string.Empty, InfoBarSeverity.Error, null, null);
+        error.Bind(_vm, nameof(MainViewModel.ErrorNotice), () =>
+        {
+            error.IsOpen = _vm.ErrorNotice is not null;
+            error.Message = _vm.ErrorNotice ?? string.Empty;
+        });
+        error.Closed += (_, _) => _vm.ErrorNotice = null;
+
         // The area exists only while a notice is open: closed InfoBars take no space, but spacing and
         // margins would leave an empty strip. Each open bar gets its own gap instead.
-        var bars = new[] { claude, external, deleted, conflict, nonStandard, cleanup, test };
+        var bars = new[] { error, claude, external, deleted, conflict, nonStandard, cleanup, test };
         var panel = Ui.Ui.VStack(0, bars);
         void Update()
         {

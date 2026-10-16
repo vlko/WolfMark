@@ -99,29 +99,30 @@ internal static class SettingsDialog
 
         // App icon: thumbnails, click = live preview of the window/taskbar icon; OK keeps it, Cancel reverts.
         var chosenIcon = s.AppIcon ?? AppIcons.Default;
-        var iconButtons = new List<(string Id, Button Button)>();
+        var iconFrames = new List<(string Id, Border Frame)>();
         var iconRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         void MarkIcon()
         {
-            foreach (var (id, button) in iconButtons)
+            // The selection is a frame around the button: the button's own resources must not change
+            // after styling (ResourceDictionary insert throws 0x800F0902).
+            foreach (var (id, frame) in iconFrames)
             {
-                var selected = id == chosenIcon;
-                button.BorderBrush = selected ? Palette.Accent : Palette.Transparent;
-                button.Resources["ButtonBorderBrush"] = button.BorderBrush;
+                frame.BorderBrush = id == chosenIcon ? Palette.Accent : Palette.Transparent;
             }
         }
 
         foreach (var (id, nameKey) in AppIcons.All)
         {
-            var image = new Microsoft.UI.Xaml.Controls.Image
+            var image = new Microsoft.UI.Xaml.Controls.Image { Width = 40, Height = 40 };
+            var png = AppIcons.PngPath(id);
+            if (File.Exists(png) && Uri.TryCreate(png, UriKind.Absolute, out var uri))
             {
-                Width = 40,
-                Height = 40,
-                Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(AppIcons.PngPath(id))),
-            };
+                // A missing/broken thumbnail must not take the whole dialog down.
+                image.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(uri);
+            }
+
             var button = new Button { Content = image, Padding = new Thickness(3), CornerRadius = Radius.Control };
             button.StyleButton(Palette.Transparent, Palette.Ink);
-            button.BorderThickness = new Thickness(2);
             var name = Strings.Get(nameKey);
             ToolTipService.SetToolTip(button, name);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, name);
@@ -132,8 +133,9 @@ internal static class SettingsDialog
                 MarkIcon();
                 previewIcon(iconId);
             };
-            iconButtons.Add((id, button));
-            iconRow.Children.Add(button);
+            var frame = new Border { Child = button, BorderThickness = new Thickness(2), CornerRadius = Radius.Tag };
+            iconFrames.Add((id, frame));
+            iconRow.Children.Add(frame);
         }
 
         MarkIcon();

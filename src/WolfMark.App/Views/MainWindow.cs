@@ -489,8 +489,20 @@ internal sealed partial class MainWindow : Window
 
     private async Task OpenSettingsAsync()
     {
-        await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance, ApplyIcon);
+        try
+        {
+            await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance, ApplyIcon);
+        }
+        catch (Exception ex)
+        {
+            // Fire-and-forget caller: without this the dialog just silently does not appear.
+            LogSettingsFailed(_host.Loggers.CreateLogger(nameof(MainWindow)), ex);
+            _vm.ErrorNotice = Strings.Format(R.Error_Settings, ex.Message);
+        }
     }
+
+    [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Opening settings failed")]
+    private static partial void LogSettingsFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
 
     private void RestorePlacement()
     {

@@ -98,6 +98,10 @@ internal sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial bool ClaudeStatusIsError { get; private set; }
 
+    /// <summary>Error notice at the bottom (message), null = hidden. Details are in the log.</summary>
+    [ObservableProperty]
+    public partial string? ErrorNotice { get; set; }
+
     /// <summary>Sample notice from Settings → Diagnostics, to try the notice area.</summary>
     [ObservableProperty]
     public partial bool IsTestNoticeOpen { get; set; }

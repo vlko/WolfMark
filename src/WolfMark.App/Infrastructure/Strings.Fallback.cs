@@ -162,5 +162,7 @@ internal static partial class Strings
         [R.Icon_Wolf] = "Wolf",
         [R.Icon_CalendarPencil] = "Calendar with pencil",
         [R.Icon_WolfMark] = "Wolf + Mark",
+        [R.Error_Title] = "Something went wrong",
+        [R.Error_Settings] = "Settings could not be opened: {0}",
     };
 }

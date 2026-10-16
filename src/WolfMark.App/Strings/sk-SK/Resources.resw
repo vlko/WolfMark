@@ -486,4 +486,10 @@
   <data name="Icon_WolfMark" xml:space="preserve">
     <value>Wolf + Mark</value>
   </data>
+  <data name="Error_Title" xml:space="preserve">
+    <value>Niečo sa pokazilo</value>
+  </data>
+  <data name="Error_Settings" xml:space="preserve">
+    <value>Nastavenia sa nepodarilo otvoriť: {0}</value>
+  </data>
 </root>
