@@ -235,7 +235,7 @@ internal sealed partial class HistoryHeaderView : UserControl, IItemView<History
     {
         Content = Typo.SectionHeader(string.Empty, out _label, 15);
         _label.Foreground = Palette.InkTertiary;
-        Padding = new Thickness(82, 14, 0, 4);
+        Padding = new Thickness(Metrics.TimeGutter + 13, 14, 0, 4);
     }
 
     public void Bind(HistoryHeaderViewModel item) => _label.Text = item.Label.ToUpper(System.Globalization.CultureInfo.CurrentCulture);
@@ -246,8 +246,11 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
     private readonly HistoryView _owner;
     private readonly Button _button;
     private readonly Rectangle _bar = new() { Width = 3, Margin = new Thickness(0, 4, 0, 4) };
+    private const double BarWidth = 3;
+
     private readonly StackPanel _time;
     private readonly Action<DateTime?> _setTime;
+    private readonly TextBlock _created = Typo.Caps(string.Empty, 10.5, Palette.InkTertiary);
     private readonly TextBlock _title = Typo.Body(string.Empty, 14);
     private readonly TextBlock _preview = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
     private readonly TextBlock _tag = Typo.Body(string.Empty, 11.5, Palette.InkTertiary);
@@ -258,8 +261,14 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
     public HistoryRowView(HistoryView owner)
     {
         _owner = owner;
-        _time = Typo.LeadTime(out _setTime, 24, Palette.InkTertiary);
-        _time.VerticalAlignment = VerticalAlignment.Top;
+        // Last edit as the lead time (history is ordered by it), creation in small caps below.
+        _time = Typo.LeadTime(out _setTime, 24, Palette.InkSecondary);
+        _created.CharacterSpacing = 10;
+        _created.HorizontalAlignment = HorizontalAlignment.Right;
+        _created.Margin = new Thickness(0, 1, 0, 0);
+        var times = Ui.Ui.VStack(0, _time, _created);
+        times.HorizontalAlignment = HorizontalAlignment.Right;
+        times.VerticalAlignment = VerticalAlignment.Center;
 
         var text = Ui.Ui.VStack(1, _title, _preview);
         var right = Ui.Ui.VStack(2, _tag, _tasks);
@@ -270,9 +279,9 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
         text.Margin = new Thickness(12, 0, 0, 0);
         text.VerticalAlignment = VerticalAlignment.Center;
         var grid = Ui.Ui.Columns(
-            (Ui.Ui.Px(3), _bar),
-            (Ui.Ui.Px(62), _time),
-            (Ui.Ui.Px(9), null),
+            (Ui.Ui.Px(BarWidth), _bar),
+            (Ui.Ui.Px(Metrics.TimeGutter - BarWidth - Metrics.TimeGutterGap), times),
+            (Ui.Ui.Px(Metrics.TimeGutterGap), null),
             (Ui.Ui.Px(1), Ui.Ui.DottedLine()),
             (Ui.Ui.Star, text),
             (Ui.Ui.Auto, _badge),
@@ -319,7 +328,8 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
         item.PropertyChanged += OnItemChanged;
         var note = item.Note;
         _bar.Fill = _owner.Brushes.BrushOf(note.PrimaryTag);
-        _setTime(note.CreatedAt);
+        _setTime(note.ModifiedAt);
+        _created.Text = item.CreatedText;
         _title.Text = item.Title;
         _preview.Text = note.Preview;
         _preview.Visibility = note.Preview.Length > 0 ? Visibility.Visible : Visibility.Collapsed;

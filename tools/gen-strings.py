@@ -135,6 +135,7 @@ S = {
  "Format_Bullet": ("Bulleted list", "Odrážkový zoznam"),
  "Format_Numbered": ("Numbered list", "Číslovaný zoznam"),
  "Proofing_Toggle": ("Spell check", "Kontrola pravopisu"),
+ "History_Created": ("created {0}", "vznik {0}"),
 }
 
 import os, sys, html

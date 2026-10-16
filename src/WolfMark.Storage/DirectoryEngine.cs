@@ -215,7 +215,11 @@ public sealed partial class DirectoryEngine
         NotePath.Create(DateOnly.FromDateTime(createdAtLocal), NoteName.Create(tag, TimeOnly.FromDateTime(createdAtLocal)));
 
     /// <summary>Creates a note, resolving name collisions (seconds, then -2, -3 …).</summary>
-    public async Task<NotePath> CreateAsync(DateTime createdAtLocal, string? tag, string content, CancellationToken cancellationToken)
+    public Task<NotePath> CreateAsync(DateTime createdAtLocal, string? tag, string content, CancellationToken cancellationToken) =>
+        CreateAsync(createdAtLocal, tag, content, lastWriteTimeUtc: null, cancellationToken);
+
+    /// <param name="lastWriteTimeUtc">Explicit modification time (imports, e.g. the last Claude Code prompt); null = now.</param>
+    public async Task<NotePath> CreateAsync(DateTime createdAtLocal, string? tag, string content, DateTime? lastWriteTimeUtc, CancellationToken cancellationToken)
     {
         var day = DateOnly.FromDateTime(createdAtLocal);
         var name = NoteName.Create(tag, TimeOnly.FromDateTime(createdAtLocal));
@@ -228,7 +232,7 @@ public sealed partial class DirectoryEngine
             var path = await CreateWithUniqueNameAsync(day, name, createdAtLocal.Second, async candidate =>
             {
                 SelfWrites.RecordWrite(candidate.RelativePath, hash);
-                await AtomicFile.WriteAllBytesAsync(GetFullPath(candidate), bytes, overwrite: false, cancellationToken).ConfigureAwait(false);
+                await AtomicFile.WriteAllBytesAsync(GetFullPath(candidate), bytes, overwrite: false, lastWriteTimeUtc, cancellationToken).ConfigureAwait(false);
             }).ConfigureAwait(false);
 
             _hub.Publish(new NoteCreated(path, ChangeOrigin.Local));
@@ -242,15 +246,33 @@ public sealed partial class DirectoryEngine
     }
 
     /// <summary>Atomic save of an existing (or new) note.</summary>
-    public async Task SaveAsync(NotePath path, string content, CancellationToken cancellationToken)
+    public Task SaveAsync(NotePath path, string content, CancellationToken cancellationToken) =>
+        SaveAsync(path, content, lastWriteTimeUtc: null, cancellationToken);
+
+    /// <param name="lastWriteTimeUtc">Explicit modification time (imports); null = now.</param>
+    public async Task SaveAsync(NotePath path, string content, DateTime? lastWriteTimeUtc, CancellationToken cancellationToken)
     {
         var bytes = Utf8NoBom.GetBytes(content);
         var full = GetFullPath(path);
         var existed = File.Exists(full);
         SelfWrites.RecordWrite(path.RelativePath, ContentHash.Compute(bytes));
-        await AtomicFile.WriteAllBytesAsync(full, bytes, overwrite: true, cancellationToken).ConfigureAwait(false);
+        await AtomicFile.WriteAllBytesAsync(full, bytes, overwrite: true, lastWriteTimeUtc, cancellationToken).ConfigureAwait(false);
         _hub.Publish(existed ? new NoteChanged(path, ChangeOrigin.Local) : new NoteCreated(path, ChangeOrigin.Local));
     }
+
+    /// <summary>
+    /// Sets only the modification time of a note whose content is <paramref name="expectedContent"/>
+    /// (imports whose text is unchanged but whose date was wrong). The watcher echo is suppressed.
+    /// </summary>
+    public Task SetLastWriteTimeAsync(NotePath path, string expectedContent, DateTime lastWriteTimeUtc, CancellationToken cancellationToken) =>
+        Task.Run(
+            () =>
+            {
+                SelfWrites.RecordWrite(path.RelativePath, ContentHash.Compute(Utf8NoBom.GetBytes(expectedContent)));
+                File.SetLastWriteTimeUtc(GetFullPath(path), DateTime.SpecifyKind(lastWriteTimeUtc, DateTimeKind.Utc));
+                _hub.Publish(new NoteChanged(path, ChangeOrigin.Local));
+            },
+            cancellationToken);
 
     /// <summary>Changing the tag renames the file; the creation time stays (SPEC §3.3).</summary>
     public async Task<NotePath> ChangeTagAsync(NotePath path, string? newTag, CancellationToken cancellationToken)

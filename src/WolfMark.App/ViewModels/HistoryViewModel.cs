@@ -6,7 +6,10 @@ using WolfMark.Index.Queries;
 
 namespace WolfMark.App.ViewModels;
 
-/// <summary>History list (M5-01/M5-02): keyset paging, tag/day filters, day group headers.</summary>
+/// <summary>
+/// History list (M5-01/M5-02): ordered by the last edit, keyset paging, tag/day filters, headers per
+/// day of the last edit.
+/// </summary>
 internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 {
     private const int PageSize = 60;
@@ -167,10 +170,12 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
     {
         foreach (var note in notes)
         {
-            if (DayFilter is null && note.Day != _lastDay)
+            // History is ordered by the last edit, so it is also grouped by the day of the last edit.
+            var editedDay = DateOnly.FromDateTime(note.ModifiedAt);
+            if (DayFilter is null && editedDay != _lastDay)
             {
-                Items.Add(new HistoryHeaderViewModel(HeaderLabel(note.Day)));
-                _lastDay = note.Day;
+                Items.Add(new HistoryHeaderViewModel(HeaderLabel(editedDay)));
+                _lastDay = editedDay;
             }
 
             Items.Add(new HistoryRowViewModel(note)
@@ -214,6 +219,21 @@ internal sealed partial class HistoryRowViewModel(NoteSummary note) : Observable
     public NoteSummary Note { get; } = note;
 
     public string TimeText => Note.CreatedAt.ToString("t", CultureInfo.CurrentCulture);
+
+    /// <summary>"VZNIK 9:00" under the edit time; with a short date (no year) when created on another day.</summary>
+    public string CreatedText
+    {
+        get
+        {
+            var c = CultureInfo.CurrentCulture;
+            var created = Note.CreatedAt;
+            var time = created.ToString("t", c);
+            var when = created.Date == Note.ModifiedAt.Date
+                ? time
+                : created.ToString(c.TwoLetterISOLanguageName == "sk" ? "d.M." : "M/d", c) + " " + time;
+            return Strings.Format(R.History_Created, when).ToUpper(c);
+        }
+    }
 
     public string Title => Note.Title.Length > 0 ? Note.Title : Path.GetFileNameWithoutExtension(Note.RelativePath);
 

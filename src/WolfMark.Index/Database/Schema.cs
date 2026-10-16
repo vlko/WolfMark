@@ -7,7 +7,7 @@ namespace WolfMark.Index.Database;
 /// </summary>
 internal static class Schema
 {
-    public const int Version = 1;
+    public const int Version = 2;
 
     public const string Create = """
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
@@ -36,6 +36,7 @@ internal static class Schema
         );
         CREATE INDEX ix_notes_day ON notes(day);
         CREATE INDEX ix_notes_created ON notes(created_at DESC, id DESC);
+        CREATE INDEX ix_notes_modified ON notes(file_mtime DESC, id DESC);
         CREATE INDEX ix_notes_tag ON notes(primary_tag_key, created_at DESC);
         CREATE INDEX ix_notes_session ON notes(session_id) WHERE session_id IS NOT NULL;
 

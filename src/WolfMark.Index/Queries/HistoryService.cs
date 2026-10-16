@@ -5,7 +5,8 @@ using WolfMark.Index.Database;
 namespace WolfMark.Index.Queries;
 
 /// <summary>Keyset cursor for infinite scrolling (created_at DESC, id DESC).</summary>
-public sealed record HistoryCursor(DateTime CreatedAt, long Id);
+/// <summary>Keyset cursor for infinite scrolling (last modification DESC, id DESC).</summary>
+public sealed record HistoryCursor(long ModifiedUtcTicks, long Id);
 
 public sealed record HistoryQuery(string? Tag = null, DateOnly? Day = null, HistoryCursor? After = null, int Limit = 50);
 
@@ -34,14 +35,14 @@ public sealed class HistoryService(IndexDatabase db)
 
                 if (query.After is { } after)
                 {
-                    where.Add("(n.created_at < $ca OR (n.created_at = $ca AND n.id < $id))");
-                    cmd.With("$ca", SqliteExtensions.FormatTimestamp(after.CreatedAt)).With("$id", after.Id);
+                    where.Add("(n.file_mtime < $m OR (n.file_mtime = $m AND n.id < $id))");
+                    cmd.With("$m", after.ModifiedUtcTicks).With("$id", after.Id);
                 }
 
                 cmd.CommandText = $"""
                     SELECT {NoteSummaryReader.Columns} FROM notes n
                     {(where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : string.Empty)}
-                    ORDER BY n.created_at DESC, n.id DESC LIMIT $limit;
+                    ORDER BY n.file_mtime DESC, n.id DESC LIMIT $limit;
                     """;
                 cmd.With("$limit", query.Limit + 1);
 
@@ -51,7 +52,7 @@ public sealed class HistoryService(IndexDatabase db)
                 {
                     items.RemoveAt(items.Count - 1);
                     var last = items[^1];
-                    next = new HistoryCursor(last.CreatedAt, last.Id);
+                    next = new HistoryCursor(last.ModifiedUtcTicks, last.Id);
                 }
 
                 return new HistoryPage(items, next);
@@ -62,11 +63,11 @@ public sealed class HistoryService(IndexDatabase db)
         QuerySingleAsync($"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.rel_path = $p;", cmd => cmd.With("$p", relativePath), ct);
 
     public Task<NoteSummary?> GetLatestAsync(CancellationToken ct) =>
-        QuerySingleAsync($"SELECT {NoteSummaryReader.Columns} FROM notes n ORDER BY n.created_at DESC, n.id DESC LIMIT 1;", _ => { }, ct);
+        QuerySingleAsync($"SELECT {NoteSummaryReader.Columns} FROM notes n ORDER BY n.file_mtime DESC, n.id DESC LIMIT 1;", _ => { }, ct);
 
     public Task<NoteSummary?> GetLatestOnDayAsync(DateOnly day, CancellationToken ct) =>
         QuerySingleAsync(
-            $"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.day = $d ORDER BY n.created_at DESC, n.id DESC LIMIT 1;",
+            $"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.day = $d ORDER BY n.file_mtime DESC, n.id DESC LIMIT 1;",
             cmd => cmd.With("$d", SqliteExtensions.FormatDay(day)),
             ct);
 
@@ -111,7 +112,7 @@ public sealed class HistoryService(IndexDatabase db)
         db.ReadAsync<IReadOnlyList<NoteSummary>>(
             c =>
             {
-                using var cmd = c.Command($"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.open_tasks > 0 ORDER BY n.created_at DESC LIMIT $l;")
+                using var cmd = c.Command($"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.open_tasks > 0 ORDER BY n.file_mtime DESC, n.id DESC LIMIT $l;")
                     .With("$l", limit);
                 return NoteSummaryReader.ReadAll(cmd);
             },

@@ -171,6 +171,19 @@ internal static class Palette
     private static void Set(SolidColorBrush brush, byte a, byte r, byte g, byte b) => brush.Color = Color.FromArgb(a, r, g, b);
 }
 
+/// <summary>Shared layout measures.</summary>
+internal static class Metrics
+{
+    /// <summary>
+    /// Width of the time column left of the dotted line – identical in the editor and in history so both
+    /// dotted lines are one vertical line.
+    /// </summary>
+    public const double TimeGutter = 100;
+
+    /// <summary>Gap between the time and the dotted line.</summary>
+    public const double TimeGutterGap = 9;
+}
+
 /// <summary>Corner radii: surfaces are square; buttons and tags are only slightly rounded.</summary>
 internal static class Radius
 {

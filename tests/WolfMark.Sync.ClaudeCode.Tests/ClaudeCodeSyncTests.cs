@@ -118,6 +118,35 @@ public sealed class ClaudeCodeSyncTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Modification_time_is_the_last_prompt_of_each_day()
+    {
+        await File.WriteAllLinesAsync(Transcript,
+        [
+            Samples.User("a", "2026-10-15T09:00:00Z", Samples.Text("ráno")),
+            Samples.User("b", "2026-10-15T23:50:00Z", Samples.Text("pred polnocou")),
+            Samples.User("c", "2026-10-16T00:10:00Z", Samples.Text("po polnoci")),
+            Samples.User("d", "2026-10-16T02:30:00Z", Samples.Text("neskoro")),
+        ], Ct);
+
+        var sync = CreateSync();
+        await sync.SyncAsync(Ct);
+        DateTime Mtime(string rel) => File.GetLastWriteTimeUtc(Path.Combine(Root, rel));
+        Assert.Equal(new DateTime(2026, 10, 15, 23, 50, 0, DateTimeKind.Utc), Mtime("2026/10/15/ClaudeCode_0900.md"));
+        Assert.Equal(new DateTime(2026, 10, 16, 2, 30, 0, DateTimeKind.Utc), Mtime("2026/10/16/ClaudeCode_0010.md"));
+
+        // A new prompt moves the date of that day's note along.
+        await File.AppendAllLinesAsync(Transcript, [Samples.User("e", "2026-10-16T04:00:00Z", Samples.Text("ešte"))], Ct);
+        await sync.SyncAsync(Ct);
+        Assert.Equal(new DateTime(2026, 10, 16, 4, 0, 0, DateTimeKind.Utc), Mtime("2026/10/16/ClaudeCode_0010.md"));
+
+        // A wrong date on unchanged content is corrected on the next import.
+        File.SetLastWriteTimeUtc(Path.Combine(Root, "2026/10/15/ClaudeCode_0900.md"), DateTime.UtcNow);
+        await _db.ResetAsync(Ct); // forget transcript state so it is parsed again
+        await CreateSync().SyncAsync(Ct);
+        Assert.Equal(new DateTime(2026, 10, 15, 23, 50, 0, DateTimeKind.Utc), Mtime("2026/10/15/ClaudeCode_0900.md"));
+    }
+
+    [Fact]
     public async Task Excluded_projects_and_secrets()
     {
         var secretDir = Path.Combine(Claude, "projects", "-secret");

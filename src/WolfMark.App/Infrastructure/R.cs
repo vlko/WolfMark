@@ -136,4 +136,5 @@ internal static class R
     public const string Format_Bullet = nameof(Format_Bullet);
     public const string Format_Numbered = nameof(Format_Numbered);
     public const string Proofing_Toggle = nameof(Proofing_Toggle);
+    public const string History_Created = nameof(History_Created);
 }

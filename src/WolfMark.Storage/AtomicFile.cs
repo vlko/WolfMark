@@ -22,7 +22,14 @@ public static class AtomicFile
         WriteAllBytesAsync(fullPath, Utf8NoBom.GetBytes(content), overwrite: true, cancellationToken);
 
     /// <summary>Writes atomically. With <paramref name="overwrite"/> = false, throws <see cref="IOException"/> if the target exists.</summary>
-    public static async Task WriteAllBytesAsync(string fullPath, ReadOnlyMemory<byte> content, bool overwrite, CancellationToken cancellationToken)
+    public static Task WriteAllBytesAsync(string fullPath, ReadOnlyMemory<byte> content, bool overwrite, CancellationToken cancellationToken) =>
+        WriteAllBytesAsync(fullPath, content, overwrite, lastWriteTimeUtc: null, cancellationToken);
+
+    /// <param name="lastWriteTimeUtc">
+    /// Modification time to give the file (set on the temp file before the replace, so the target never
+    /// carries the write time); null = now.
+    /// </param>
+    public static async Task WriteAllBytesAsync(string fullPath, ReadOnlyMemory<byte> content, bool overwrite, DateTime? lastWriteTimeUtc, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var temp = GetTempPath(fullPath);
@@ -44,6 +51,11 @@ public static class AtomicFile
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            if (lastWriteTimeUtc is { } mtime)
+            {
+                File.SetLastWriteTimeUtc(temp, DateTime.SpecifyKind(mtime, DateTimeKind.Utc));
+            }
+
             File.Move(temp, fullPath, overwrite);
         }
         catch

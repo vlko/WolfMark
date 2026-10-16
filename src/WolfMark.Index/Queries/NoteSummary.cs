@@ -15,9 +15,13 @@ public sealed record NoteSummary(
     string Source,
     bool IsStandard,
     bool IsConflict,
-    bool IsPlaceholder)
+    bool IsPlaceholder,
+    long ModifiedUtcTicks)
 {
     public bool IsClaudeCode => Source == NoteSources.ClaudeCode;
+
+    /// <summary>Last modification (file mtime) in local time – history is ordered by it.</summary>
+    public DateTime ModifiedAt => new DateTime(ModifiedUtcTicks, DateTimeKind.Utc).ToLocalTime();
 }
 
 public static class NoteSources

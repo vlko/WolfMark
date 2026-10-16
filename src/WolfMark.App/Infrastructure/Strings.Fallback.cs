@@ -137,5 +137,6 @@ internal static partial class Strings
         [R.Format_Bullet] = "Bulleted list",
         [R.Format_Numbered] = "Numbered list",
         [R.Proofing_Toggle] = "Spell check",
+        [R.History_Created] = "created {0}",
     };
 }

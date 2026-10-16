@@ -122,7 +122,9 @@ public sealed partial class ClaudeCodeSync
             {
                 var items = group.ToList();
                 var content = SessionNoteRenderer.Render(group.Key.SessionId, items);
-                var result = await WriteSessionNoteAsync(group.Key.SessionId, group.Key.Day, items[0].Local, content, ct).ConfigureAwait(false);
+                // The note's modification time is its last prompt, not the time the sync ran.
+                var lastPromptUtc = items[^1].Prompt.Timestamp.UtcDateTime;
+                var result = await WriteSessionNoteAsync(group.Key.SessionId, group.Key.Day, items[0].Local, lastPromptUtc, content, ct).ConfigureAwait(false);
                 if (result == WriteResult.Created)
                 {
                     created++;
@@ -144,7 +146,7 @@ public sealed partial class ClaudeCodeSync
         cwd is not null && _options.ExcludedProjects.Any(p =>
             !string.IsNullOrWhiteSpace(p) && cwd.StartsWith(p.TrimEnd('/', '\\'), StringComparison.OrdinalIgnoreCase));
 
-    private async Task<WriteResult> WriteSessionNoteAsync(string sessionId, DateOnly day, DateTime firstLocal, string content, CancellationToken ct)
+    private async Task<WriteResult> WriteSessionNoteAsync(string sessionId, DateOnly day, DateTime firstLocal, DateTime lastPromptUtc, string content, CancellationToken ct)
     {
         var dayText = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var mapped = await _db.ReadAsync(c => LoadNoteMapping(c, sessionId, dayText), ct).ConfigureAwait(false);
@@ -166,14 +168,21 @@ public sealed partial class ClaudeCodeSync
 
             if (string.Equals(current, content, StringComparison.Ordinal))
             {
+                // Same text, but the date may be off (e.g. written by an older version or touched by hand).
+                var mtime = File.GetLastWriteTimeUtc(_engine.GetFullPath(existing));
+                if ((mtime - lastPromptUtc).Duration() > TimeSpan.FromSeconds(1))
+                {
+                    await _engine.SetLastWriteTimeAsync(existing, content, lastPromptUtc, ct).ConfigureAwait(false);
+                }
+
                 return WriteResult.Unchanged;
             }
 
-            await _engine.SaveAsync(existing, content, ct).ConfigureAwait(false);
+            await _engine.SaveAsync(existing, content, lastPromptUtc, ct).ConfigureAwait(false);
             return WriteResult.Updated;
         }
 
-        var path = await _engine.CreateAsync(firstLocal, TagName.ClaudeCode, content, ct).ConfigureAwait(false);
+        var path = await _engine.CreateAsync(firstLocal, TagName.ClaudeCode, content, lastPromptUtc, ct).ConfigureAwait(false);
         await _db.WriteAsync(c => SaveNoteMapping(c, sessionId, dayText, path.RelativePath), ct).ConfigureAwait(false);
         return WriteResult.Created;
     }

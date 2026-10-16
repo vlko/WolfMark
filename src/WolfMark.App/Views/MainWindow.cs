@@ -90,9 +90,10 @@ internal sealed partial class MainWindow : Window
         };
         _continues.Click += (_, _) => _editor.ScrollToEnd();
         var gutter = Ui.Ui.Rows((Ui.Ui.Auto, created), (Ui.Ui.Star, null), (Ui.Ui.Auto, Ui.Ui.VStack(2, _continues, _modified)));
-        gutter.Padding = new Thickness(0, 0, 10, 26);
+        gutter.Padding = new Thickness(0, 0, Metrics.TimeGutterGap, 26);
         _editor.AlignLeft = true;
-        var editorPane = Ui.Ui.Columns((Ui.Ui.Px(78), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, _editor));
+        // Same gutter width as history rows: the two dotted lines form one line.
+        var editorPane = Ui.Ui.Columns((Ui.Ui.Px(Metrics.TimeGutter), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, _editor));
 
         var main = new Grid { Padding = new Thickness(24, 4, 8, 0) };
         main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // day heading

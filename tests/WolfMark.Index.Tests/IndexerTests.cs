@@ -149,8 +149,30 @@ public sealed class IndexerTests
         while (cursor is not null);
 
         Assert.Equal(25, all.Count);
-        Assert.Equal(all.OrderByDescending(n => n.CreatedAt).ThenByDescending(n => n.Id).Select(n => n.Id), all.Select(n => n.Id));
+        Assert.Equal(all.OrderByDescending(n => n.ModifiedUtcTicks).ThenByDescending(n => n.Id).Select(n => n.Id), all.Select(n => n.Id));
         Assert.Equal(25, all.Select(n => n.Id).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task History_is_ordered_by_last_modification()
+    {
+        await using var f = await IndexFixture.CreateAsync();
+        var now = DateTime.UtcNow;
+        f.Write("2026/10/01/0800.md", "old note", now.AddDays(-14));
+        f.Write("2026/10/15/0900.md", "new note", now.AddDays(-1));
+        f.Write("2026/10/10/1000.md", "middle note", now.AddDays(-5));
+        await f.Indexer.FullScanAsync(null, Ct);
+
+        var before = await f.History.GetPageAsync(new HistoryQuery(), Ct);
+        Assert.Equal(["2026/10/15/0900.md", "2026/10/10/1000.md", "2026/10/01/0800.md"], before.Items.Select(n => n.RelativePath));
+
+        // Editing the oldest note moves it to the top; created time stays.
+        f.Write("2026/10/01/0800.md", "old note, edited today", now);
+        await f.Indexer.FullScanAsync(null, Ct);
+        var after = await f.History.GetPageAsync(new HistoryQuery(), Ct);
+        Assert.Equal("2026/10/01/0800.md", after.Items[0].RelativePath);
+        Assert.Equal(new DateTime(2026, 10, 1, 8, 0, 0), after.Items[0].CreatedAt);
+        Assert.Equal(now.ToLocalTime(), after.Items[0].ModifiedAt, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
