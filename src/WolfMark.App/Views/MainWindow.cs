@@ -47,11 +47,7 @@ internal sealed partial class MainWindow : Window
 
         ExtendsContentIntoTitleBar = true;
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
-        var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "WolfMark.ico");
-        if (File.Exists(icon))
-        {
-            AppWindow.SetIcon(icon);
-        }
+        ApplyIcon(_host.Settings.Current.AppIcon);
 
         // Palette first, so every view is built with the right colours.
         Palette.Apply(InitialTheme());
@@ -148,6 +144,16 @@ internal sealed partial class MainWindow : Window
             _ => ElementTheme.Default,
         };
         OnThemeChanged();
+    }
+
+    /// <summary>Window/taskbar icon (Settings → Appearance → App icon); also used for the live preview.</summary>
+    public void ApplyIcon(string? id)
+    {
+        var path = AppIcons.IcoPath(id);
+        if (File.Exists(path))
+        {
+            AppWindow.SetIcon(path);
+        }
     }
 
     public void BringToFront()
@@ -483,7 +489,7 @@ internal sealed partial class MainWindow : Window
 
     private async Task OpenSettingsAsync()
     {
-        await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance);
+        await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance, ApplyIcon);
     }
 
     private void RestorePlacement()

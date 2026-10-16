@@ -154,5 +154,13 @@ internal static partial class Strings
         [R.Settings_WindowRendering] = "Window rendering (restart)",
         [R.Settings_RenderingMica] = "Mica under the paper",
         [R.Settings_RenderingClass] = "No backdrop + window background",
+        [R.Settings_AppIcon] = "App icon",
+        [R.Icon_WeekBand] = "Week band",
+        [R.Icon_RisoWm] = "WolfMark (W + M)",
+        [R.Icon_NotebookCalendar] = "Notebook with calendar",
+        [R.Icon_CalendarPage] = "Tear-off calendar",
+        [R.Icon_Wolf] = "Wolf",
+        [R.Icon_CalendarPencil] = "Calendar with pencil",
+        [R.Icon_WolfMark] = "Wolf + Mark",
     };
 }

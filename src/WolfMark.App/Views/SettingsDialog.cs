@@ -14,7 +14,7 @@ namespace WolfMark.App.Views;
 /// <summary>Settings (SPEC §4.6, M8-04). Visual settings apply immediately, the rest after restart.</summary>
 internal static class SettingsDialog
 {
-    public static async Task ShowAsync(XamlRoot root, MainViewModel vm, Microsoft.UI.WindowId windowId, Action applyAppearance)
+    public static async Task ShowAsync(XamlRoot root, MainViewModel vm, Microsoft.UI.WindowId windowId, Action applyAppearance, Action<string?> previewIcon)
     {
         var host = vm.Host;
         var s = host.Settings.Current;
@@ -97,6 +97,47 @@ internal static class SettingsDialog
         var languages = new[] { (string?)null, "sk-SK", "en-US" };
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Array.IndexOf(languages, s.Language) is var li and >= 0 ? li : 0);
 
+        // App icon: thumbnails, click = live preview of the window/taskbar icon; OK keeps it, Cancel reverts.
+        var chosenIcon = s.AppIcon ?? AppIcons.Default;
+        var iconButtons = new List<(string Id, Button Button)>();
+        var iconRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        void MarkIcon()
+        {
+            foreach (var (id, button) in iconButtons)
+            {
+                var selected = id == chosenIcon;
+                button.BorderBrush = selected ? Palette.Accent : Palette.Transparent;
+                button.Resources["ButtonBorderBrush"] = button.BorderBrush;
+            }
+        }
+
+        foreach (var (id, nameKey) in AppIcons.All)
+        {
+            var image = new Microsoft.UI.Xaml.Controls.Image
+            {
+                Width = 40,
+                Height = 40,
+                Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(AppIcons.PngPath(id))),
+            };
+            var button = new Button { Content = image, Padding = new Thickness(3), CornerRadius = Radius.Control };
+            button.StyleButton(Palette.Transparent, Palette.Ink);
+            button.BorderThickness = new Thickness(2);
+            var name = Strings.Get(nameKey);
+            ToolTipService.SetToolTip(button, name);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, name);
+            var iconId = id;
+            button.Click += (_, _) =>
+            {
+                chosenIcon = iconId;
+                MarkIcon();
+                previewIcon(iconId);
+            };
+            iconButtons.Add((id, button));
+            iconRow.Children.Add(button);
+        }
+
+        MarkIcon();
+
         // Editor
         var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260 };
         var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = 10, Maximum = 28, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
@@ -146,6 +187,13 @@ internal static class SettingsDialog
             movePanel,
             Section(Strings.Get(R.Settings_Appearance)),
             Field(Strings.Get(R.Settings_Theme), theme),
+            Field(Strings.Get(R.Settings_AppIcon), new ScrollViewer
+            {
+                Content = iconRow,
+                HorizontalScrollMode = ScrollMode.Enabled,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollMode = ScrollMode.Disabled,
+            }),
             Field(Strings.Get(R.Settings_Language), language),
             Section(Strings.Get(R.Settings_Editor)),
             Field(Strings.Get(R.Settings_FontFamily), font),
@@ -178,6 +226,7 @@ internal static class SettingsDialog
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
+            previewIcon(s.AppIcon); // revert the preview
             if (restartNeeded)
             {
                 await ShowRestartAsync(root, vm);
@@ -187,6 +236,7 @@ internal static class SettingsDialog
         }
 
         s.Theme = (AppTheme)theme.SelectedIndex;
+        s.AppIcon = chosenIcon == AppIcons.Default ? null : chosenIcon;
         var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
         restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal);
         s.Language = newLanguage;

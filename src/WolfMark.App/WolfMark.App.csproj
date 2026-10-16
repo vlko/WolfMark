@@ -29,6 +29,10 @@
 
   <ItemGroup>
     <Content Include="Assets\WolfMark.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Icon variants selectable in Settings (window/taskbar icon) -->
+    <Content Include="Assets\IconProposals\*.ico;Assets\IconProposals\?-*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Remove="Assets\IconProposals\sheet.png;Assets\IconProposals\README.md" />
+    <None Remove="Assets\IconProposals\sheet.png;Assets\IconProposals\README.md" />
     <!-- Barlow (SIL OFL 1.1, see Assets/Fonts/OFL-Barlow.txt) -->
     <Content Include="Assets\Fonts\*.ttf;Assets\Fonts\OFL-Barlow.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

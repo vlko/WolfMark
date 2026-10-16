@@ -152,6 +152,14 @@ S = {
  "Settings_WindowRendering": ("Window rendering (restart)", "Vykresľovanie okna (reštart)"),
  "Settings_RenderingMica": ("Mica under the paper", "Mica pod papierom"),
  "Settings_RenderingClass": ("No backdrop + window background", "Bez backdropu + pozadie okna"),
+ "Settings_AppIcon": ("App icon", "Ikona aplikácie"),
+ "Icon_WeekBand": ("Week band", "Týždenný pás"),
+ "Icon_RisoWm": ("WolfMark (W + M)", "WolfMark (W + M)"),
+ "Icon_NotebookCalendar": ("Notebook with calendar", "Zápisník s kalendárom"),
+ "Icon_CalendarPage": ("Tear-off calendar", "Trhací kalendár"),
+ "Icon_Wolf": ("Wolf", "Vlk"),
+ "Icon_CalendarPencil": ("Calendar with pencil", "Kalendár s ceruzkou"),
+ "Icon_WolfMark": ("Wolf + Mark", "Wolf + Mark"),
 }
 
 import os, sys, html

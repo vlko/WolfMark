@@ -462,4 +462,28 @@
   <data name="Settings_RenderingClass" xml:space="preserve">
     <value>Bez backdropu + pozadie okna</value>
   </data>
+  <data name="Settings_AppIcon" xml:space="preserve">
+    <value>Ikona aplikácie</value>
+  </data>
+  <data name="Icon_WeekBand" xml:space="preserve">
+    <value>Týždenný pás</value>
+  </data>
+  <data name="Icon_RisoWm" xml:space="preserve">
+    <value>WolfMark (W + M)</value>
+  </data>
+  <data name="Icon_NotebookCalendar" xml:space="preserve">
+    <value>Zápisník s kalendárom</value>
+  </data>
+  <data name="Icon_CalendarPage" xml:space="preserve">
+    <value>Trhací kalendár</value>
+  </data>
+  <data name="Icon_Wolf" xml:space="preserve">
+    <value>Vlk</value>
+  </data>
+  <data name="Icon_CalendarPencil" xml:space="preserve">
+    <value>Kalendár s ceruzkou</value>
+  </data>
+  <data name="Icon_WolfMark" xml:space="preserve">
+    <value>Wolf + Mark</value>
+  </data>
 </root>

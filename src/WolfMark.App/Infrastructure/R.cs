@@ -153,4 +153,12 @@ internal static class R
     public const string Settings_WindowRendering = nameof(Settings_WindowRendering);
     public const string Settings_RenderingMica = nameof(Settings_RenderingMica);
     public const string Settings_RenderingClass = nameof(Settings_RenderingClass);
+    public const string Settings_AppIcon = nameof(Settings_AppIcon);
+    public const string Icon_WeekBand = nameof(Icon_WeekBand);
+    public const string Icon_RisoWm = nameof(Icon_RisoWm);
+    public const string Icon_NotebookCalendar = nameof(Icon_NotebookCalendar);
+    public const string Icon_CalendarPage = nameof(Icon_CalendarPage);
+    public const string Icon_Wolf = nameof(Icon_Wolf);
+    public const string Icon_CalendarPencil = nameof(Icon_CalendarPencil);
+    public const string Icon_WolfMark = nameof(Icon_WolfMark);
 }

@@ -52,6 +52,9 @@ public sealed class LocalSettings
 
     public double HistoryPaneHeight { get; set; } = 260;
 
+    /// <summary>App icon variant (Assets/IconProposals id); null = default.</summary>
+    public string? AppIcon { get; set; }
+
     /// <summary>Diagnostics: window background mode (takes effect after a restart).</summary>
     public WindowRendering WindowRendering { get; set; } = WindowRendering.MicaAfterActivation;
 

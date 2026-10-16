@@ -462,4 +462,28 @@
   <data name="Settings_RenderingClass" xml:space="preserve">
     <value>No backdrop + window background</value>
   </data>
+  <data name="Settings_AppIcon" xml:space="preserve">
+    <value>App icon</value>
+  </data>
+  <data name="Icon_WeekBand" xml:space="preserve">
+    <value>Week band</value>
+  </data>
+  <data name="Icon_RisoWm" xml:space="preserve">
+    <value>WolfMark (W + M)</value>
+  </data>
+  <data name="Icon_NotebookCalendar" xml:space="preserve">
+    <value>Notebook with calendar</value>
+  </data>
+  <data name="Icon_CalendarPage" xml:space="preserve">
+    <value>Tear-off calendar</value>
+  </data>
+  <data name="Icon_Wolf" xml:space="preserve">
+    <value>Wolf</value>
+  </data>
+  <data name="Icon_CalendarPencil" xml:space="preserve">
+    <value>Calendar with pencil</value>
+  </data>
+  <data name="Icon_WolfMark" xml:space="preserve">
+    <value>Wolf + Mark</value>
+  </data>
 </root>
