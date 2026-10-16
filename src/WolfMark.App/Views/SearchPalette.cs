@@ -123,6 +123,7 @@ internal sealed partial class SearchResultView : UserControl, IItemView<SearchRe
     private readonly SearchViewModel _search;
     private readonly TagBrushes _brushes;
     private readonly Button _button;
+    private readonly SolidColorBrush _rowFill = new(Microsoft.UI.Colors.Transparent);
     private readonly TextBlock _title = new() { FontSize = 14.5, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _snippet = new() { FontSize = 12.5, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _meta = Typo.Body(string.Empty, 11.5, Palette.InkTertiary);
@@ -144,9 +145,8 @@ internal sealed partial class SearchResultView : UserControl, IItemView<SearchRe
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(6, 6, 10, 6),
             CornerRadius = new CornerRadius(10),
-            BorderThickness = new Thickness(0),
-            Background = Palette.Transparent,
         };
+        _button.StyleButton(_rowFill, Palette.Ink);
         _button.Click += (_, _) =>
         {
             if (_item is not null)
@@ -176,7 +176,7 @@ internal sealed partial class SearchResultView : UserControl, IItemView<SearchRe
     }
 
     private void OnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) =>
-        _button.Background = _item?.IsSelected == true ? Palette.SubtleFill : Palette.Transparent;
+        _rowFill.Color = _item?.IsSelected == true ? Palette.SubtleFill.Color : Microsoft.UI.Colors.Transparent;
 
     private static void Fill(TextBlock block, IReadOnlyList<(string Text, bool Highlight)> segments)
     {

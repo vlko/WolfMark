@@ -71,7 +71,7 @@ internal sealed partial class NoteHeaderView
     /// [tag ▾][save state] ……… [B I ☐ ‹› 🔗][RAW|FORMÁT][+ NOVÁ]. Fixed widths on the left so nothing
     /// shifts when the tag name or state text changes; the rest is anchored to the right edge.
     /// </summary>
-    private Grid BuildToolbar()
+    private ToolbarPanel BuildToolbar()
     {
         var editor = _vm.Editor;
 
@@ -84,12 +84,12 @@ internal sealed partial class NoteHeaderView
         {
             Content = tagContent,
             Width = 180,
+            Height = Metrics.ButtonHeight,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(10, 5, 10, 5),
+            Padding = new Thickness(10, 0, 10, 0),
             CornerRadius = Radius.Control,
-            Background = Palette.SubtleFill,
-            BorderThickness = new Thickness(0),
         };
+        tagButton.StyleButton(Palette.SubtleFill, Palette.Ink);
         ToolTipService.SetToolTip(tagButton, Strings.Get(R.Menu_ChangeTag));
         var flyout = new Flyout { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft, Content = new ProgressRing { IsActive = true, Width = 24, Height = 24 } };
         flyout.Opening += async (_, _) => flyout.Content = await BuildTagPickerAsync(flyout);
@@ -145,16 +145,20 @@ internal sealed partial class NoteHeaderView
         var add = Ui.Ui.TagButton(Strings.Get(R.Toolbar_NewNoteShort), () => _ = _vm.NewNoteAsync(), Palette.Accent, new SolidColorBrush(Microsoft.UI.Colors.White), Glyphs.Add);
         ToolTipService.SetToolTip(add, Strings.Get(R.Toolbar_NewNote));
 
-        var grid = Ui.Ui.Columns(
-            (Ui.Ui.Px(180), tagButton),
-            (Ui.Ui.Px(170), Ui.Ui.HStack(6, stateIcon, stateText)),
-            (Ui.Ui.Star, null),
-            (Ui.Ui.Auto, format),
-            (Ui.Ui.Auto, proofing),
-            (Ui.Ui.Auto, segments),
-            (Ui.Ui.Auto, add));
-        grid.ColumnSpacing = 12;
-        return grid;
+        // Three groups that wrap as a whole on narrow windows (ToolbarPanel): first the mode group drops to
+        // a second row, then the formatting group – never a hidden button.
+        var state = Ui.Ui.HStack(6, stateIcon, stateText);
+        state.Width = 170;
+        state.VerticalAlignment = VerticalAlignment.Center;
+        var left = Ui.Ui.HStack(12, tagButton, state);
+        var mode = Ui.Ui.HStack(12, proofing, segments, add);
+        mode.VerticalAlignment = VerticalAlignment.Center;
+
+        var toolbar = new ToolbarPanel();
+        toolbar.Children.Add(left);
+        toolbar.Children.Add(format);
+        toolbar.Children.Add(mode);
+        return toolbar;
     }
 
     /// <summary>
@@ -169,13 +173,12 @@ internal sealed partial class NoteHeaderView
             var button = new ToggleButton
             {
                 Content = content,
-                MinWidth = 32,
-                MinHeight = 32,
-                Padding = new Thickness(6, 4, 6, 4),
+                MinWidth = Metrics.ButtonHeight,
+                Height = Metrics.ButtonHeight,
+                Padding = new Thickness(6, 0, 6, 0),
                 CornerRadius = Radius.Control,
-                BorderThickness = new Thickness(0),
-                Background = Palette.Transparent,
             };
+            button.StyleButton(Palette.Transparent, Palette.Ink);
             ToolTipService.SetToolTip(button, tooltip);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, tooltip);
             button.Click += (_, _) =>
@@ -240,13 +243,13 @@ internal sealed partial class NoteHeaderView
         var button = new ToggleButton
         {
             Content = Ui.Ui.VStack(0, abc, squiggle),
-            MinWidth = 36,
-            MinHeight = 32,
-            Padding = new Thickness(6, 3, 6, 4),
+            Width = 40,
+            Height = Metrics.ButtonHeight,
+            Padding = new Thickness(4, 0, 4, 0),
             CornerRadius = Radius.Control,
-            BorderThickness = new Thickness(0),
             IsChecked = settings.SpellCheckEnabled,
         };
+        button.StyleButton(Palette.Transparent, Palette.Ink);
         var tip = Strings.Get(R.Proofing_Toggle);
         ToolTipService.SetToolTip(button, tip);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, tip);
@@ -268,14 +271,16 @@ internal sealed partial class NoteHeaderView
         return button;
     }
 
-    private static ToggleButton SegmentButton(string text) => new()
+    private static ToggleButton SegmentButton(string text) => new ToggleButton
     {
         Content = Typo.Caps(text, 13, Palette.Ink),
-        Padding = new Thickness(10, 3, 10, 3),
-        MinHeight = 30,
+        // Fixed width: RAW and FORMÁT are the same size in either state, nothing shifts when switching.
+        Width = 92,
+        Height = Metrics.ButtonHeight,
+        Padding = new Thickness(0),
+        HorizontalContentAlignment = HorizontalAlignment.Center,
         CornerRadius = Radius.Control,
-        BorderThickness = new Thickness(0),
-    };
+    }.StyleButton(Palette.SubtleFill, Palette.InkSecondary, checkedFill: Palette.SubtleFillHover);
 
     private async Task<UIElement> BuildTagPickerAsync(Flyout flyout)
     {
@@ -345,10 +350,16 @@ internal sealed partial class NoteHeaderView
                     Height = 28,
                     Padding = new Thickness(0),
                     CornerRadius = Radius.Control,
-                    Background = new SolidColorBrush(Palette.ToColor(c)),
-                    BorderThickness = new Thickness(host.Tags.GetColor(current) == c ? 3 : 0),
-                    BorderBrush = Palette.Ink,
                 };
+                swatch.StyleButton(new SolidColorBrush(Palette.ToColor(c)), new SolidColorBrush(Palette.ForegroundOn(c)), onColor: true);
+                if (host.Tags.GetColor(current) == c)
+                {
+                    // Current colour: permanent ink frame.
+                    swatch.BorderThickness = new Thickness(3);
+                    swatch.BorderBrush = Palette.Ink;
+                    swatch.Resources["ButtonBorderBrush"] = Palette.Ink;
+                }
+
                 Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(swatch, c.ToHex());
                 swatch.Click += async (_, _) =>
                 {
@@ -385,10 +396,9 @@ internal sealed partial class NoteHeaderView
             Content = row,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Background = Palette.Transparent,
-            BorderThickness = new Thickness(0),
             Padding = new Thickness(8, 6, 8, 6),
         };
+        button.StyleButton(Palette.Transparent, Palette.Ink);
         button.Click += (_, _) => onClick();
         return button;
     }
@@ -405,7 +415,7 @@ internal sealed partial class NoteHeaderView
 
         var external = Info(Strings.Get(R.External_Title), Strings.Get(R.External_Message), InfoBarSeverity.Warning,
             Strings.Get(R.External_Reload), () => _ = editor.ReloadFromDiskAsync());
-        var keep = new Button { Content = Strings.Get(R.External_Keep) };
+        var keep = Ui.Ui.TextButton(Strings.Get(R.External_Keep));
         keep.Click += async (_, _) => await editor.KeepMineAsync();
         external.Content = keep;
         external.Bind(editor, nameof(NoteEditorViewModel.ExternalChangePending), () => external.IsOpen = editor.ExternalChangePending);
@@ -421,7 +431,7 @@ internal sealed partial class NoteHeaderView
                     _ = _vm.OpenNoteAsync(original.RelativePath);
                 }
             });
-        var discard = new Button { Content = Strings.Get(R.Conflict_Discard) };
+        var discard = Ui.Ui.TextButton(Strings.Get(R.Conflict_Discard));
         discard.Click += async (_, _) => await editor.DeleteAsync();
         conflict.Content = discard;
         conflict.Bind(editor, nameof(NoteEditorViewModel.ConflictOriginal), () =>
@@ -456,7 +466,7 @@ internal sealed partial class NoteHeaderView
         };
         if (action is not null && onAction is not null)
         {
-            var button = new Button { Content = action };
+            var button = Ui.Ui.TextButton(action);
             button.Click += (_, _) => onAction();
             bar.ActionButton = button;
         }

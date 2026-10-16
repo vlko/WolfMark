@@ -10,6 +10,14 @@
 2. **Tlačidlá a tagy** sú len mierne zaoblené (`Radius.Control` = 3 px, `Radius.Tag` = 4 px); globálne
    `ControlCornerRadius`/`OverlayCornerRadius` sú prepísané v `App`, takže sa tomu prispôsobia aj
    štandardné WinUI ovládacie prvky.
+   **Hover/stlačenie:** výplň sa nemení. Stav ukazuje jemný vnútorný „glow“ (2 px poloprie-
+   hľadný okraj, v pokoji priehľadný, pri stlačení plný) a zmena farby textu – vždy v jednej z troch
+   farieb: čierna, biela, akcentová modrá. Neutrálne tlačidlá: modrá. Farebné tlačidlá (tagy, + NOVÁ,
+   vzorky farieb): glow aj text dostanú tú z troch farieb, ktorá nie je farbou textu v pokoji a má
+   najvyšší kontrast (WCAG) k výplni (`Ui.HoverColor`) – napr. + NOVÁ a ClaudeCode čierna. Tlačidlá v toolbaroch majú jednu výšku (`Metrics.ButtonHeight`), RAW/FORMÁT
+   pevnú šírku.
+   Každé tlačidlo ide cez `Ui.StyleButton` (WinUI lightweight styling); texty a ikony dedia farbu tlačidla.
+   Ak sa výplň mení (vybraný riadok histórie), tlačidlo má vlastný štetec a mení sa jeho farba.
 3. **Farby** (`Theming/Palette.cs`): výraznejšia paleta tagov (`TagPalette`), modrý akcent, ružová a žltá
    vrstva pre „riso“ hlavné čísla, dvojfarebný čiarkovaný rám dneška (žltá pod čiernou).
 4. **Typografia** (`Theming/Typo.cs`, fonty v `Assets/Fonts`, SIL OFL):
@@ -31,8 +39,7 @@ týždeň resp. mesiac.
 ## Tagy
 
 `TagRail` – zvislé záložky pri pravom okraji. Výber tagu = aktívny tag (filter histórie, stlmenie
-ostatných dní, tag nových poznámok) a lišta sa zbalí na vybranú záložku + tenké farebné pásiky; klik
-na zbalenú lištu ju znovu rozbalí.
+ostatných dní, tag nových poznámok); aktívna záložka vyčnieva smerom k obsahu, lišta sa nezbaľuje.
 
 ## Editor
 

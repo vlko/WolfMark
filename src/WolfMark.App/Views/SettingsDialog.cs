@@ -23,7 +23,7 @@ internal static class SettingsDialog
         // Notes folder
         var rootText = Typo.Body(host.Root, 13, Palette.InkSecondary);
         rootText.TextWrapping = TextWrapping.Wrap;
-        var browse = new Button { Content = Strings.Get(R.Settings_Browse) };
+        var browse = Ui.Ui.TextButton(Strings.Get(R.Settings_Browse));
         var restartBar = new InfoBar
         {
             Severity = InfoBarSeverity.Informational,
@@ -31,7 +31,7 @@ internal static class SettingsDialog
             IsClosable = false,
             IsOpen = false,
         };
-        var restartButton = new Button { Content = Strings.Get(R.Settings_Restart) };
+        var restartButton = Ui.Ui.TextButton(Strings.Get(R.Settings_Restart));
         restartButton.Click += async (_, _) =>
         {
             await vm.Editor.FlushAsync();
@@ -42,9 +42,9 @@ internal static class SettingsDialog
 
         // Move-or-switch choice is inline: WinUI allows only one open ContentDialog.
         string? pickedRoot = null;
-        var moveButton = new Button { Content = Strings.Get(R.Settings_Move) };
-        var switchButton = new Button { Content = Strings.Get(R.Settings_Switch) };
-        var cancelMove = new Button { Content = Strings.Get(R.Common_Cancel) };
+        var moveButton = Ui.Ui.TextButton(Strings.Get(R.Settings_Move));
+        var switchButton = Ui.Ui.TextButton(Strings.Get(R.Settings_Switch));
+        var cancelMove = Ui.Ui.TextButton(Strings.Get(R.Common_Cancel));
         var moveText = Typo.Body(Strings.Get(R.Settings_MoveMessage), 13);
         moveText.TextWrapping = TextWrapping.Wrap;
         var movePanel = Ui.Ui.VStack(8, moveText, Ui.Ui.HStack(8, moveButton, switchButton, cancelMove));
@@ -119,12 +119,13 @@ internal static class SettingsDialog
         var ccRedact = new CheckBox { Content = Strings.Get(R.Settings_ClaudeRedact), IsChecked = cc.RedactSecrets };
         var ccWatch = new CheckBox { Content = Strings.Get(R.Settings_ClaudeWatch), IsChecked = cc.WatchInRealTime };
         var ccInterval = new NumberBox { Header = Strings.Get(R.Settings_ClaudeInterval), Value = cc.IntervalMinutes, Minimum = 1, Maximum = 1440, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
-        var ccSyncNow = new Button { Content = Strings.Get(R.Settings_ClaudeSyncNow), IsEnabled = host.ClaudeSync is not null };
+        var ccSyncNow = Ui.Ui.TextButton(Strings.Get(R.Settings_ClaudeSyncNow));
+        ccSyncNow.IsEnabled = host.ClaudeSync is not null;
         ccSyncNow.Click += (_, _) => host.TriggerClaudeSync();
 
         // Index
         var semantic = Typo.Body(Strings.Get(host.EmbeddingProvider is not null && host.Db.VectorsAvailable ? R.Settings_IndexSemanticOn : R.Settings_IndexSemanticOff), 12.5, Palette.InkSecondary);
-        var rebuild = new Button { Content = Strings.Get(R.Settings_IndexRebuild) };
+        var rebuild = Ui.Ui.TextButton(Strings.Get(R.Settings_IndexRebuild));
         rebuild.Click += async (_, _) =>
         {
             rebuild.IsEnabled = false;

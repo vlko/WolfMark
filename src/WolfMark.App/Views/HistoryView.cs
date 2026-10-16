@@ -4,6 +4,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel.DataTransfer;
 using WolfMark.App.Infrastructure;
@@ -55,11 +56,10 @@ internal sealed partial class HistoryView : UserControl
         {
             Padding = new Thickness(10, 2, 8, 2),
             CornerRadius = Radius.Control,
-            Background = Palette.SubtleFill,
-            BorderThickness = new Thickness(0),
         };
         var filterText = Typo.Caps(string.Empty, 12.5, Palette.Ink);
         filterChip.Content = Ui.Ui.HStack(6, filterText, Typo.Icon(Glyphs.Close, 9));
+        filterChip.StyleButton(Palette.SubtleFill, Palette.Ink);
         ToolTipService.SetToolTip(filterChip, Strings.Get(R.History_ClearFilter));
         filterChip.Click += async (_, _) =>
         {
@@ -81,20 +81,18 @@ internal sealed partial class HistoryView : UserControl
             Content = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Checkbox, 12), Typo.Body(Strings.Get(R.History_OpenTasks), 12, Palette.InkSecondary)),
             Padding = new Thickness(8, 2, 8, 2),
             CornerRadius = Radius.Control,
-            Background = Palette.Transparent,
-            BorderThickness = new Thickness(0),
         };
+        openTasks.StyleButton(Palette.Transparent, Palette.InkSecondary);
         openTasks.Click += async (_, _) => await history.ToggleOpenTasksAsync();
 
         var conflicts = new Button
         {
             Padding = new Thickness(8, 2, 8, 2),
             CornerRadius = Radius.Control,
-            Background = Palette.Transparent,
-            BorderThickness = new Thickness(0),
         };
         var conflictText = Typo.Body(string.Empty, 12, Palette.InkSecondary);
         conflicts.Content = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Warning, 12), conflictText);
+        conflicts.StyleButton(Palette.Transparent, Palette.InkSecondary);
         conflicts.Bind(vm, nameof(MainViewModel.ConflictCount), () =>
         {
             conflicts.Visibility = vm.ConflictCount > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -245,6 +243,7 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
 {
     private readonly HistoryView _owner;
     private readonly Button _button;
+    private readonly SolidColorBrush _rowFill = new(Microsoft.UI.Colors.Transparent);
     private readonly Rectangle _bar = new() { Width = 3, Margin = new Thickness(0, 4, 0, 4) };
     private const double BarWidth = 3;
 
@@ -296,9 +295,9 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(0, 4, 10, 4),
             CornerRadius = Radius.None,
-            BorderThickness = new Thickness(0),
-            Background = Palette.Transparent,
         };
+        // Own brush: the "current note" fill changes, hover must keep following it.
+        _button.StyleButton(_rowFill, Palette.Ink);
         _button.Click += async (_, _) =>
         {
             if (_item is not null)
@@ -343,5 +342,5 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
 
     private void OnItemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => UpdateCurrent();
 
-    private void UpdateCurrent() => _button.Background = _item?.IsCurrent == true ? Palette.SubtleFill : Palette.Transparent;
+    private void UpdateCurrent() => _rowFill.Color = _item?.IsCurrent == true ? Palette.SubtleFill.Color : Microsoft.UI.Colors.Transparent;
 }

@@ -57,6 +57,13 @@ internal static class Palette
 
     public static SolidColorBrush Overlay { get; } = new();
 
+    /// <summary>Inner glow of hovered neutral buttons (accent, translucent) and its pressed variant. Coloured buttons compute theirs (Ui.HoverColor).</summary>
+    public static SolidColorBrush GlowNeutral { get; } = new();
+
+    public static SolidColorBrush GlowNeutralStrong { get; } = new();
+
+
+
     public static SolidColorBrush Transparent { get; } = new(Microsoft.UI.Colors.Transparent);
 
     /// <summary>Diagonal stripes laid over past days of the week band (reference: hatched pastel days).</summary>
@@ -147,6 +154,9 @@ internal static class Palette
             Set(Overlay, 0x66, 0x20, 0x1C, 0x16);
         }
 
+        GlowNeutral.Color = Color.FromArgb(0x66, Accent.Color.R, Accent.Color.G, Accent.Color.B);
+        GlowNeutralStrong.Color = Color.FromArgb(0xB0, Accent.Color.R, Accent.Color.G, Accent.Color.B);
+
         var hatch = IsDark ? Color.FromArgb(0x70, 0x1A, 0x1B, 0x1D) : Color.FromArgb(0x8C, 0xFF, 0xFF, 0xFF);
         PastHatch.GradientStops[0].Color = hatch;
         PastHatch.GradientStops[1].Color = hatch;
@@ -182,6 +192,9 @@ internal static class Metrics
 
     /// <summary>Gap between the time and the dotted line.</summary>
     public const double TimeGutterGap = 9;
+
+    /// <summary>One height for every toolbar/tag-style button, so rows of buttons line up.</summary>
+    public const double ButtonHeight = 32;
 }
 
 /// <summary>Corner radii: surfaces are square; buttons and tags are only slightly rounded.</summary>

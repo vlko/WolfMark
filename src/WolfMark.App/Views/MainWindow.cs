@@ -82,12 +82,11 @@ internal sealed partial class MainWindow : Window
         {
             Content = Ui.Ui.HStack(4, Typo.Caps(Strings.Get(R.Editor_Continues), 11.5, Palette.Accent), Typo.Icon(Glyphs.ChevronDown, 10, Palette.Accent)),
             Padding = new Thickness(4, 2, 0, 2),
-            Background = Palette.Transparent,
-            BorderThickness = new Thickness(0),
             CornerRadius = Radius.Control,
             HorizontalAlignment = HorizontalAlignment.Right,
             Visibility = Visibility.Collapsed,
         };
+        _continues.StyleButton(Palette.Transparent, Palette.Accent);
         _continues.Click += (_, _) => _editor.ScrollToEnd();
         var gutter = Ui.Ui.Rows((Ui.Ui.Auto, created), (Ui.Ui.Star, null), (Ui.Ui.Auto, Ui.Ui.VStack(2, _continues, _modified)));
         gutter.Padding = new Thickness(0, 0, Metrics.TimeGutterGap, 26);
@@ -193,9 +192,10 @@ internal sealed partial class MainWindow : Window
             Height = 32,
             Padding = new Thickness(12, 0, 12, 0),
             CornerRadius = new CornerRadius(16),
-            Background = Palette.Card,
-            BorderBrush = Palette.CardStroke,
         };
+        searchBox.StyleButton(Palette.Card, Palette.InkTertiary);
+        searchBox.BorderBrush = Palette.CardStroke;
+        searchBox.Resources["ButtonBorderBrush"] = Palette.CardStroke;
         ((Grid)searchBox.Content).ColumnSpacing = 10;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(searchBox, Strings.Get(R.Toolbar_Search));
         searchBox.Click += (_, _) => _vm.OpenSearch();
