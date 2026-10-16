@@ -495,4 +495,25 @@
   <data name="Week_NoTag" xml:space="preserve">
     <value>No tag</value>
   </data>
+  <data name="Settings_System" xml:space="preserve">
+    <value>Windows</value>
+  </data>
+  <data name="Settings_StartWithWindows" xml:space="preserve">
+    <value>Spustiť pri štarte Windows</value>
+  </data>
+  <data name="Settings_CloseToTray" xml:space="preserve">
+    <value>Zatvorenie okna nechá WolfMark bežať v oblasti oznámení</value>
+  </data>
+  <data name="Settings_StartupFailed" xml:space="preserve">
+    <value>Spúšťanie pri štarte Windows sa nepodarilo zmeniť: {0}</value>
+  </data>
+  <data name="Tray_Show" xml:space="preserve">
+    <value>Zobraziť WolfMark</value>
+  </data>
+  <data name="Tray_Settings" xml:space="preserve">
+    <value>Nastavenia…</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Ukončiť</value>
+  </data>
 </root>

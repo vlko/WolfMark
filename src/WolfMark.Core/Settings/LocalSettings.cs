@@ -58,6 +58,9 @@ public sealed class LocalSettings
     /// <summary>Diagnostics: window background mode (takes effect after a restart).</summary>
     public WindowRendering WindowRendering { get; set; } = WindowRendering.MicaAfterActivation;
 
+    /// <summary>Closing the window hides it to the notification area; the app ends from the tray menu.</summary>
+    public bool CloseToTray { get; set; }
+
     /// <summary>Calendar panel shows the full month (true) or only the week band.</summary>
     public bool CalendarExpanded { get; set; }
 

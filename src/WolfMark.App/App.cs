@@ -55,7 +55,12 @@ public sealed partial class App : Application, IXamlMetadataProvider
         var brushes = new TagBrushes(host.Tags);
         var vm = new MainViewModel(host);
         _window = new MainWindow(vm, brushes);
-        _window.Activate();
+        if (!(StartupRegistration.LaunchedAtStartup && host.Settings.Current.CloseToTray))
+        {
+            _window.Activate();
+        }
+
+        // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
 
         host.StartBackground();
         await _window.InitializeAsync();

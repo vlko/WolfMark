@@ -157,7 +157,10 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 ## M8 – Pohodlie a integrácia s Windows 🟡
 
 - ⬜ **M8-01 – Globálna skratka rýchleho zápisu** (malé okno, Enter uloží a skryje).
-- ⬜ **M8-02 – Tray ikona**, minimalizácia do tray, štart s Windows.
+- 🟨 **M8-02 – Tray ikona**, minimalizácia do tray, štart s Windows.
+  *Stav:* Implementované, čaká na overenie na Windows: Nastavenia → Windows (štart = HKCU `Run` s `--autostart`;
+  pri zapnutom tray štartuje skryto), zatvorenie okna skryje do oblasti oznámení (`Infrastructure/TrayIcon.cs`,
+  Shell_NotifyIcon + subclass okna), menu Zobraziť / Nastavenia… / Ukončiť.
 - ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
   *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor, Claude Code, rebuild indexu.

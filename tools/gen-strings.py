@@ -163,6 +163,13 @@ S = {
  "Error_Title": ("Something went wrong", "Niečo sa pokazilo"),
  "Error_Settings": ("Settings could not be opened: {0}", "Nastavenia sa nepodarilo otvoriť: {0}"),
  "Week_NoTag": ("No tag", "No tag"),
+ "Settings_System": ("Windows", "Windows"),
+ "Settings_StartWithWindows": ("Start with Windows", "Spustiť pri štarte Windows"),
+ "Settings_CloseToTray": ("Closing the window keeps WolfMark running in the notification area", "Zatvorenie okna nechá WolfMark bežať v oblasti oznámení"),
+ "Settings_StartupFailed": ("Start with Windows could not be changed: {0}", "Spúšťanie pri štarte Windows sa nepodarilo zmeniť: {0}"),
+ "Tray_Show": ("Show WolfMark", "Zobraziť WolfMark"),
+ "Tray_Settings": ("Settings…", "Nastavenia…"),
+ "Tray_Exit": ("Exit", "Ukončiť"),
 }
 
 import os, sys, html

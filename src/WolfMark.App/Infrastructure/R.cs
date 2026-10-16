@@ -164,4 +164,11 @@ internal static class R
     public const string Error_Title = nameof(Error_Title);
     public const string Error_Settings = nameof(Error_Settings);
     public const string Week_NoTag = nameof(Week_NoTag);
+    public const string Settings_System = nameof(Settings_System);
+    public const string Settings_StartWithWindows = nameof(Settings_StartWithWindows);
+    public const string Settings_CloseToTray = nameof(Settings_CloseToTray);
+    public const string Settings_StartupFailed = nameof(Settings_StartupFailed);
+    public const string Tray_Show = nameof(Tray_Show);
+    public const string Tray_Settings = nameof(Tray_Settings);
+    public const string Tray_Exit = nameof(Tray_Exit);
 }

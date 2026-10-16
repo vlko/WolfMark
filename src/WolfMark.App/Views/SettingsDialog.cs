@@ -175,6 +175,11 @@ internal static class SettingsDialog
             rebuild.IsEnabled = true;
         };
         var testNotice = Ui.Ui.TextButton(Strings.Get(R.Settings_TestNotice), () => vm.IsTestNoticeOpen = true);
+        // Windows: start at sign-in (registry Run entry is the truth) and close to the notification area.
+        var startupWas = await Task.Run(() => StartupRegistration.IsEnabled);
+        var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows) };
+        var closeToTray = new ToggleSwitch { IsOn = s.CloseToTray, Header = Strings.Get(R.Settings_CloseToTray) };
+
         var rendering = Combo([Strings.Get(R.Settings_RenderingMica), Strings.Get(R.Settings_RenderingClass)], (int)s.WindowRendering);
 
         var paths = Typo.Body($"{host.Paths.IndexDatabase}\n{host.Paths.LogsDirectory}", 11.5, Palette.InkTertiary);
@@ -197,6 +202,9 @@ internal static class SettingsDialog
                 VerticalScrollMode = ScrollMode.Disabled,
             }),
             Field(Strings.Get(R.Settings_Language), language),
+            Section(Strings.Get(R.Settings_System)),
+            startWithWindows,
+            closeToTray,
             Section(Strings.Get(R.Settings_Editor)),
             Field(Strings.Get(R.Settings_FontFamily), font),
             Field(Strings.Get(R.Settings_FontSize), fontSize),
@@ -249,6 +257,20 @@ internal static class SettingsDialog
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
         s.EditorMaxLineWidth = double.IsNaN(lineWidth.Value) ? s.EditorMaxLineWidth : lineWidth.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
+        s.CloseToTray = closeToTray.IsOn;
+        if (startWithWindows.IsOn != startupWas || startupWas)
+        {
+            // Re-written also when unchanged: keeps the path current if the exe moved.
+            var on = startWithWindows.IsOn;
+            try
+            {
+                await Task.Run(() => StartupRegistration.Set(on));
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+            {
+                vm.ErrorNotice = Strings.Format(R.Settings_StartupFailed, ex.Message);
+            }
+        }
 
         var excluded = ccExcluded.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         var ccDir = string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim();

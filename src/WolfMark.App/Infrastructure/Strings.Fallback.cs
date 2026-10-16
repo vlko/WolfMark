@@ -165,5 +165,12 @@ internal static partial class Strings
         [R.Error_Title] = "Something went wrong",
         [R.Error_Settings] = "Settings could not be opened: {0}",
         [R.Week_NoTag] = "No tag",
+        [R.Settings_System] = "Windows",
+        [R.Settings_StartWithWindows] = "Start with Windows",
+        [R.Settings_CloseToTray] = "Closing the window keeps WolfMark running in the notification area",
+        [R.Settings_StartupFailed] = "Start with Windows could not be changed: {0}",
+        [R.Tray_Show] = "Show WolfMark",
+        [R.Tray_Settings] = "Settings…",
+        [R.Tray_Exit] = "Exit",
     };
 }

@@ -37,6 +37,9 @@ internal sealed partial class MainWindow : Window
     private readonly Button _continues;
     private readonly RowDefinition _historyRow;
     private bool _closing;
+    private bool _exitRequested;
+    private bool _settingsOpen;
+    private TrayIcon? _tray;
 
     public MainWindow(MainViewModel vm, TagBrushes brushes)
     {
@@ -129,6 +132,7 @@ internal sealed partial class MainWindow : Window
         WireOverlays();
         WireAccelerators();
         WireLifecycle();
+        ApplyTray();
         ApplyAppearance();
         RestorePlacement();
     }
@@ -153,11 +157,75 @@ internal sealed partial class MainWindow : Window
         if (File.Exists(path))
         {
             AppWindow.SetIcon(path);
+            _tray?.SetIcon(path);
         }
+    }
+
+    /// <summary>Notification-area icon exists while "close to tray" is on.</summary>
+    public void ApplyTray()
+    {
+        if (!_host.Settings.Current.CloseToTray)
+        {
+            _tray?.Dispose();
+            _tray = null;
+            return;
+        }
+
+        if (_tray is not null)
+        {
+            return;
+        }
+
+        _tray = new TrayIcon(Win32Interop.GetWindowFromWindowId(AppWindow.Id), AppIcons.IcoPath(_host.Settings.Current.AppIcon), Strings.Get(R.AppTitle))
+        {
+            MenuTexts = () => (Strings.Get(R.Tray_Show), Strings.Get(R.Tray_Settings), Strings.Get(R.Tray_Exit)),
+        };
+        _tray.ShowRequested += (_, _) => BringToFront();
+        _tray.SettingsRequested += (_, _) =>
+        {
+            BringToFront();
+            _ = OpenSettingsAsync();
+        };
+        _tray.ExitRequested += (_, _) => _ = ExitAsync();
+    }
+
+    /// <summary>Ends the app (tray menu "Exit"), also when the window is hidden.</summary>
+    public async Task ExitAsync()
+    {
+        if (_closing)
+        {
+            return;
+        }
+
+        _exitRequested = true;
+        _closing = true;
+        try
+        {
+            await ShutdownAsync();
+        }
+        finally
+        {
+            Close();
+        }
+    }
+
+    private async Task ShutdownAsync()
+    {
+        await _vm.Editor.FlushAsync();
+        SavePlacement();
+        await _host.SaveSettingsAsync();
+        _tray?.Dispose();
+        _tray = null;
+        await _host.DisposeAsync();
     }
 
     public void BringToFront()
     {
+        if (!AppWindow.IsVisible)
+        {
+            AppWindow.Show();
+        }
+
         if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
         {
             presenter.Restore();
@@ -472,13 +540,20 @@ internal sealed partial class MainWindow : Window
             }
 
             e.Cancel = true;
-            _closing = true;
-            try
+            if (_tray is not null && !_exitRequested)
             {
+                // Close to the notification area: save like on exit, keep running hidden.
                 await _vm.Editor.FlushAsync();
                 SavePlacement();
                 await _host.SaveSettingsAsync();
-                await _host.DisposeAsync();
+                AppWindow.Hide();
+                return;
+            }
+
+            _closing = true;
+            try
+            {
+                await ShutdownAsync();
             }
             finally
             {
@@ -489,15 +564,26 @@ internal sealed partial class MainWindow : Window
 
     private async Task OpenSettingsAsync()
     {
+        if (_settingsOpen)
+        {
+            return; // tray "Settings…" while the dialog is open – only one ContentDialog at a time
+        }
+
+        _settingsOpen = true;
         try
         {
             await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance, ApplyIcon);
+            ApplyTray();
         }
         catch (Exception ex)
         {
             // Fire-and-forget caller: without this the dialog just silently does not appear.
             LogSettingsFailed(_host.Loggers.CreateLogger(nameof(MainWindow)), ex);
             _vm.ErrorNotice = Strings.Format(R.Error_Settings, ex.Message);
+        }
+        finally
+        {
+            _settingsOpen = false;
         }
     }
 
