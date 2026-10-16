@@ -177,7 +177,7 @@ internal static class SettingsDialog
         var testNotice = Ui.Ui.TextButton(Strings.Get(R.Settings_TestNotice), () => vm.IsTestNoticeOpen = true);
         // Windows: start at sign-in (registry Run entry is the truth) and close to the notification area.
         var startupWas = await Task.Run(() => StartupRegistration.IsEnabled);
-        var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows) };
+        var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows), IsEnabled = !LaunchOptions.Current.IsDemo };
         var closeToTray = new ToggleSwitch { IsOn = s.CloseToTray, Header = Strings.Get(R.Settings_CloseToTray) };
 
         var rendering = Combo([Strings.Get(R.Settings_RenderingMica), Strings.Get(R.Settings_RenderingClass)], (int)s.WindowRendering);
@@ -258,7 +258,7 @@ internal static class SettingsDialog
         s.EditorMaxLineWidth = double.IsNaN(lineWidth.Value) ? s.EditorMaxLineWidth : lineWidth.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
         s.CloseToTray = closeToTray.IsOn;
-        if (startWithWindows.IsOn != startupWas || startupWas)
+        if (!LaunchOptions.Current.IsDemo && (startWithWindows.IsOn != startupWas || startupWas))
         {
             // Re-written also when unchanged: keeps the path current if the exe moved.
             var on = startWithWindows.IsOn;

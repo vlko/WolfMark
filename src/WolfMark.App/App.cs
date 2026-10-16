@@ -45,25 +45,43 @@ public sealed partial class App : Application, IXamlMetadataProvider
         Resources["OverlayCornerRadius"] = new CornerRadius(4);
         UiThread.Initialize(DispatcherQueue.GetForCurrentThread());
 
-        var host = await AppHost.CreateAsync();
-        _logger = host.Loggers.CreateLogger<App>();
-        if (host.Settings.Current.Language is { } language)
+        try
         {
-            Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
-        }
+            var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory);
+            _logger = host.Loggers.CreateLogger<App>();
+            if (host.Settings.Current.Language is { } language)
+            {
+                Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
+            }
 
-        var brushes = new TagBrushes(host.Tags);
-        var vm = new MainViewModel(host);
-        _window = new MainWindow(vm, brushes);
-        if (!(StartupRegistration.LaunchedAtStartup && host.Settings.Current.CloseToTray))
+            var brushes = new TagBrushes(host.Tags);
+            var vm = new MainViewModel(host);
+            _window = new MainWindow(vm, brushes);
+            if (!(StartupRegistration.LaunchedAtStartup && host.Settings.Current.CloseToTray))
+            {
+                _window.Activate();
+            }
+
+            // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
+
+            host.StartBackground();
+            await _window.InitializeAsync();
+            if (LaunchOptions.Current.ScreenshotDirectory is { } shots)
+            {
+                await new ScreenshotRunner(_window, host, shots).RunAsync();
+            }
+        }
+        catch (Exception ex)
         {
-            _window.Activate();
+            // Before the window exists nothing would show the error and the windowless process would keep
+            // swallowing every later launch (single instance) – report it and end.
+            LogFatal(ex);
+            if (_window is null || LaunchOptions.Current.ScreenshotDirectory is not null)
+            {
+                ReportStartupFailure(ex);
+                Exit();
+            }
         }
-
-        // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
-
-        host.StartBackground();
-        await _window.InitializeAsync();
     }
 
     internal void OnRedirectedActivation(AppActivationArguments e) => UiThread.Post(() => _window?.BringToFront());
@@ -72,6 +90,23 @@ public sealed partial class App : Application, IXamlMetadataProvider
     {
         LogFatal(e.Exception);
         e.Handled = true; // keep the app (and the user's text) alive; the error is in the log
+    }
+
+    private static void ReportStartupFailure(Exception ex)
+    {
+        var text = $"WolfMark could not start.\n\n{ex.GetType().Name}: {ex.Message}";
+        try
+        {
+            var dir = LaunchOptions.Current.DemoDirectory ?? WolfMark.Storage.Settings.LocalPaths.Default.BaseDirectory;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "startup-error.txt"), ex.ToString());
+            text += $"\n\nDetails: {Path.Combine(dir, "startup-error.txt")}";
+        }
+        catch (Exception)
+        {
+        }
+
+        Windows.Win32.PInvoke.MessageBox(default, text, "WolfMark", Windows.Win32.UI.WindowsAndMessaging.MESSAGEBOX_STYLE.MB_ICONERROR);
     }
 
     private void LogFatal(Exception? ex)

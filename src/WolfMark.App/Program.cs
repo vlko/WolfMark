@@ -38,7 +38,8 @@ public static class Program
     private static bool TryRedirectToMainInstance()
     {
         var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
-        var main = AppInstance.FindOrRegisterForKey(InstanceKey);
+        // Demo mode runs next to the real app (its own instance key).
+        var main = AppInstance.FindOrRegisterForKey(Infrastructure.LaunchOptions.Current.IsDemo ? InstanceKey + ".Demo" : InstanceKey);
         if (main.IsCurrent)
         {
             main.Activated += (_, e) => App.Current?.OnRedirectedActivation(e);

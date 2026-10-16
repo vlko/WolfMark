@@ -57,6 +57,30 @@ public sealed class ClaudeCodeSyncTests : IAsyncLifetime
         Directory.Exists(Root) ? [.. Directory.GetFiles(Root, "*.md", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(Root, f).Replace('\\', '/')).Order()] : [];
 
     [Fact]
+    public async Task Demo_data_is_valid_notes_and_imports_as_claude_projects()
+    {
+        var now = new DateTime(2026, 10, 16, 15, 30, 0, DateTimeKind.Local);
+        Assert.True(await WolfMark.Storage.Demo.DemoDataSeeder.SeedAsync(Root, Claude, now, Ct));
+        Assert.False(await WolfMark.Storage.Demo.DemoDataSeeder.SeedAsync(Root, Claude, now, Ct)); // only into an empty folder
+
+        var userNotes = NoteFiles();
+        Assert.True(userNotes.Length > 40);
+        Assert.All(userNotes, f => Assert.True(WolfMark.Core.Notes.NotePath.Parse(f).IsStandard, f));
+        Assert.Contains(userNotes, f => f.StartsWith("2026/10/16/work_", StringComparison.Ordinal));
+        Assert.True(File.Exists(Path.Combine(Root, ".wolfmark", "tags.json")));
+
+        var result = await CreateSync().SyncAsync(Ct);
+        Assert.True(result.NotesCreated >= 10);
+        var claude = NoteFiles().Where(f => f.Contains("/ClaudeCode_", StringComparison.Ordinal)).ToList();
+        var texts = await Task.WhenAll(claude.Select(f => File.ReadAllTextAsync(Path.Combine(Root, f), Ct)));
+        Assert.Contains(texts, t => t.Contains("# WolfMark", StringComparison.Ordinal));
+        Assert.Contains(texts, t => t.Contains("# billing-api", StringComparison.Ordinal));
+        Assert.Contains(texts, t => t.Contains("# infra-terraform", StringComparison.Ordinal));
+        Assert.DoesNotContain(texts, t => t.Contains("sk-ant-api03-DEMO", StringComparison.Ordinal) || t.Contains("Caveat:", StringComparison.Ordinal));
+        Assert.Contains(claude, f => f.StartsWith("2026/10/16/", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Creates_one_note_per_session_and_day()
     {
         await File.WriteAllLinesAsync(Transcript, Samples.MixedTranscript, Ct);

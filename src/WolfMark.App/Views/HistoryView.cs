@@ -273,6 +273,8 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
         };
         // Own brush: the "current note" fill changes, hover must keep following it.
         _button.StyleButton(_rowFill, Palette.Ink);
+        // The "current note" fill is a copied colour, not the shared palette brush – refresh it on theme change.
+        owner.Brushes.Changed += (_, _) => UpdateCurrent();
         _button.Click += async (_, _) =>
         {
             if (_item is not null)

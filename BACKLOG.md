@@ -191,3 +191,6 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ⬜ **M10-01 – MSIX balík** a podpis; overiť prístup k OneDrive a `~/.claude`.
 - ⬜ **M10-02 – winget manifest.**
 - ⬜ **M10-03 – Automatické aktualizácie** (MSIX App Installer alebo vlastný mechanizmus).
+- 🟨 **M10-04 – README a screenshoty.** Anglické README; `--demo <dir>` (izolované demo dáta: poznámky, Claude Code
+  transkripty, nastavenia aj index v jednom priečinku, `DemoDataSeeder`) a `--screenshots <dir>` (RenderTargetBitmap → PNG
+  do `docs/screenshots`, potom koniec). *Stav:* čaká na vygenerovanie obrázkov na Windows.

@@ -98,15 +98,38 @@ internal sealed partial class AppHost : IAsyncDisposable
 
     public event EventHandler<Exception>? ClaudeSyncFailed;
 
-    public static Task<AppHost> CreateAsync() => Task.Run(async () =>
+    public static Task<AppHost> CreateAsync(string? demoDirectory = null) => Task.Run(async () =>
     {
-        var paths = LocalPaths.Default;
+        var paths = demoDirectory is null ? LocalPaths.Default : new LocalPaths(Path.Combine(demoDirectory, "local"));
         var fileLogger = new FileLoggerProvider(paths.LogsDirectory);
         var loggers = LoggerFactory.Create(b => b.AddProvider(fileLogger).SetMinimumLevel(LogLevel.Information));
         var settings = new LocalSettingsStore(paths, loggers.CreateLogger<LocalSettingsStore>());
         await settings.LoadAsync(CancellationToken.None).ConfigureAwait(false);
+        if (demoDirectory is not null)
+        {
+            await PrepareDemoAsync(demoDirectory, settings).ConfigureAwait(false);
+        }
+
         return new AppHost(paths, settings, fileLogger, loggers);
     });
+
+    /// <summary>Demo mode: everything inside <paramref name="directory"/>, English UI, seeded on first run.</summary>
+    private static async Task PrepareDemoAsync(string directory, LocalSettingsStore settings)
+    {
+        var notes = Path.Combine(directory, "notes");
+        var claude = Path.Combine(directory, "claude");
+        await WolfMark.Storage.Demo.DemoDataSeeder.SeedAsync(notes, claude, DateTime.Now, CancellationToken.None).ConfigureAwait(false);
+
+        var s = settings.Current;
+        s.RootDirectory = notes;
+        s.Language = "en-US";
+        s.CloseToTray = false;
+        s.HistoryPaneHeight = 250; // more room for the editor in the screenshots
+        s.ClaudeCode.Enabled = true;
+        s.ClaudeCode.ClaudeDirectory = claude;
+        s.ClaudeCode.RedactSecrets = true;
+        await settings.SaveAsync(CancellationToken.None).ConfigureAwait(false);
+    }
 
     /// <summary>Starts index, watcher and sync in the background; never blocks the caller.</summary>
     public void StartBackground()

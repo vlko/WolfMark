@@ -38,6 +38,13 @@ internal sealed partial class MainWindow : Window
     private readonly RowDefinition _historyRow;
     private bool _closing;
     private bool _exitRequested;
+
+    /// <summary>For <see cref="ScreenshotRunner"/>: the window content and its view model.</summary>
+    internal Grid RootElement => _root;
+
+    internal MainViewModel ViewModel => _vm;
+
+    internal void ScrollEditorToStart() => _editor.ScrollToStart();
     private bool _settingsOpen;
     private TrayIcon? _tray;
 
@@ -164,7 +171,7 @@ internal sealed partial class MainWindow : Window
     /// <summary>Notification-area icon exists while "close to tray" is on.</summary>
     public void ApplyTray()
     {
-        if (!_host.Settings.Current.CloseToTray)
+        if (!_host.Settings.Current.CloseToTray || LaunchOptions.Current.IsDemo)
         {
             _tray?.Dispose();
             _tray = null;

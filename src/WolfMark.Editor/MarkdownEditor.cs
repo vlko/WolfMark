@@ -244,6 +244,13 @@ public sealed partial class MarkdownEditor : UserControl
 
     public void FocusEditor() => _box.Focus(FocusState.Programmatic);
 
+    /// <summary>Caret and view to the start of the note (the README screenshots show a note from its title).</summary>
+    public void ScrollToStart()
+    {
+        _box.TextDocument.Selection.SetRange(0, 0);
+        _scrollViewer?.ChangeView(null, 0, null, disableAnimation: true);
+    }
+
     public void ScrollToCaret()
     {
         _box.TextDocument.Selection.ScrollIntoView(PointOptions.None);
