@@ -196,8 +196,18 @@ public sealed partial class IndexDatabase : IAsyncDisposable
     private SqliteConnection OpenConnection()
     {
         var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        connection.Execute("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
+        try
+        {
+            connection.Open();
+            connection.Execute("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
+        }
+        catch
+        {
+            // A corrupt file fails on the first statement; release the handle or Windows cannot delete it.
+            connection.Dispose();
+            throw;
+        }
+
         if (_vectorExtensionPath is not null)
         {
             try
@@ -257,6 +267,7 @@ public sealed partial class IndexDatabase : IAsyncDisposable
     private void RecreateFile()
     {
         _writer?.Dispose();
+        _writer = null;
         while (_readers.TryTake(out var r))
         {
             r.Dispose();
