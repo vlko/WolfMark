@@ -5,7 +5,9 @@
 
 ## Pravidlá
 
-1. **Flat.** Jedna papierová plocha pre celé okno (bez kariet, tieňov a zaoblených plôch). Rohy majú
+1. **Flat.** Jedna nepriehľadná papierová plocha pre celé okno (bez kariet, tieňov a zaoblených plôch;
+   voľba pozadia okna Mica/Acrylic bola odstránená – pod papierom je len interný Mica backdrop nastavený
+   po prvej aktivácii okna, aby pri zmene veľkosti nepreblikávala čierna). Rohy majú
    len okno (OS) a vyhľadávacia paleta. Bunky kalendára sú štvorcové a na seba nadväzujú.
 2. **Tlačidlá a tagy** sú len mierne zaoblené (`Radius.Control` = 3 px, `Radius.Tag` = 4 px); globálne
    `ControlCornerRadius`/`OverlayCornerRadius` sú prepísané v `App`, takže sa tomu prispôsobia aj

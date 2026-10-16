@@ -90,8 +90,6 @@ internal static class R
     public const string Settings_ThemeSystem = nameof(Settings_ThemeSystem);
     public const string Settings_ThemeLight = nameof(Settings_ThemeLight);
     public const string Settings_ThemeDark = nameof(Settings_ThemeDark);
-    public const string Settings_Backdrop = nameof(Settings_Backdrop);
-    public const string Settings_BackdropNone = nameof(Settings_BackdropNone);
     public const string Settings_Language = nameof(Settings_Language);
     public const string Settings_LanguageSystem = nameof(Settings_LanguageSystem);
     public const string Settings_Editor = nameof(Settings_Editor);
@@ -139,4 +137,20 @@ internal static class R
     public const string History_Created = nameof(History_Created);
     public const string Copy_Plain = nameof(Copy_Plain);
     public const string Copy_Html = nameof(Copy_Html);
+    public const string Status_ClaudeOff = nameof(Status_ClaudeOff);
+    public const string Status_ClaudeMissing = nameof(Status_ClaudeMissing);
+    public const string Status_ClaudeWaiting = nameof(Status_ClaudeWaiting);
+    public const string Status_ClaudeSynced = nameof(Status_ClaudeSynced);
+    public const string Status_ClaudeChanges = nameof(Status_ClaudeChanges);
+    public const string Status_ClaudeFailed = nameof(Status_ClaudeFailed);
+    public const string Status_ClaudeSyncNow = nameof(Status_ClaudeSyncNow);
+    public const string Status_NotesFolder = nameof(Status_NotesFolder);
+    public const string Settings_Diagnostics = nameof(Settings_Diagnostics);
+    public const string Settings_TestNotice = nameof(Settings_TestNotice);
+    public const string TestNotice_Title = nameof(TestNotice_Title);
+    public const string TestNotice_Message = nameof(TestNotice_Message);
+    public const string TestNotice_Action = nameof(TestNotice_Action);
+    public const string Settings_WindowRendering = nameof(Settings_WindowRendering);
+    public const string Settings_RenderingMica = nameof(Settings_RenderingMica);
+    public const string Settings_RenderingClass = nameof(Settings_RenderingClass);
 }

@@ -94,7 +94,6 @@ internal static class SettingsDialog
 
         // Appearance
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
-        var backdrop = Combo(["Mica", "Acrylic", Strings.Get(R.Settings_BackdropNone)], (int)s.Backdrop);
         var languages = new[] { (string?)null, "sk-SK", "en-US" };
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Array.IndexOf(languages, s.Language) is var li and >= 0 ? li : 0);
 
@@ -132,6 +131,9 @@ internal static class SettingsDialog
             await host.RebuildIndexAsync();
             rebuild.IsEnabled = true;
         };
+        var testNotice = Ui.Ui.TextButton(Strings.Get(R.Settings_TestNotice), () => vm.IsTestNoticeOpen = true);
+        var rendering = Combo([Strings.Get(R.Settings_RenderingMica), Strings.Get(R.Settings_RenderingClass)], (int)s.WindowRendering);
+
         var paths = Typo.Body($"{host.Paths.IndexDatabase}\n{host.Paths.LogsDirectory}", 11.5, Palette.InkTertiary);
         paths.TextWrapping = TextWrapping.Wrap;
         paths.IsTextSelectionEnabled = true;
@@ -144,7 +146,6 @@ internal static class SettingsDialog
             movePanel,
             Section(Strings.Get(R.Settings_Appearance)),
             Field(Strings.Get(R.Settings_Theme), theme),
-            Field(Strings.Get(R.Settings_Backdrop), backdrop),
             Field(Strings.Get(R.Settings_Language), language),
             Section(Strings.Get(R.Settings_Editor)),
             Field(Strings.Get(R.Settings_FontFamily), font),
@@ -160,7 +161,10 @@ internal static class SettingsDialog
             Section(Strings.Get(R.Settings_Index)),
             semantic,
             rebuild,
-            paths);
+            paths,
+            Section(Strings.Get(R.Settings_Diagnostics)),
+            Field(Strings.Get(R.Settings_WindowRendering), rendering),
+            testNotice);
 
         var dialog = new ContentDialog
         {
@@ -183,10 +187,12 @@ internal static class SettingsDialog
         }
 
         s.Theme = (AppTheme)theme.SelectedIndex;
-        s.Backdrop = (BackdropKind)backdrop.SelectedIndex;
         var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
         restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal);
         s.Language = newLanguage;
+        var newRendering = (WindowRendering)Math.Max(0, rendering.SelectedIndex);
+        restartNeeded |= newRendering != s.WindowRendering;
+        s.WindowRendering = newRendering;
         s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
         s.EditorMaxLineWidth = double.IsNaN(lineWidth.Value) ? s.EditorMaxLineWidth : lineWidth.Value;

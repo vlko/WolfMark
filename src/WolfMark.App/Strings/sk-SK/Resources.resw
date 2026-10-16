@@ -273,12 +273,6 @@
   <data name="Settings_ThemeDark" xml:space="preserve">
     <value>Tmavá</value>
   </data>
-  <data name="Settings_Backdrop" xml:space="preserve">
-    <value>Pozadie okna</value>
-  </data>
-  <data name="Settings_BackdropNone" xml:space="preserve">
-    <value>Žiadne</value>
-  </data>
   <data name="Settings_Language" xml:space="preserve">
     <value>Jazyk</value>
   </data>
@@ -419,5 +413,53 @@
   </data>
   <data name="Copy_Html" xml:space="preserve">
     <value>Kopírovať ako HTML</value>
+  </data>
+  <data name="Status_ClaudeOff" xml:space="preserve">
+    <value>Claude Code: vypnuté</value>
+  </data>
+  <data name="Status_ClaudeMissing" xml:space="preserve">
+    <value>Claude Code: priečinok .claude neexistuje</value>
+  </data>
+  <data name="Status_ClaudeWaiting" xml:space="preserve">
+    <value>Claude Code: čaká na prvú synchronizáciu</value>
+  </data>
+  <data name="Status_ClaudeSynced" xml:space="preserve">
+    <value>Claude Code · {0}</value>
+  </data>
+  <data name="Status_ClaudeChanges" xml:space="preserve">
+    <value>{0} nových, {1} aktualizovaných</value>
+  </data>
+  <data name="Status_ClaudeFailed" xml:space="preserve">
+    <value>Claude Code: synchronizácia zlyhala o {0}</value>
+  </data>
+  <data name="Status_ClaudeSyncNow" xml:space="preserve">
+    <value>Synchronizovať teraz</value>
+  </data>
+  <data name="Status_NotesFolder" xml:space="preserve">
+    <value>Priečinok poznámok</value>
+  </data>
+  <data name="Settings_Diagnostics" xml:space="preserve">
+    <value>Diagnostika</value>
+  </data>
+  <data name="Settings_TestNotice" xml:space="preserve">
+    <value>Zobraziť testovacie upozornenie</value>
+  </data>
+  <data name="TestNotice_Title" xml:space="preserve">
+    <value>Testovacie upozornenie</value>
+  </data>
+  <data name="TestNotice_Message" xml:space="preserve">
+    <value>Upozornenia sa zobrazujú tu, nad stavovou lištou. Zavrieš ho cez ✕.</value>
+  </data>
+  <data name="TestNotice_Action" xml:space="preserve">
+    <value>Akcia</value>
+  </data>
+  <data name="Settings_WindowRendering" xml:space="preserve">
+    <value>Vykresľovanie okna (reštart)</value>
+  </data>
+  <data name="Settings_RenderingMica" xml:space="preserve">
+    <value>Mica pod papierom</value>
+  </data>
+  <data name="Settings_RenderingClass" xml:space="preserve">
+    <value>Bez backdropu + pozadie okna</value>
   </data>
 </root>

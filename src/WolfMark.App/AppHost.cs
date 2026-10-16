@@ -96,6 +96,8 @@ internal sealed partial class AppHost : IAsyncDisposable
 
     public event EventHandler<SyncResult>? ClaudeSynced;
 
+    public event EventHandler<Exception>? ClaudeSyncFailed;
+
     public static Task<AppHost> CreateAsync() => Task.Run(async () =>
     {
         var paths = LocalPaths.Default;
@@ -165,6 +167,7 @@ internal sealed partial class AppHost : IAsyncDisposable
             s.WatchInRealTime,
             Loggers.CreateLogger<ClaudeCodeSyncScheduler>());
         _claudeScheduler.Synced += (_, r) => ClaudeSynced?.Invoke(this, r);
+        _claudeScheduler.Failed += (_, ex) => ClaudeSyncFailed?.Invoke(this, ex);
         _ = Background.Run("claude-sync", _claudeScheduler.RunAsync, ct);
     }
 

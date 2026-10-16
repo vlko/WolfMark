@@ -85,37 +85,12 @@ internal sealed partial class HistoryView : UserControl
         openTasks.StyleButton(Palette.Transparent, Palette.InkSecondary);
         openTasks.Click += async (_, _) => await history.ToggleOpenTasksAsync();
 
-        var conflicts = new Button
-        {
-            Padding = new Thickness(8, 2, 8, 2),
-            CornerRadius = Radius.Control,
-        };
-        var conflictText = Typo.Body(string.Empty, 12, Palette.InkSecondary);
-        conflicts.Content = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Warning, 12), conflictText);
-        conflicts.StyleButton(Palette.Transparent, Palette.InkSecondary);
-        conflicts.Bind(vm, nameof(MainViewModel.ConflictCount), () =>
-        {
-            conflicts.Visibility = vm.ConflictCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-            conflictText.Text = Strings.Format(R.Conflicts_Count, vm.ConflictCount);
-        });
-        conflicts.Click += async (_, _) =>
-        {
-            var list = await vm.Host.History.GetConflictsAsync(vm.Host.ShutdownToken);
-            if (list.Count > 0)
-            {
-                await vm.OpenNoteAsync(list[0].RelativePath);
-            }
-        };
-
-        var status = Typo.Body(string.Empty, 11.5, Palette.InkTertiary);
-        status.Bind(vm, nameof(MainViewModel.StatusText), () => status.Text = vm.StatusText);
 
         // Title + hairline take the free space; the controls are anchored to the right edge.
+        // Index state and conflicts are in the status bar at the bottom.
         var header = Ui.Ui.Columns(
             (Ui.Ui.Star, title),
             (Ui.Ui.Auto, filterChip),
-            (Ui.Ui.Auto, status),
-            (Ui.Ui.Auto, conflicts),
             (Ui.Ui.Auto, openTasks));
         header.ColumnSpacing = 10;
         header.Margin = new Thickness(0, 10, 8, 4);

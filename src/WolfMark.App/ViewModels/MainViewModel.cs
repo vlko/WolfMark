@@ -44,6 +44,11 @@ internal sealed partial class MainViewModel : ObservableObject
         host.Indexer.Changed += (_, e) => UiThread.Post(() => _ = OnIndexChangedAsync(e));
         host.IndexProgressChanged += (_, p) => UiThread.Post(() => OnIndexProgress(p));
         host.ClaudeSynced += (_, r) => UiThread.Post(() => OnClaudeSynced(r));
+        host.ClaudeSyncFailed += (_, _) => UiThread.Post(() =>
+        {
+            ClaudeStatusIsError = true;
+            ClaudeStatus = Strings.Format(R.Status_ClaudeFailed, DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture));
+        });
         var events = host.Hub.Subscribe();
         _ = host.Background.Run("ui-events", async ct =>
         {
@@ -78,6 +83,24 @@ internal sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     public partial int ConflictCount { get; private set; }
+
+    /// <summary>Status bar: indexing in progress (then <see cref="StatusText"/> shows the progress).</summary>
+    [ObservableProperty]
+    public partial bool IsIndexing { get; private set; }
+
+    [ObservableProperty]
+    public partial int NoteCount { get; private set; }
+
+    /// <summary>Status bar: Claude Code import state ("Claude Code · 14:20 · 2 nových, 1 aktualizovaných").</summary>
+    [ObservableProperty]
+    public partial string ClaudeStatus { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool ClaudeStatusIsError { get; private set; }
+
+    /// <summary>Sample notice from Settings → Diagnostics, to try the notice area.</summary>
+    [ObservableProperty]
+    public partial bool IsTestNoticeOpen { get; set; }
 
     [ObservableProperty]
     public partial CleanupStatus? CleanupWarning { get; private set; }
@@ -122,6 +145,7 @@ internal sealed partial class MainViewModel : ObservableObject
         await SyncCalendarMonthAsync(force: true);
         await LoadRailTagsAsync();
         await RefreshConflictsAsync();
+        await RefreshNoteCountAsync();
         await CheckClaudeCleanupAsync();
     }
 
@@ -275,16 +299,31 @@ internal sealed partial class MainViewModel : ObservableObject
             await History.ReloadAsync();
             await LoadRailTagsAsync();
             await RefreshConflictsAsync();
+            await RefreshNoteCountAsync();
         });
     }
 
     private void OnIndexProgress(IndexProgress p)
     {
-        StatusText = p.Phase == "done" || p.Total == 0 ? string.Empty : Strings.Format(R.Indexing_Progress, p.Processed, p.Total);
+        IsIndexing = p.Phase != "done" && p.Total > 0;
+        StatusText = IsIndexing ? Strings.Format(R.Indexing_Progress, p.Processed, p.Total) : string.Empty;
+        if (!IsIndexing)
+        {
+            _ = RefreshNoteCountAsync();
+        }
     }
 
     private void OnClaudeSynced(SyncResult r)
     {
+        var c = System.Globalization.CultureInfo.CurrentCulture;
+        var text = Strings.Format(R.Status_ClaudeSynced, DateTime.Now.ToString("t", c));
+        if (r.NotesCreated + r.NotesUpdated > 0)
+        {
+            text += " · " + Strings.Format(R.Status_ClaudeChanges, r.NotesCreated, r.NotesUpdated);
+        }
+
+        ClaudeStatusIsError = false;
+        ClaudeStatus = text;
         if (r.NotesCreated + r.NotesUpdated > 0)
         {
             LogSynced(r.NotesCreated, r.NotesUpdated);
@@ -335,10 +374,23 @@ internal sealed partial class MainViewModel : ObservableObject
         ConflictCount = (await _host.History.GetConflictsAsync(_host.ShutdownToken)).Count;
     }
 
+    private async Task RefreshNoteCountAsync()
+    {
+        await _host.DatabaseReady;
+        NoteCount = await _host.History.CountAsync(_host.ShutdownToken);
+    }
+
     private async Task CheckClaudeCleanupAsync()
     {
+        var enabled = _host.Settings.Current.ClaudeCode.Enabled;
         var claudeDirectory = _host.ClaudeDirectory;
-        if (!_host.Settings.Current.ClaudeCode.Enabled || !await Task.Run(() => Directory.Exists(claudeDirectory)))
+        var exists = enabled && await Task.Run(() => Directory.Exists(claudeDirectory));
+        if (string.IsNullOrEmpty(ClaudeStatus))
+        {
+            ClaudeStatus = Strings.Get(!enabled ? R.Status_ClaudeOff : !exists ? R.Status_ClaudeMissing : R.Status_ClaudeWaiting);
+        }
+
+        if (!exists)
         {
             return;
         }

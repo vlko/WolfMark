@@ -7,11 +7,14 @@ public enum AppTheme
     Dark,
 }
 
-public enum BackdropKind
+/// <summary>Diagnostics: how the window background is set up (resize flicker investigation).</summary>
+public enum WindowRendering
 {
-    Mica,
-    Acrylic,
-    None,
+    /// <summary>Mica backdrop under the opaque paper, set after the first activation.</summary>
+    MicaAfterActivation,
+
+    /// <summary>No backdrop; the window class background brush is the paper colour.</summary>
+    ClassBackground,
 }
 
 public enum EditorMode
@@ -33,9 +36,6 @@ public sealed class LocalSettings
 
     public AppTheme Theme { get; set; } = AppTheme.System;
 
-    /// <summary>The flat design uses a solid paper colour; Mica/Acrylic are optional.</summary>
-    public BackdropKind Backdrop { get; set; } = BackdropKind.None;
-
     public string EditorFontFamily { get; set; } = "Cascadia Text, Segoe UI Variable Text, Segoe UI";
 
     public double EditorFontSize { get; set; } = 15;
@@ -51,6 +51,9 @@ public sealed class LocalSettings
     public string? Language { get; set; }
 
     public double HistoryPaneHeight { get; set; } = 260;
+
+    /// <summary>Diagnostics: window background mode (takes effect after a restart).</summary>
+    public WindowRendering WindowRendering { get; set; } = WindowRendering.MicaAfterActivation;
 
     /// <summary>Calendar panel shows the full month (true) or only the week band.</summary>
     public bool CalendarExpanded { get; set; }

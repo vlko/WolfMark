@@ -31,13 +31,17 @@ internal sealed partial class NoteHeaderView
         _brushes = brushes;
         _editor = editor;
         Heading = BuildDayHeading();
-        NotePanel = Ui.Ui.VStack(6, BuildToolbar(), BuildInfoBars());
+        NotePanel = BuildToolbar();
+        InfoBars = BuildInfoBars();
     }
 
     public FrameworkElement Heading { get; }
 
-    /// <summary>Tag selection, formatting and the note's info bars.</summary>
+    /// <summary>Tag selection and formatting.</summary>
     public FrameworkElement NotePanel { get; }
+
+    /// <summary>Closable notices (Claude Code import, external change, cleanupPeriodDays …) – shown at the bottom of the window.</summary>
+    public FrameworkElement InfoBars { get; }
 
     // ---------------------------------------------------------------- day heading
 
@@ -451,7 +455,34 @@ internal sealed partial class NoteHeaderView
             cleanup.Message = _vm.CleanupWarning is { } w ? Strings.Format(R.Claude_CleanupMessage, w.Days) : string.Empty;
         });
 
-        return Ui.Ui.VStack(4, claude, external, deleted, conflict, nonStandard, cleanup);
+        var test = Info(Strings.Get(R.TestNotice_Title), Strings.Get(R.TestNotice_Message), InfoBarSeverity.Informational,
+            Strings.Get(R.TestNotice_Action), () => _vm.IsTestNoticeOpen = false);
+        test.Bind(_vm, nameof(MainViewModel.IsTestNoticeOpen), () => test.IsOpen = _vm.IsTestNoticeOpen);
+        test.Closed += (_, _) => _vm.IsTestNoticeOpen = false;
+
+        // The area exists only while a notice is open: closed InfoBars take no space, but spacing and
+        // margins would leave an empty strip. Each open bar gets its own gap instead.
+        var bars = new[] { claude, external, deleted, conflict, nonStandard, cleanup, test };
+        var panel = Ui.Ui.VStack(0, bars);
+        void Update()
+        {
+            var any = false;
+            foreach (var bar in bars)
+            {
+                bar.Margin = bar.IsOpen ? new Thickness(0, 4, 0, 0) : new Thickness(0);
+                any |= bar.IsOpen;
+            }
+
+            panel.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        foreach (var bar in bars)
+        {
+            bar.RegisterPropertyChangedCallback(InfoBar.IsOpenProperty, (_, _) => Update());
+        }
+
+        Update();
+        return panel;
     }
 
     private static InfoBar Info(string title, string message, InfoBarSeverity severity, string? action, Action? onAction)

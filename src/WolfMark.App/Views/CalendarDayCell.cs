@@ -84,15 +84,28 @@ internal sealed partial class CalendarDayCell : ContentControl
         _frame.Visibility = _frameDash.Visibility = state.IsToday ? Visibility.Visible : Visibility.Collapsed;
         _selection.Visibility = state.IsSelected && !state.IsToday ? Visibility.Visible : Visibility.Collapsed;
 
-        Brush ink = day.HasNotes
-            ? new SolidColorBrush(Palette.ForegroundOn(_brushes.ColorOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag)))
-            : Palette.InkTertiary;
+        var hatched = _hatchPast && state.IsPast;
+        Brush ink;
+        if (day.HasNotes)
+        {
+            var color = _brushes.ColorOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag);
+            // On hatched (lightened) past days a dark shade of the tag colour reads well and keeps the
+            // colour identity (reference expected_calendar.png); full fills use black/white.
+            ink = new SolidColorBrush(hatched
+                ? Palette.Blend(Palette.ToColor(color), Microsoft.UI.Colors.Black, Palette.IsDark ? 0.15 : 0.5)
+                : Palette.ForegroundOn(color));
+        }
+        else
+        {
+            ink = hatched ? Palette.InkSecondary : Palette.InkTertiary;
+        }
+
         _number.Foreground = ink;
 
         _dots.Children.Clear();
         for (var i = 0; i < Math.Min(day.NoteCount, 5) && day.NoteCount > 1; i++)
         {
-            _dots.Children.Add(new Rectangle { Width = 4, Height = 4, Fill = ink, Opacity = 0.8 });
+            _dots.Children.Add(new Rectangle { Width = 4, Height = 4, Fill = ink, Opacity = hatched ? 1 : 0.8 });
         }
 
         AutomationProperties.SetName(this, state.AutomationName);

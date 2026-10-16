@@ -257,9 +257,12 @@ internal static class Ui
         var button = new Button
         {
             Content = Typo.Icon(glyph, size),
-            Padding = new Thickness(7),
+            // No vertical padding: 32px − 2×2px glow border leaves 28px, enough for a 16px icon.
+            Padding = new Thickness(6, 0, 6, 0),
             MinWidth = Metrics.ButtonHeight,
             Height = Metrics.ButtonHeight,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
             CornerRadius = Radius.Control,
         };
         button.StyleButton(Palette.Transparent, Palette.InkSecondary);

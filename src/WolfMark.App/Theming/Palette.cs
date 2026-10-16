@@ -102,11 +102,10 @@ internal static class Palette
 
     public static event EventHandler? Changed;
 
-    /// <param name="translucent">True with a Mica/Acrylic backdrop – the paper then lets it shine through.</param>
-    public static void Apply(ElementTheme theme, bool translucent)
+    public static void Apply(ElementTheme theme)
     {
         IsDark = theme == ElementTheme.Dark;
-        byte paperAlpha = translucent ? (byte)0xE0 : (byte)0xFF;
+        const byte paperAlpha = 0xFF; // the paper is always opaque (ADR 0004)
         if (IsDark)
         {
             Set(WindowTint, paperAlpha, 0x1A, 0x1B, 0x1D);
@@ -157,7 +156,7 @@ internal static class Palette
         GlowNeutral.Color = Color.FromArgb(0x66, Accent.Color.R, Accent.Color.G, Accent.Color.B);
         GlowNeutralStrong.Color = Color.FromArgb(0xB0, Accent.Color.R, Accent.Color.G, Accent.Color.B);
 
-        var hatch = IsDark ? Color.FromArgb(0x70, 0x1A, 0x1B, 0x1D) : Color.FromArgb(0x8C, 0xFF, 0xFF, 0xFF);
+        var hatch = IsDark ? Color.FromArgb(0x5C, 0x1A, 0x1B, 0x1D) : Color.FromArgb(0x6E, 0xFF, 0xFF, 0xFF);
         PastHatch.GradientStops[0].Color = hatch;
         PastHatch.GradientStops[1].Color = hatch;
         Dotted.GradientStops[0].Color = InkTertiary.Color;

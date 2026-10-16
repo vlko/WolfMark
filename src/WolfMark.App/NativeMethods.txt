@@ -4,3 +4,8 @@ CreateEvent
 SetEvent
 CoWaitForMultipleObjects
 CWMO_FLAGS
+SetClassLongPtr
+GET_CLASS_LONG_INDEX
+CreateSolidBrush
+DeleteObject
+InvalidateRect

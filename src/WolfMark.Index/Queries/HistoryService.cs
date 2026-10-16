@@ -59,6 +59,15 @@ public sealed class HistoryService(IndexDatabase db)
             },
             ct);
 
+    public Task<int> CountAsync(CancellationToken ct) =>
+        db.ReadAsync(
+            c =>
+            {
+                using var cmd = c.Command("SELECT count(*) FROM notes;");
+                return Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+            },
+            ct);
+
     public Task<NoteSummary?> GetAsync(string relativePath, CancellationToken ct) =>
         QuerySingleAsync($"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.rel_path = $p;", cmd => cmd.With("$p", relativePath), ct);
 

@@ -10,6 +10,9 @@ public sealed partial class ClaudeCodeSyncScheduler(ClaudeCodeSync sync, TimeSpa
 
     public event EventHandler<SyncResult>? Synced;
 
+    /// <summary>Raised (on a background thread) when a sync run failed.</summary>
+    public event EventHandler<Exception>? Failed;
+
     public async Task RunAsync(CancellationToken ct)
     {
         if (watch && Directory.Exists(sync.ProjectsDirectory))
@@ -34,6 +37,7 @@ public sealed partial class ClaudeCodeSyncScheduler(ClaudeCodeSync sync, TimeSpa
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 LogFailed(ex);
+                Failed?.Invoke(this, ex);
             }
 
             await _trigger.WaitAsync(interval, ct).ConfigureAwait(false);

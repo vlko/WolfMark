@@ -54,7 +54,7 @@ internal sealed partial class MainWindow : Window
         }
 
         // Palette first, so every view is built with the right colours.
-        Palette.Apply(InitialTheme(), translucent: _host.Settings.Current.Backdrop != BackdropKind.None);
+        Palette.Apply(InitialTheme());
 
         _titleBar = BuildTitleBar();
         _calendar = new CalendarPanel(vm, brushes);
@@ -116,10 +116,15 @@ internal sealed partial class MainWindow : Window
 
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(48) });
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // closable notices
+        _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // status bar
         _root.Background = Palette.WindowTint;
         Add(_root, _titleBar, 0);
         Add(_root, content, 1);
-        Grid.SetRowSpan(_search, 2);
+        header.InfoBars.Margin = new Thickness(24, 0, 24, 6);
+        Add(_root, header.InfoBars, 2);
+        Add(_root, new StatusBar(vm), 3);
+        Grid.SetRowSpan(_search, 4);
         _root.Children.Add(_search);
         Content = _root;
         SetTitleBar(_titleBar);
@@ -132,7 +137,7 @@ internal sealed partial class MainWindow : Window
         RestorePlacement();
     }
 
-    /// <summary>Theme, backdrop and editor settings (also re-applied after the settings dialog).</summary>
+    /// <summary>Theme and editor settings (also re-applied after the settings dialog).</summary>
     public void ApplyAppearance()
     {
         var s = _host.Settings.Current;
@@ -141,12 +146,6 @@ internal sealed partial class MainWindow : Window
             AppTheme.Light => ElementTheme.Light,
             AppTheme.Dark => ElementTheme.Dark,
             _ => ElementTheme.Default,
-        };
-        SystemBackdrop = s.Backdrop switch
-        {
-            BackdropKind.Mica => new MicaBackdrop(),
-            BackdropKind.Acrylic => new DesktopAcrylicBackdrop(),
-            _ => null,
         };
         OnThemeChanged();
     }
@@ -201,15 +200,13 @@ internal sealed partial class MainWindow : Window
         searchBox.Click += (_, _) => _vm.OpenSearch();
 
         var settings = Ui.Ui.IconButton(Glyphs.Settings, Strings.Get(R.Toolbar_Settings), () => _ = OpenSettingsAsync());
-        var status = Typo.Body(string.Empty, 11.5, Palette.InkTertiary);
-        status.Bind(_vm, nameof(MainViewModel.StatusText), () => status.Text = _vm.StatusText);
 
         _titleBarInteractive.Add(searchBox);
         _titleBarInteractive.Add(settings);
 
         var grid = Ui.Ui.Columns(
             (Ui.Ui.Px(20), null),
-            (Ui.Ui.Auto, Ui.Ui.HStack(10, Typo.Icon(Glyphs.Edit, 14, Palette.Accent), appName, status)),
+            (Ui.Ui.Auto, Ui.Ui.HStack(10, Typo.Icon(Glyphs.Edit, 14, Palette.Accent), appName)),
             (Ui.Ui.Star, searchBox),
             (Ui.Ui.Auto, settings),
             (Ui.Ui.Px(150), null)); // caption buttons
@@ -258,7 +255,7 @@ internal sealed partial class MainWindow : Window
     private void OnThemeChanged()
     {
         var theme = _root.ActualTheme;
-        Palette.Apply(theme, translucent: _host.Settings.Current.Backdrop != BackdropKind.None);
+        Palette.Apply(theme);
         UpdateEditorTheme();
         _brushes.Refresh(); // views that compute colours re-render
 
@@ -269,6 +266,11 @@ internal sealed partial class MainWindow : Window
         tb.ButtonHoverBackgroundColor = Palette.SubtleFill.Color;
         tb.ButtonHoverForegroundColor = Palette.Ink.Color;
         tb.ButtonInactiveForegroundColor = Palette.InkTertiary.Color;
+
+        if (_host.Settings.Current.WindowRendering == WindowRendering.ClassBackground)
+        {
+            WindowBackground.SetClassBackground(Win32Interop.GetWindowFromWindowId(AppWindow.Id), Palette.WindowTint.Color);
+        }
     }
 
     private void UpdateEditorTheme()
@@ -441,6 +443,13 @@ internal sealed partial class MainWindow : Window
             if (e.WindowActivationState == WindowActivationState.Deactivated)
             {
                 _ = _vm.Editor.FlushAsync();
+            }
+            else if (SystemBackdrop is null && _host.Settings.Current.WindowRendering == WindowRendering.MicaAfterActivation)
+            {
+                // Not a visible feature – the paper is opaque. Without a system backdrop, areas exposed
+                // while resizing flash black. Set only once the window is shown: assigned in the
+                // constructor (before activation) the resize flicker stayed.
+                SystemBackdrop = new MicaBackdrop();
             }
         };
 
