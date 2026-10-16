@@ -48,8 +48,8 @@ jobs:
         if: matrix.rid == 'win-x64'
         run: dotnet test --solution WolfMark.CrossPlatform.slnf -c Release
       - name: AOT publish
-        # Platform must match the RID: without it the Windows App SDK generates WolfMark.pri into a
-        # different output folder than the one publish copies it from (MSB3030 "WolfMark.pri not found").
+        # Relies on the Build step above: the Windows App SDK writes WolfMark.pri only in a regular
+        # build (with the same Platform), not in the build dotnet publish runs itself (MSB3030).
         run: dotnet publish src/WolfMark.App -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }} -o publish/${{ matrix.rid }}
       - uses: actions/upload-artifact@v4
         with:

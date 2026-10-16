@@ -41,8 +41,16 @@ jobs:
           "full=$full" >> $env:GITHUB_OUTPUT
           "numeric=$numeric" >> $env:GITHUB_OUTPUT
 
+      - name: Build
+        # The Windows App SDK writes WolfMark.pri only in a regular build, not in the build that
+        # dotnet publish runs itself – publishing alone fails with MSB3030 "WolfMark.pri not found".
+        run: >
+          dotnet build src/WolfMark.App -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }}
+          -p:Version=${{ steps.version.outputs.full }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric }}.0
+          -p:FileVersion=${{ steps.version.outputs.numeric }}.0
+
       - name: AOT publish
-        # Platform must match the RID (see ci.yml – otherwise WolfMark.pri is not found).
         run: >
           dotnet publish src/WolfMark.App -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }}
           -p:Version=${{ steps.version.outputs.full }}
