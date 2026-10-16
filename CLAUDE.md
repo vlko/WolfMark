@@ -26,8 +26,8 @@
 ```powershell
 dotnet build WolfMark.sln -p:Platform=x64
 dotnet test --solution WolfMark.CrossPlatform.slnf          # všetky testy (bez WinUI projektov)
-dotnet publish src/WolfMark.App -c Release -r win-x64      # AOT build
-dotnet publish src/WolfMark.App -c Release -r win-arm64
+dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64      # AOT build
+dotnet publish src/WolfMark.App -c Release -r win-arm64 -p:Platform=ARM64
 python3 tools/gen-strings.py src/WolfMark.App/Strings      # po zmene UI textov (sk/en .resw + R.cs)
 ```
 Na Linuxe/WSL: testy cez `WolfMark.CrossPlatform.slnf`; `dotnet build WolfMark.sln -p:Platform=x64`

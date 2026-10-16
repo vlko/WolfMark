@@ -29,20 +29,28 @@ jobs:
     name: Windows build, tests, AOT publish
     runs-on: windows-latest
     strategy:
+      # Report both architectures – one failing must not cancel the other.
+      fail-fast: false
       matrix:
-        rid: [win-x64, win-arm64]
+        include:
+          - rid: win-x64
+            platform: x64
+          - rid: win-arm64
+            platform: ARM64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
       - name: Build
-        run: dotnet build WolfMark.sln -c Release -p:Platform=${{ matrix.rid == 'win-x64' && 'x64' || 'ARM64' }}
+        run: dotnet build WolfMark.sln -c Release -p:Platform=${{ matrix.platform }}
       - name: Test
         if: matrix.rid == 'win-x64'
         run: dotnet test --solution WolfMark.CrossPlatform.slnf -c Release
       - name: AOT publish
-        run: dotnet publish src/WolfMark.App -c Release -r ${{ matrix.rid }} -o publish/${{ matrix.rid }}
+        # Platform must match the RID: without it the Windows App SDK generates WolfMark.pri into a
+        # different output folder than the one publish copies it from (MSB3030 "WolfMark.pri not found").
+        run: dotnet publish src/WolfMark.App -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }} -o publish/${{ matrix.rid }}
       - uses: actions/upload-artifact@v4
         with:
           name: WolfMark-${{ matrix.rid }}

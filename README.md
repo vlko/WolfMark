@@ -170,7 +170,7 @@ Requirements: Windows 11 22H2 or later (build 22621), Visual Studio 2026 or the 
 dotnet build WolfMark.sln -p:Platform=x64
 dotnet test --solution WolfMark.CrossPlatform.slnf
 dotnet run --project src/WolfMark.App -p:Platform=x64
-dotnet publish src/WolfMark.App -c Release -r win-x64      # Native AOT, self-contained (also win-arm64)
+dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64   # Native AOT, self-contained (arm64: -r win-arm64 -p:Platform=ARM64)
 ```
 
 The domain libraries and all tests also build and run on Linux/WSL
