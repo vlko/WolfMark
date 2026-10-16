@@ -31,12 +31,19 @@ public sealed partial class LocalSettingsStore(LocalPaths paths, ILogger<LocalSe
         return Current;
     }
 
-    public async Task SaveAsync(CancellationToken cancellationToken)
+    public Task SaveAsync(CancellationToken cancellationToken) => SaveSnapshotAsync(CreateSnapshot(), cancellationToken);
+
+    /// <summary>
+    /// Serialises <see cref="Current"/> on the calling thread. The UI owns the settings object, so it takes the
+    /// snapshot itself and only the file write moves to a background thread (no data race).
+    /// </summary>
+    public string CreateSnapshot() => JsonSerializer.Serialize(Current, ZapisnikJsonContext.Default.LocalSettings);
+
+    public async Task SaveSnapshotAsync(string json, CancellationToken cancellationToken)
     {
         await _saveLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var json = JsonSerializer.Serialize(Current, ZapisnikJsonContext.Default.LocalSettings);
             await AtomicFile.WriteAllTextAsync(paths.SettingsFile, json, cancellationToken).ConfigureAwait(false);
         }
         finally

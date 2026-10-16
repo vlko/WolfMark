@@ -275,7 +275,7 @@ internal sealed partial class MainViewModel : ObservableObject
     {
         if (e is TagsChanged)
         {
-            await _host.Tags.LoadAsync(_host.ShutdownToken);
+            await Task.Run(() => _host.Tags.LoadAsync(_host.ShutdownToken));
             return;
         }
 
@@ -304,12 +304,13 @@ internal sealed partial class MainViewModel : ObservableObject
 
     private async Task CheckClaudeCleanupAsync()
     {
-        if (!_host.Settings.Current.ClaudeCode.Enabled || !Directory.Exists(_host.ClaudeDirectory))
+        var claudeDirectory = _host.ClaudeDirectory;
+        if (!_host.Settings.Current.ClaudeCode.Enabled || !await Task.Run(() => Directory.Exists(claudeDirectory)))
         {
             return;
         }
 
-        var status = await Task.Run(() => CleanupPeriodCheck.CheckAsync(Path.Combine(_host.ClaudeDirectory, "settings.json"), CancellationToken.None));
+        var status = await Task.Run(() => CleanupPeriodCheck.CheckAsync(Path.Combine(claudeDirectory, "settings.json"), CancellationToken.None));
         CleanupWarning = status.IsRisky ? status : null;
     }
 

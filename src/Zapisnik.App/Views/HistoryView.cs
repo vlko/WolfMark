@@ -139,7 +139,7 @@ internal sealed partial class HistoryView : UserControl
         open.Click += (_, _) =>
         {
             var full = host.Engine.GetFullPath(note.RelativePath);
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{full}\"") { UseShellExecute = false });
+            _ = Task.Run(() => Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{full}\"") { UseShellExecute = false }));
         };
 
         var copy = new MenuFlyoutItem { Text = Strings.Get(R.Menu_CopyLink), Icon = new FontIcon { Glyph = Glyphs.Link } };

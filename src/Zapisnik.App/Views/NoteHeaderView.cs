@@ -311,7 +311,12 @@ internal sealed partial class NoteHeaderView : UserControl
 
             panel.Children.Add(swatches);
             var labels = new CheckBox { Content = Strings.Get(R.Tag_ShowLabels), IsChecked = host.Tags.ShowsInCalendarLabels(current) };
-            labels.Click += async (_, _) => await Task.Run(() => host.Tags.SetShowInCalendarLabelsAsync(current, labels.IsChecked == true, CancellationToken.None));
+            labels.Click += async (_, _) =>
+            {
+                // Read UI state on the UI thread; only the file write goes to the pool.
+                var show = labels.IsChecked == true;
+                await Task.Run(() => host.Tags.SetShowInCalendarLabelsAsync(current, show, CancellationToken.None));
+            };
             panel.Children.Add(labels);
         }
 

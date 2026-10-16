@@ -181,7 +181,12 @@ internal sealed partial class AppHost : IAsyncDisposable
         await Db.ResetAsync(ShutdownToken).ConfigureAwait(false);
     });
 
-    public Task SaveSettingsAsync() => Task.Run(() => Settings.SaveAsync(CancellationToken.None));
+    /// <summary>Call on the UI thread (which owns the settings object); only the write runs in the background.</summary>
+    public Task SaveSettingsAsync()
+    {
+        var json = Settings.CreateSnapshot();
+        return Task.Run(() => Settings.SaveSnapshotAsync(json, CancellationToken.None));
+    }
 
     public async ValueTask DisposeAsync()
     {
