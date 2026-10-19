@@ -11,7 +11,7 @@
     <AssemblyName>WolfMark.Desktop</AssemblyName>
     <PublishAot>true</PublishAot>
     <Product>WolfMark</Product>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
