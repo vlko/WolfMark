@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using WolfMark.Core.Diagnostics;
 using WolfMark.Core.Markdown;
 
 namespace WolfMark.Editor;
@@ -207,6 +208,20 @@ public sealed partial class MarkdownEditor
 
     private void UpdateOverlay()
     {
+        var traceStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var rects = _rectQueries;
+        try
+        {
+            UpdateOverlayCore();
+        }
+        finally
+        {
+            TraceLayout(EditorPhase.CaretOverlay, traceStart, rects);
+        }
+    }
+
+    private void UpdateOverlayCore()
+    {
         _overlay.Children.Clear();
         if (_mode != MarkdownEditorMode.Formatted || CaretLine(out _) is not { } info)
         {
@@ -269,6 +284,7 @@ public sealed partial class MarkdownEditor
         var range = before
             ? _box.TextDocument.GetRange(offset, Math.Min(offset + 1, _text.Length))
             : _box.TextDocument.GetRange(Math.Max(0, offset - 1), offset);
+        _rectQueries++;
         range.GetRect(PointOptions.ClientCoordinates, out var rect, out _);
         if (rect.Width <= 0 && rect.Height <= 0)
         {
@@ -316,6 +332,7 @@ public sealed partial class MarkdownEditor
             return 0;
         }
 
+        _rectQueries++;
         _box.TextDocument.GetRange(0, 0).GetRect(PointOptions.ClientCoordinates, out var first, out _);
         return first.Top > -sv.VerticalOffset / 2 ? -sv.VerticalOffset : 0;
     }

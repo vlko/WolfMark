@@ -52,6 +52,10 @@ public sealed partial class App : Application, IXamlMetadataProvider
         {
             var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory);
             _logger = host.Loggers.CreateLogger<App>();
+            if (LaunchOptions.Current.TraceEditor)
+            {
+                StartEditorTrace(host.Paths.LogsDirectory);
+            }
             if (host.Settings.Current.Language is { } language)
             {
                 Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
@@ -85,6 +89,33 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 Exit();
             }
         }
+    }
+
+    /// <summary>
+    /// <c>--trace-editor</c>: the editor records its timings; every 5 s the cumulative table is written to
+    /// <c>logs/editor-trace.txt</c> on a background thread.
+    /// </summary>
+    private static void StartEditorTrace(string logsDirectory)
+    {
+        var trace = new WolfMark.Core.Diagnostics.EditorTrace();
+        WolfMark.Core.Diagnostics.EditorTrace.Current = trace;
+        var file = Path.Combine(logsDirectory, "editor-trace.txt");
+        _ = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            while (await timer.WaitForNextTickAsync())
+            {
+                try
+                {
+                    Directory.CreateDirectory(logsDirectory);
+                    await File.WriteAllTextAsync(file, trace.Report());
+                }
+                catch (IOException)
+                {
+                    // next tick
+                }
+            }
+        });
     }
 
     internal void OnRedirectedActivation(AppActivationArguments e) => UiThread.Post(() => _window?.BringToFront());

@@ -371,6 +371,20 @@ public sealed partial class MarkdownEditor
     /// <summary>Measures the image lines and places their previews in document coordinates.</summary>
     private void LayoutImages()
     {
+        var traceStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var rects = _rectQueries;
+        try
+        {
+            LayoutImagesCore();
+        }
+        finally
+        {
+            TraceLayout(WolfMark.Core.Diagnostics.EditorPhase.ImageLayout, traceStart, rects);
+        }
+    }
+
+    private void LayoutImagesCore()
+    {
         _imageBoxes.Clear();
         if (_imageLines.Count == 0 || _mode != MarkdownEditorMode.Formatted || _scrollViewer is not { } sv)
         {
@@ -400,6 +414,7 @@ public sealed partial class MarkdownEditor
             {
                 // Collapsed line: the picture starts on its tiny row and covers the 1pt markup – RichEdit ignores
                 // the transparent colour, so the markup would show as a thin line of glyphs above the picture.
+                _rectQueries++;
                 doc.GetRange(start, start + 1).GetRect(PointOptions.ClientCoordinates, out var firstRect, out _);
                 top = firstRect.Top;
                 left = firstRect.Left;
@@ -409,6 +424,7 @@ public sealed partial class MarkdownEditor
                 // After other text the picture goes below the line, measured on the paragraph mark (the line's
                 // markup is hidden and hidden text has no usable position). The mark's rectangle may include the
                 // reserved SpaceAfter, so the line bottom is capped at one text row.
+                _rectQueries++;
                 doc.GetRange(end, end + 1).GetRect(PointOptions.ClientCoordinates, out var markRect, out _);
                 top = markRect.Top + Math.Min(markRect.Height, TextRowHeight) + PreviewGap;
                 left = 0;

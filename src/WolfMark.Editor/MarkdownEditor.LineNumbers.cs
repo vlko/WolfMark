@@ -98,6 +98,20 @@ public sealed partial class MarkdownEditor
 
     private void LayoutLineNumbers()
     {
+        var traceStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        var rects = _rectQueries;
+        try
+        {
+            LayoutLineNumbersCore();
+        }
+        finally
+        {
+            TraceLayout(WolfMark.Core.Diagnostics.EditorPhase.LineNumbers, traceStart, rects);
+        }
+    }
+
+    private void LayoutLineNumbersCore()
+    {
         if (!_showLineNumbers || _scrollViewer is not { } sv || sv.ViewportHeight <= 0)
         {
             ClearLineNumbers();
@@ -273,11 +287,13 @@ public sealed partial class MarkdownEditor
         if (IsCollapsedImageLine(lineText))
         {
             // The picture starts on the line's tiny row: the number reads like the first text row beside it.
+            _rectQueries++;
             doc.GetRange(start, start + 1).GetRect(PointOptions.ClientCoordinates, out var image, out _);
             return (image.Top, image.Top + TextRowHeight * 0.78);
         }
 
         var at = start + FirstVisible(line, lineText);
+        _rectQueries++;
         doc.GetRange(at, at + 1).GetRect(PointOptions.ClientCoordinates, out var rect, out _);
         // The character's cell: its descent is about a fifth of the height. A paragraph mark's rectangle may
         // include an image's reserved SpaceAfter, so it is capped at one text row.
@@ -300,6 +316,7 @@ public sealed partial class MarkdownEditor
         }
 
         var doc = _box.TextDocument;
+        _rectQueries++;
         doc.GetRange(end, end + 1).GetRect(PointOptions.ClientCoordinates, out var mark, out _);
         if (mark.Top <= firstTop + TextRowHeight / 2)
         {
@@ -316,6 +333,7 @@ public sealed partial class MarkdownEditor
             }
 
             var at = start + FirstVisible(line, lineText, range.StartPosition - start);
+            _rectQueries++;
             doc.GetRange(at, at + 1).GetRect(PointOptions.ClientCoordinates, out var rect, out _);
             if (rect.Top <= lastTop + 1)
             {

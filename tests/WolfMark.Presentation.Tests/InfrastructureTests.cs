@@ -29,6 +29,16 @@ public sealed class LaunchOptionsTests
         var options = LaunchOptions.Parse(["WolfMark"]);
 
         Assert.False(options.IsDemo);
+        Assert.False(options.TraceEditor);
+    }
+
+    [Fact]
+    public void Editor_trace_is_a_flag_anywhere_on_the_line()
+    {
+        Assert.True(LaunchOptions.Parse(["WolfMark", "--trace-editor"]).TraceEditor);
+        var both = LaunchOptions.Parse(["WolfMark", "--trace-editor", "--demo", "demo"]);
+        Assert.True(both.TraceEditor);
+        Assert.Equal(Path.GetFullPath("demo"), both.DemoDirectory);
     }
 }
 

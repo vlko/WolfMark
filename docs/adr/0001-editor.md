@@ -38,8 +38,20 @@ SPEC §4.4 požaduje dva režimy (raw / formátovaný) nad jedným textovým mod
 - **Otvorenie poznámky je jeden `SetText` s RTF** (`RtfDocument`): celý naformátovaný text naraz namiesto
   tisícov volaní formátu po rozsahoch. Rovnaké pravidlá tokenov (`StyleTokens`) píšu buď do rozsahu RichEditu,
   alebo do RTF; veľkosti sa zaokrúhľujú na pol bodu (RTF `\fs`) v oboch cestách. Text sa po načítaní porovná
-  s modelom – pri rozdiele sa vráti plain text a formátuje sa po dávkach. Kontrola pravopisu sa zapína až
-  s týmto finálnym textom: výmena textu počas behu kontroly padala vo WinUIEdit.dll.
+  s modelom – pri rozdiele sa vráti plain text a formátuje sa po dávkach. Kontrola pravopisu sa zapína nad
+  prázdnym dokumentom tesne pred jediným `SetText` s RTF (kontrola vidí len finálny text, dlhá poznámka sa
+  nastavuje raz); text sa vymieňa znova len pri rozdiele, a to s vypnutou kontrolou – výmena textu počas
+  behu kontroly padala vo WinUIEdit.dll.
+- **Prepnutie režimu a témy** ide rovnakou cestou ako otvorenie (jeden `SetText` s RTF). Formát po rozsahoch
+  v dávkach po 150 riadkoch trval na 5 000-riadkovej poznámke 8–15 s na dávku.
+- **Farbenie riadku po úprave**: formát každého znaku sa vypočíta ako pre RTF a na RichEdit sa nastaví raz
+  na úsek rovnakých znakov (klon `ITextCharacterFormat` → `range.CharacterFormat`), nie vlastnosť po
+  vlastnosti – každé nastavenie vlastnosti je zmena dokumentu (~136 ms na jeden riadok v dlhej poznámke).
+- **`TextChanged` len pri zmene obsahu**: RichEdit ho vyvoláva aj pre vlastné zmeny formátu (~20× na dávku
+  farbenia); celý text sa číta len keď `TextChanging` hlási `IsContentChanging` alebo sa zmenila dĺžka
+  dokumentu (poistka).
+- **Meranie** (`--trace-editor`, `EditorTrace` v Core): časy fáz editora a pomalé volania (≥ 50 ms) s kontextom
+  do `logs/editor-trace.txt`; testovacia poznámka `tools/gen-big-note.py`.
 
 ## Merania
 
@@ -47,7 +59,13 @@ SPEC §4.4 požaduje dva režimy (raw / formátovaný) nad jedným textovým mod
 |---|---|---|
 | Úprava 1 riadku v 5 000-riadkovom dokumente (split + diff + retokenizácia) | < 50 ms limit v teste, typicky jednotky ms | Linux, .NET 11 RC2, Debug (`MarkdownDocumentModelTests.Tokenizing_is_fast`) |
 | Retokenizované riadky pri úprave 1 riadku | presne 1 | unit test |
-| Latencia písania v RichEditBox, 5 000 riadkov | **nezmerané** – vyžaduje Windows | TODO |
+| Písanie, 5 000 riadkov, kláves → snímka (pred opravou `TextChanged`) | p50 17,8 ms, p95 85 ms, p99 158 ms | Windows, v0.2.2 AOT |
+| Čítanie celého textu na `TextChanged` (pred opravou) | 2 742 volaní na 110 skutočných zmien, Ø 1,2 ms, max 10 ms | dtto |
+| Otvorenie 5 000-riadkovej poznámky (`LoadFormatted`, pred opravou: 2× `SetText`) | 1 376 ms | dtto |
+| Dávka farbenia | p50 5,7 ms, max 9,5 s (pravdepodobne celé prefarbenie / prvý layout) | dtto |
+| Prepnutie do raw, 5 000 riadkov (pred opravou: dávky po 150 riadkoch) | 8–15 s na dávku (minúty spolu) | dtto |
+| Farbenie 1 riadku pri písaní (pred opravou: vlastnosť po vlastnosti) | ~136 ms → kláves → snímka ~145 ms | dtto |
+| Čísla riadkov / čipy značiek | 2,9 ms (~31 `GetRect`) / 0,26 ms | dtto |
 
 ## Dôsledky / riziká
 

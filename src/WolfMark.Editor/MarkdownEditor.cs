@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading.Channels;
 using Microsoft.UI.Dispatching;
 using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
@@ -10,6 +11,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Streams;
 using VirtualKey = Windows.System.VirtualKey;
 using Windows.UI.Core;
+using WolfMark.Core.Diagnostics;
 using WolfMark.Core.Markdown;
 
 namespace WolfMark.Editor;
@@ -46,6 +48,9 @@ public sealed partial class MarkdownEditor : UserControl
     private int _applying;
     private bool _readOnly;
     private bool _spellCheck = true;
+    private bool _contentChanging; // TextChanging reported a content (not formatting-only) change
+    private int _storyLength = -1; // RichEdit's length at the last text read
+    private bool _selectionPending; // a caret move arrived before its text change (see OnSelectionChanged)
 
     public MarkdownEditor()
     {
@@ -80,6 +85,7 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _box.TextDocument.UndoLimit = 0;
+        _box.TextChanging += (_, e) => _contentChanging |= e.IsContentChanging;
         _box.TextChanged += (_, _) => OnBoxTextChanged();
         _box.SelectionChanged += (_, _) => OnSelectionChanged();
         _box.Paste += OnPaste;
@@ -177,7 +183,9 @@ public sealed partial class MarkdownEditor : UserControl
             }
 
             _mode = value;
-            RequestHighlight(full: true);
+            // The whole note restyles: one RTF set like opening it. Per-range formats in batches of 150 lines
+            // took seconds on long notes (RichEdit re-lays out after every batch).
+            RequestHighlight(full: true, load: true);
             ModeChanged?.Invoke(this, value);
             UpdateOverlay();
         }
@@ -193,7 +201,7 @@ public sealed partial class MarkdownEditor : UserControl
             _box.FontSize = value.FontSize;
             _box.Foreground = new SolidColorBrush(value.Text);
             UpdatePadding(); // the line-number gutter follows the font size
-            RequestHighlight(full: true);
+            RequestHighlight(full: true, load: true); // see Mode
         }
     }
 
@@ -224,6 +232,7 @@ public sealed partial class MarkdownEditor : UserControl
             ResetAllFormatting(); // while editable: RichEdit refuses format changes on a read-only document
             _box.TextDocument.SetText(TextSetOptions.None, text);
             _text = ReadBoxText();
+            _storyLength = StoryLength();
             _lineTokens.Clear();
             var caret = caretToEnd ? _text.Length : 0;
             _activeLine = LineOf(_text, caret);
@@ -386,6 +395,7 @@ public sealed partial class MarkdownEditor : UserControl
 
     private void OnPreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        TraceKeyDown();
         var ctrl = IsDown(VirtualKey.Control);
         var shift = IsDown(VirtualKey.Shift);
         var alt = IsDown(VirtualKey.Menu);
@@ -572,21 +582,53 @@ public sealed partial class MarkdownEditor : UserControl
 
     private void OnBoxTextChanged()
     {
+        OnBoxTextChangedCore();
+        if (_selectionPending && Volatile.Read(ref _applying) == 0)
+        {
+            _selectionPending = false;
+            OnSelectionChanged();
+        }
+    }
+
+    private void OnBoxTextChangedCore()
+    {
         if (Volatile.Read(ref _applying) > 0)
         {
             return;
         }
 
-        var newText = ReadBoxText();
+        // RichEdit raises TextChanged for its own formatting changes too (~20 per style batch); copying out the
+        // whole note for each blocked typing in long notes. The length check guards a content change that did
+        // not come through TextChanging.
+        var content = _contentChanging;
+        _contentChanging = false;
+        var length = StoryLength();
+        if (!content && length == _storyLength)
+        {
+            return; // formatting-only change
+        }
+
+        _storyLength = length;
+        using var traced = EditorTrace.Current?.Measure(EditorPhase.TextChanged, () => $"content {content}, {_text.Length} chars");
+        string newText;
+        using (EditorTrace.Current?.Measure(EditorPhase.ReadText))
+        {
+            newText = ReadBoxText();
+        }
+
         if (string.Equals(newText, _text, StringComparison.Ordinal))
         {
             return; // formatting-only change
         }
 
+        TraceArmFrame();
         var old = _text;
         _text = newText;
         var (caret, _) = GetSelection();
-        _undo.Record(old, newText, Math.Min(caret, old.Length), caret);
+        using (EditorTrace.Current?.Measure(EditorPhase.UndoRecord))
+        {
+            _undo.Record(old, newText, Math.Min(caret, old.Length), caret);
+        }
         if (_mode == MarkdownEditorMode.Formatted && MarkdownImageBlock.KeepOnOwnLine(old, newText, IsCollapsedImageLine) is { } ownLine)
         {
             ApplyEdit(ownLine, recordUndo: true); // typed beside an image: the text gets a line of its own
@@ -595,13 +637,18 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _activeLine = LineOf(_text, caret);
+        PlainAtLineStart(caret);
         RequestHighlight(full: false);
-        TextEdited?.Invoke(this, newText);
+        using (EditorTrace.Current?.Measure(EditorPhase.TextEditedHandler))
+        {
+            TextEdited?.Invoke(this, newText);
+        }
     }
 
     private void ApplyEdit(TextEdit edit, bool recordUndo)
     {
         var old = _text;
+        var offset = _scrollViewer?.VerticalOffset;
         Interlocked.Increment(ref _applying);
         try
         {
@@ -615,6 +662,7 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _text = ReadBoxText();
+        _storyLength = StoryLength();
         if (recordUndo)
         {
             _undo.Record(old, _text, edit.Start, edit.SelectionStart);
@@ -622,9 +670,68 @@ public sealed partial class MarkdownEditor : UserControl
 
         _activeLine = LineOf(_text, edit.SelectionStart);
         RequestHighlight(full: false);
-        _box.TextDocument.Selection.ScrollIntoView(PointOptions.None);
+        KeepView(offset);
         TextEdited?.Invoke(this, _text);
     }
+
+    /// <summary>
+    /// Enter at the end of a heading gives the new line break the heading's format, and text typed at the start
+    /// of the next line would take it until the restyle catches up. The insertion format of a caret at a line
+    /// start is reset to the base format (the lexer formats the line properly right after).
+    /// </summary>
+    private void PlainAtLineStart(int caret)
+    {
+        if (caret == 0 || _text[caret - 1] != '\n' || GetSelection().Length > 0)
+        {
+            return;
+        }
+
+        Interlocked.Increment(ref _applying);
+        try
+        {
+            var selection = _box.TextDocument.Selection;
+            var f = selection.CharacterFormat.GetClone();
+            ResetFormat(f);
+            selection.CharacterFormat = f;
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _applying);
+        }
+    }
+
+    /// <summary>
+    /// After an edit (toolbar format, list continuation…): the view stays at <paramref name="offset"/> and scrolls
+    /// only when the caret is outside it. <c>ScrollIntoView</c> alone moved long notes to their last line. Checked
+    /// after RichEdit's layout of the edit.
+    /// </summary>
+    private void KeepView(double? offset)
+    {
+        if (offset is not { } y || _scrollViewer is not { } sv)
+        {
+            _box.TextDocument.Selection.ScrollIntoView(PointOptions.None);
+            return;
+        }
+
+        sv.ChangeView(null, y, null, disableAnimation: true);
+        _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            var selection = _box.TextDocument.Selection;
+            _rectQueries++;
+            selection.GetRect(PointOptions.ClientCoordinates, out var rect, out _);
+            var top = ScrollShift() + rect.Top + sv.VerticalOffset; // in document coordinates
+            if (top >= y && top + rect.Height <= y + sv.ViewportHeight)
+            {
+                sv.ChangeView(null, y, null, disableAnimation: true);
+            }
+            else
+            {
+                selection.ScrollIntoView(PointOptions.None);
+            }
+        });
+    }
+
+    private int StoryLength() => _box.TextDocument.GetRange(0, int.MaxValue).EndPosition;
 
     private string ReadBoxText()
     {
@@ -642,6 +749,16 @@ public sealed partial class MarkdownEditor : UserControl
 
     private void OnSelectionChanged()
     {
+        // Typing moves the caret before TextChanged delivers the text: measured against the old text the caret
+        // at a line end counts as the next line, and the line number highlight flickered. OnBoxTextChanged
+        // comes next and runs this again.
+        if (Volatile.Read(ref _applying) == 0 && StoryLength() != _storyLength)
+        {
+            _selectionPending = true;
+            return;
+        }
+
+        using var traced = EditorTrace.Current?.Measure(EditorPhase.SelectionChanged);
         if (SnapCaretOutOfImage())
         {
             return; // the caret lands before or after the image; that change comes back here
@@ -741,7 +858,7 @@ public sealed partial class MarkdownEditor : UserControl
 
     // ------------------------------------------------------------------ highlighting
 
-    /// <param name="load">The document was just replaced: the whole note is formatted in one go (RTF).</param>
+    /// <param name="load">The whole note is (re)formatted in one go (RTF): opening it, a mode or theme switch.</param>
     private void RequestHighlight(bool full, int extraLine = -1, bool load = false)
     {
         var version = Interlocked.Increment(ref _version);
@@ -779,6 +896,7 @@ public sealed partial class MarkdownEditor : UserControl
                     continue;
                 }
 
+                var lexStart = Stopwatch.GetTimestamp();
                 var update = _model.Update(latest.Text);
                 if (Volatile.Read(ref _appliedVersion) >= dispatchedVersion)
                 {
@@ -824,6 +942,7 @@ public sealed partial class MarkdownEditor : UserControl
                     }
                 }
 
+                EditorTrace.Current?.RecordSince(EditorPhase.LexerUpdate, lexStart, styles.Count, () => TraceDescribe(latest));
                 if (load && styles.Count > 0)
                 {
                     pending = [.. styles.Select(st => st.Line)];
@@ -887,11 +1006,16 @@ public sealed partial class MarkdownEditor : UserControl
     /// <summary>
     /// Replaces the plain text of a just loaded note with the same text formatted as RTF – one call instead of a
     /// range format per token. Checked: if RichEdit reads the text back differently, the plain text returns and
-    /// false sends the note through the batches. Proofing is switched on here, so the spell checker sees only
-    /// the final text (an editable note gets it set once more with proofing on).
+    /// false sends the note through the batches. Proofing is switched on over an empty document right before the
+    /// one RTF set, so the checker sees only the final text and the long note is set once. Only when the read-back
+    /// differs (rare) is the text replaced again – with proofing off first, as replacing text under a running check
+    /// crashed WinUIEdit.dll.
     /// </summary>
     private bool LoadFormatted(Snapshot snapshot, List<LineStyle> styles)
     {
+        using var traced = EditorTrace.Current?.Measure(
+            EditorPhase.LoadFormatted,
+            () => $"{snapshot.Text.Length} chars, {styles.Count} lines, {snapshot.Mode}, spell check {_spellCheck && !_readOnly}");
         var basis = BaseStyle();
         var rtf = new RtfDocument(basis);
         foreach (var style in styles.OrderBy(st => st.Line))
@@ -910,41 +1034,42 @@ public sealed partial class MarkdownEditor : UserControl
         try
         {
             _box.IsReadOnly = false;
-            _box.IsSpellCheckEnabled = false;
-            string? accepted = null;
-            foreach (var extraParagraph in new[] { false, true })
-            {
-                var candidate = rtf.Build(extraParagraph);
-                doc.SetText(TextSetOptions.FormatRtf, candidate);
-                var read = ReadBoxText();
-                if (string.Equals(read, snapshot.Text, StringComparison.Ordinal))
-                {
-                    accepted = candidate;
-                    break;
-                }
-
-                if (!string.Equals(read + "\n", snapshot.Text, StringComparison.Ordinal))
-                {
-                    break; // only a lost final line break is worth the second try
-                }
-            }
-
-            ok = accepted is not null;
-            if (!ok)
+            _box.IsSpellCheckEnabled = false; // stops a check of the previous note before its text goes
+            var proof = _spellCheck && !_readOnly;
+            if (proof)
             {
                 doc.SetText(TextSetOptions.None, string.Empty);
-                ResetAllFormatting();
+                ApplySpellCheck();
             }
 
-            if (_spellCheck && !_readOnly)
+            var candidate = rtf.Build(extraParagraph: false);
+            doc.SetText(TextSetOptions.FormatRtf, candidate);
+            var read = ReadBoxText();
+            ok = string.Equals(read, snapshot.Text, StringComparison.Ordinal);
+            if (!ok)
             {
-                // RichEdit proofs only text set after proofing was switched on; nothing is being checked yet.
+                _box.IsSpellCheckEnabled = false;
+                string? accepted = null;
+                if (string.Equals(read + "\n", snapshot.Text, StringComparison.Ordinal))
+                {
+                    // Only a lost final line break is worth the second try.
+                    candidate = rtf.Build(extraParagraph: true);
+                    doc.SetText(TextSetOptions.FormatRtf, candidate);
+                    if (string.Equals(ReadBoxText(), snapshot.Text, StringComparison.Ordinal))
+                    {
+                        accepted = candidate;
+                    }
+                }
+
+                ok = accepted is not null;
+                doc.SetText(TextSetOptions.None, string.Empty);
+                if (!ok)
+                {
+                    ResetAllFormatting();
+                }
+
                 ApplySpellCheck();
                 doc.SetText(ok ? TextSetOptions.FormatRtf : TextSetOptions.None, ok ? accepted : snapshot.Text);
-            }
-            else if (!ok)
-            {
-                doc.SetText(TextSetOptions.None, snapshot.Text);
             }
 
             if (ok)
@@ -969,6 +1094,7 @@ public sealed partial class MarkdownEditor : UserControl
         {
             // RTF refused: plain text back, formatted in batches.
             ok = false;
+            _box.IsSpellCheckEnabled = false;
             doc.SetText(TextSetOptions.None, string.Empty);
             ResetAllFormatting();
             ApplySpellCheck();
@@ -982,7 +1108,10 @@ public sealed partial class MarkdownEditor : UserControl
 
         if (offset is { } y)
         {
+            // Again after RichEdit has laid out the new text: until then the scroll range is not updated and the
+            // view ended at the last line (mode switch).
             _scrollViewer?.ChangeView(null, y, null, disableAnimation: true);
+            _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () => _scrollViewer?.ChangeView(null, y, null, disableAnimation: true));
         }
 
         return ok;
@@ -990,33 +1119,44 @@ public sealed partial class MarkdownEditor : UserControl
 
     private void DispatchStyles(Snapshot snapshot, List<LineStyle> styles, int from)
     {
+        var queued = Stopwatch.GetTimestamp();
         _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
+            EditorTrace.Current?.RecordSince(EditorPhase.StyleQueueDelay, queued, context: () => $"batch from {from} of {styles.Count}, {TraceDescribe(snapshot)}");
             if (snapshot.Version != Volatile.Read(ref _version))
             {
                 return; // stale – a newer snapshot is on its way
             }
 
             var to = Math.Min(from + LinesPerBatch, styles.Count);
+            var batchStart = Stopwatch.GetTimestamp();
             Interlocked.Increment(ref _applying);
             try
             {
                 // RichEdit refuses format changes on a read-only document.
                 _box.IsReadOnly = false;
                 _box.TextDocument.BatchDisplayUpdates();
-                for (var i = from; i < to; i++)
+                using (EditorTrace.Current?.Measure(EditorPhase.StyleFormats))
                 {
-                    ApplyLineStyle(styles[i], snapshot.Mode, styles[i].Line == _activeLine);
-                    CacheLine(styles[i]);
+                    for (var i = from; i < to; i++)
+                    {
+                        ApplyLineStyle(styles[i], snapshot.Mode, styles[i].Line == _activeLine);
+                        CacheLine(styles[i]);
+                    }
                 }
             }
             finally
             {
-                _box.TextDocument.ApplyDisplayUpdates();
+                using (EditorTrace.Current?.Measure(EditorPhase.StyleDisplay))
+                {
+                    _box.TextDocument.ApplyDisplayUpdates();
+                }
+
                 _box.IsReadOnly = _readOnly;
                 Interlocked.Decrement(ref _applying);
             }
 
+            EditorTrace.Current?.RecordSince(EditorPhase.StyleBatch, batchStart, to - from, () => $"lines {from}-{to} of {styles.Count}, {TraceDescribe(snapshot)}");
             ScheduleImageLayout(); // reserved space above moves the previews below
             ScheduleLineNumbers();
             RevealAfterLoad();
@@ -1071,15 +1211,54 @@ public sealed partial class MarkdownEditor : UserControl
         var lineRange = doc.GetRange(style.Start, style.Start + style.Length);
         // With the paragraph mark: a collapsed image line shrinks it too, and it has to grow back.
         var withMark = doc.GetRange(style.Start, style.Start + style.Length + 1);
-        ResetFormat(withMark.CharacterFormat);
         if (ReserveImageSpace(style, lineRange, mode))
         {
+            ResetFormat(withMark.CharacterFormat);
             CollapseImageLine(withMark);
             return;
         }
 
+        // The final format of every character first (as for RTF), then one format set per run of equal
+        // characters. Setting properties on a range one by one is a document change each – a dozen or more per
+        // line, and each costs RichEdit relayout work (~130 ms per typed character in a 5,000-line note).
+        var basis = BaseStyle();
+        var chars = new CharStyle[style.Length];
+        Array.Fill(chars, basis);
         // Formatted mode hides delimiters on every line – revealing them would shift the text (ADR 0001).
-        StyleTokens(style, mode == MarkdownEditorMode.Formatted, (from, to) => new RangeFormat(doc.GetRange(style.Start + from, style.Start + to).CharacterFormat));
+        StyleTokens(style, mode == MarkdownEditorMode.Formatted, (from, to) => new CharRangeFormat(chars, from, to));
+
+        var template = withMark.CharacterFormat.GetClone();
+        var i = 0;
+        while (i < chars.Length)
+        {
+            var end = i + 1;
+            while (end < chars.Length && chars[end] == chars[i])
+            {
+                end++;
+            }
+
+            SetRunFormat(doc.GetRange(style.Start + i, style.Start + end), template, chars[i]);
+            i = end;
+        }
+
+        SetRunFormat(doc.GetRange(style.Start + style.Length, style.Start + style.Length + 1), template, basis); // paragraph mark
+    }
+
+    /// <summary>Applies <paramref name="style"/> to <paramref name="range"/> in one call through a detached clone.</summary>
+    private static void SetRunFormat(ITextRange range, ITextCharacterFormat template, CharStyle style)
+    {
+        var f = template.GetClone();
+        var sink = new RangeFormat(f);
+        sink.Name = style.Name;
+        f.Size = style.Size; // already in half points
+        sink.Foreground = style.Foreground;
+        sink.Background = style.Background;
+        sink.Bold = style.Bold;
+        sink.Italic = style.Italic;
+        sink.Strikethrough = style.Strikethrough;
+        sink.Underline = style.Underline;
+        sink.Hidden = style.Hidden;
+        range.CharacterFormat = f;
     }
 
     /// <summary>Formats of a line's tokens, in order (later tokens override); <paramref name="format"/> gives the target of a token's range within the line.</summary>
