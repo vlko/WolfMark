@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -89,9 +90,15 @@ public sealed partial class MarkdownEditor
         }
 
         // Notes without images never touch paragraph formats.
+        // Setting a paragraph format re-lays the paragraph out – only when the value changes.
         if (height > 0 || _imageLines.Count > 0)
         {
-            lineRange.ParagraphFormat.SpaceAfter = (float)(height * 0.75); // points
+            var paragraph = lineRange.ParagraphFormat;
+            var points = (float)(height * 0.75);
+            if (Math.Abs(paragraph.SpaceAfter - points) > 0.1f)
+            {
+                paragraph.SpaceAfter = points;
+            }
         }
 
         return collapse;
@@ -120,35 +127,51 @@ public sealed partial class MarkdownEditor
         && _imageSizes.TryGetValue(path, out var size)
         && size is not null;
 
-    private bool _snapping;
+    private bool _snapPending;
+    private long _lastSnap;
 
-    /// <summary>Keeps the caret off the inside of an image's markup: it snaps to the nearer side.</summary>
+    /// <summary>
+    /// Keeps the caret off the inside of an image's markup: it snaps to the nearer side. The move is queued, not
+    /// done inside the selection notification – calling back into RichEdit while it is still updating its
+    /// selection is the kind of re-entrancy that can corrupt its state.
+    /// </summary>
     private bool SnapCaretOutOfImage()
     {
-        if (_snapping || Volatile.Read(ref _applying) > 0)
+        if (_snapPending || Volatile.Read(ref _applying) > 0 || SnapTarget() is null)
         {
             return false;
         }
 
+        // If RichEdit put the caret back inside, snapping again and again would starve the UI thread.
+        var now = Environment.TickCount64;
+        if (now - _lastSnap < 250)
+        {
+            return false;
+        }
+
+        _lastSnap = now;
+
+        _snapPending = _dispatcher.TryEnqueue(DispatcherQueuePriority.Normal, () =>
+        {
+            _snapPending = false;
+            if (Volatile.Read(ref _applying) == 0 && SnapTarget() is { } to)
+            {
+                _box.TextDocument.Selection.SetRange(to, to); // re-checked: the caret may have moved meanwhile
+            }
+        });
+        return _snapPending;
+    }
+
+    private int? SnapTarget()
+    {
         var (caret, length) = GetSelection();
         var (start, end) = MarkdownEditing.LineAt(_text, caret);
         if (length > 0 || caret == start || caret == end || !IsCollapsedImageLine(_text[start..end]))
         {
-            return false;
+            return null;
         }
 
-        var to = caret - start < end - caret ? start : end;
-        _snapping = true;
-        try
-        {
-            _box.TextDocument.Selection.SetRange(to, to);
-        }
-        finally
-        {
-            _snapping = false;
-        }
-
-        return true;
+        return caret - start < end - caret ? start : end;
     }
 
     /// <summary>Left/Right over an image: from one side straight to the other, or null for the default move.</summary>

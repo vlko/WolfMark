@@ -237,6 +237,38 @@ public sealed partial class MarkdownEditor : UserControl
 
         _undo.Clear();
         RequestHighlight(full: true);
+        HideUntilStyled();
+    }
+
+    private DispatcherQueueTimer? _revealTimer;
+
+    /// <summary>
+    /// A freshly loaded note is plain text until the first style batch lands; keep it invisible until then, so
+    /// opening a note does not flash raw Markdown. A timer is the fallback if no batch comes.
+    /// </summary>
+    private void HideUntilStyled()
+    {
+        _box.Opacity = 0;
+        _revealTimer ??= CreateRevealTimer();
+        _revealTimer.Start();
+    }
+
+    private DispatcherQueueTimer CreateRevealTimer()
+    {
+        var timer = _dispatcher.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(400);
+        timer.IsRepeating = false;
+        timer.Tick += (_, _) => RevealAfterLoad();
+        return timer;
+    }
+
+    private void RevealAfterLoad()
+    {
+        _revealTimer?.Stop();
+        if (_box.Opacity < 1)
+        {
+            _box.Opacity = 1;
+        }
     }
 
     /// <summary>
@@ -789,6 +821,14 @@ public sealed partial class MarkdownEditor : UserControl
                     }
                 }
 
+                // Large updates (opening a note) style the lines around the caret first – that is what is
+                // on screen – instead of from the top of a long note down.
+                if (styles.Count > LinesPerBatch && latest.ActiveLine >= 0)
+                {
+                    var active = latest.ActiveLine;
+                    styles.Sort((a, b) => Math.Abs(a.Line - active).CompareTo(Math.Abs(b.Line - active)));
+                }
+
                 if (styles.Count > 0)
                 {
                     pending = [.. styles.Select(st => st.Line)];
@@ -832,6 +872,7 @@ public sealed partial class MarkdownEditor : UserControl
             }
 
             UpdateImages(); // reserved space above moves the previews below
+            RevealAfterLoad();
 
             if (to < styles.Count)
             {
