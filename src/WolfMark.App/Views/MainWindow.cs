@@ -363,6 +363,10 @@ internal sealed partial class MainWindow : Window
         var s = _host.Settings.Current;
         Func<string, Windows.UI.Color> tagColor = tag => Palette.ToColor(_host.Tags.GetColor(tag));
         var baseTheme = theme == ElementTheme.Dark ? MarkdownTheme.Dark(tagColor) : MarkdownTheme.Light(tagColor);
+        // The chosen font first; XAML falls back to the defaults if it was uninstalled.
+        var monoFont = string.IsNullOrWhiteSpace(s.EditorMonoFontFamily)
+            ? baseTheme.MonoFontFamily
+            : s.EditorMonoFontFamily.Trim() + ", " + baseTheme.MonoFontFamily;
         _editor.Theme = new MarkdownTheme
         {
             Text = baseTheme.Text,
@@ -375,7 +379,8 @@ internal sealed partial class MainWindow : Window
             TaskOpen = baseTheme.TaskOpen,
             TaskDone = baseTheme.TaskDone,
             TagColor = tagColor,
-            FontFamily = s.EditorMonospace ? baseTheme.MonoFontFamily : s.EditorFontFamily,
+            FontFamily = s.EditorMonospace ? monoFont : s.EditorFontFamily,
+            MonoFontFamily = monoFont,
             FontSize = s.EditorFontSize,
         };
         _editor.MaxLineWidth = s.EditorMaxLineWidth;

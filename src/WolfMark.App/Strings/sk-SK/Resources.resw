@@ -292,7 +292,16 @@
     <value>Dvojklikom otvoríte</value>
   </data>
   <data name="Settings_Monospace" xml:space="preserve">
-    <value>Písmo s pevnou šírkou (Cascadia Mono)</value>
+    <value>Písmo s pevnou šírkou pre celý text</value>
+  </data>
+  <data name="Settings_MonoFont" xml:space="preserve">
+    <value>Písmo s pevnou šírkou</value>
+  </data>
+  <data name="MonoFont_Filter" xml:space="preserve">
+    <value>Filtrovať písma</value>
+  </data>
+  <data name="MonoFont_Loading" xml:space="preserve">
+    <value>Načítavam nainštalované písma…</value>
   </data>
   <data name="Settings_FontSize" xml:space="preserve">
     <value>Veľkosť písma</value>

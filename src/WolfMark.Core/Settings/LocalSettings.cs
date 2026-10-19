@@ -41,6 +41,9 @@ public sealed class LocalSettings
     /// <summary>The editor uses the monospaced code font instead of <see cref="EditorFontFamily"/>.</summary>
     public bool EditorMonospace { get; set; }
 
+    /// <summary>Monospaced font: inline code and code blocks, and all text with <see cref="EditorMonospace"/>.</summary>
+    public string EditorMonoFontFamily { get; set; } = "Cascadia Mono";
+
     public double EditorFontSize { get; set; } = 15;
 
     public double EditorMaxLineWidth { get; set; } = 760;

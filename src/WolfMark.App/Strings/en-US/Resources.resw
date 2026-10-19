@@ -292,7 +292,16 @@
     <value>Double-click to open</value>
   </data>
   <data name="Settings_Monospace" xml:space="preserve">
-    <value>Monospaced font (Cascadia Mono)</value>
+    <value>Monospaced font for all text</value>
+  </data>
+  <data name="Settings_MonoFont" xml:space="preserve">
+    <value>Monospaced font</value>
+  </data>
+  <data name="MonoFont_Filter" xml:space="preserve">
+    <value>Filter fonts</value>
+  </data>
+  <data name="MonoFont_Loading" xml:space="preserve">
+    <value>Loading installed fonts…</value>
   </data>
   <data name="Settings_FontSize" xml:space="preserve">
     <value>Font size</value>
