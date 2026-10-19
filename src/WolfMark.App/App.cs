@@ -26,10 +26,13 @@ public sealed partial class App : Application, IXamlMetadataProvider
     {
         Current = this;
         UnhandledException += OnUnhandledException;
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => LogFatal(e.ExceptionObject as Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => LogFatal(
+            e.ExceptionObject as Exception,
+            "AppDomain",
+            $"terminating: {e.IsTerminating}, object: {e.ExceptionObject?.GetType().FullName ?? "null"}");
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
-            LogFatal(e.Exception);
+            LogFatal(e.Exception, "TaskScheduler");
             e.SetObserved();
         };
     }
@@ -75,7 +78,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
         {
             // Before the window exists nothing would show the error and the windowless process would keep
             // swallowing every later launch (single instance) – report it and end.
-            LogFatal(ex);
+            LogFatal(ex, "OnLaunched");
             if (_window is null || LaunchOptions.Current.ScreenshotDirectory is not null)
             {
                 ReportStartupFailure(ex);
@@ -88,7 +91,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        LogFatal(e.Exception);
+        LogFatal(e.Exception, "XAML", e.Message);
         e.Handled = true; // keep the app (and the user's text) alive; the error is in the log
     }
 
@@ -109,16 +112,56 @@ public sealed partial class App : Application, IXamlMetadataProvider
         Windows.Win32.PInvoke.MessageBox(default, text, "WolfMark", Windows.Win32.UI.WindowsAndMessaging.MESSAGEBOX_STYLE.MB_ICONERROR);
     }
 
-    private void LogFatal(Exception? ex)
+    /// <param name="source">Which handler saw it.</param>
+    /// <param name="detail">What the handler knows besides the exception – the only information when there is none
+    /// (a non-Exception object thrown from native code, or a XAML error with just a message).</param>
+    private void LogFatal(Exception? ex, string source, string? detail = null)
     {
-        if (ex is not null && _logger is not null)
+        WriteCrashFile(ex, source, detail);
+        if (_logger is null)
         {
-            LogUnhandled(_logger, ex);
+            return;
+        }
+
+        if (ex is not null)
+        {
+            LogUnhandled(_logger, source, detail ?? string.Empty, ex);
+        }
+        else
+        {
+            LogUnhandledWithoutException(_logger, source, detail ?? "no details");
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception")]
-    private static partial void LogUnhandled(ILogger logger, Exception ex);
+    /// <summary>
+    /// Synchronous copy of every unhandled exception in <c>logs\crash.txt</c>: the process may end right after
+    /// (AppDomain.UnhandledException), before the logger gets to write.
+    /// </summary>
+    private static void WriteCrashFile(Exception? ex, string source, string? detail)
+    {
+        try
+        {
+            var dir = LaunchOptions.Current.DemoDirectory is { } demo
+                ? Path.Combine(demo, "local", "logs")
+                : WolfMark.Storage.Settings.LocalPaths.Default.LogsDirectory;
+            Directory.CreateDirectory(dir);
+            var what = ex?.ToString() ?? "(no exception object)";
+            var extra = detail is null ? string.Empty : $" ({detail})";
+            File.AppendAllText(
+                Path.Combine(dir, "crash.txt"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{source}]{extra} {what}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (Exception)
+        {
+            // nothing left to report to
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception ({Source}) {Detail}")]
+    private static partial void LogUnhandled(ILogger logger, string source, string detail, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled error without an exception object ({Source}): {Detail}")]
+    private static partial void LogUnhandledWithoutException(ILogger logger, string source, string detail);
 
     public IXamlType GetXamlType(System.Type type) => _metadata.GetXamlType(type);
 
