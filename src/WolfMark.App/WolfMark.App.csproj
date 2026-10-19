@@ -43,6 +43,7 @@
     <ProjectReference Include="..\WolfMark.Index\WolfMark.Index.csproj" />
     <ProjectReference Include="..\WolfMark.Sync.ClaudeCode\WolfMark.Sync.ClaudeCode.csproj" />
     <ProjectReference Include="..\WolfMark.Editor\WolfMark.Editor.csproj" />
+    <ProjectReference Include="..\WolfMark.Presentation\WolfMark.Presentation.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="CommunityToolkit.Mvvm" />

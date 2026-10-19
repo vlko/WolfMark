@@ -46,7 +46,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
         // Flat design (ADR 0004): controls only slightly rounded, like the tags.
         Resources["ControlCornerRadius"] = new CornerRadius(3);
         Resources["OverlayCornerRadius"] = new CornerRadius(4);
-        UiThread.Initialize(DispatcherQueue.GetForCurrentThread());
+        UiThread.Initialize(new WinUiDispatcher(DispatcherQueue.GetForCurrentThread()));
 
         try
         {

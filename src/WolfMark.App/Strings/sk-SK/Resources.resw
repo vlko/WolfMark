@@ -174,6 +174,9 @@
   <data name="Common_Cancel" xml:space="preserve">
     <value>Zrušiť</value>
   </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Uložiť</value>
+  </data>
   <data name="Common_Close" xml:space="preserve">
     <value>Zavrieť</value>
   </data>
@@ -380,6 +383,18 @@
   </data>
   <data name="Toolbar_NewNoteShort" xml:space="preserve">
     <value>Nová</value>
+  </data>
+  <data name="Menu_Cut" xml:space="preserve">
+    <value>Vystrihnúť</value>
+  </data>
+  <data name="Menu_Copy" xml:space="preserve">
+    <value>Kopírovať</value>
+  </data>
+  <data name="Menu_Paste" xml:space="preserve">
+    <value>Prilepiť</value>
+  </data>
+  <data name="Menu_SelectAll" xml:space="preserve">
+    <value>Vybrať všetko</value>
   </data>
   <data name="Format_Bold" xml:space="preserve">
     <value>Tučné (Ctrl+B)</value>

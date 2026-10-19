@@ -19,6 +19,7 @@ public static class Program
     public static int Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
+        Infrastructure.Strings.Source = Infrastructure.MrtStrings.Get;
 
         if (TryRedirectToMainInstance())
         {

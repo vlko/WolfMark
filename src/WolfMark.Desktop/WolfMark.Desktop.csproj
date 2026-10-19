@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    WolfMark for macOS and Linux (Avalonia, Native AOT) over the shared view models (WolfMark.Presentation).
+    UI in C# like the Windows app (ADR 0002); App.axaml only includes the themes (ADR 0005).
+    AOT publish: build first, then publish with no-build (ADR 0005, compiled XAML).
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(WolfMarkCoreTargetFramework)</TargetFramework>
+    <RootNamespace>WolfMark.Desktop</RootNamespace>
+    <AssemblyName>WolfMark.Desktop</AssemblyName>
+    <PublishAot>true</PublishAot>
+    <Product>WolfMark</Product>
+    <Version>0.2.0</Version>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Barlow (SIL OFL 1.1) shared with the Windows app -->
+    <AvaloniaResource Include="..\WolfMark.App\Assets\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\WolfMark.App\Assets\WolfMark-256.png" Link="Assets\WolfMark-256.png" />
+    <Content Include="..\WolfMark.App\Assets\Fonts\OFL-Barlow.txt" Link="OFL-Barlow.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WolfMark.Presentation\WolfMark.Presentation.csproj" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+</Project>

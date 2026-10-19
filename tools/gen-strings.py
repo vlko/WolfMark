@@ -1,4 +1,5 @@
-# Generates src/WolfMark.App/Strings/*/Resources.resw, R.cs and the English fallback.
+# Generates src/WolfMark.App/Strings/*/Resources.resw, R.cs + the English fallback in src/WolfMark.Presentation
+# and the Slovak table of src/WolfMark.Desktop.
 # Usage: python3 tools/gen-strings.py src/WolfMark.App/Strings
 # key: (en, sk)
 S = {
@@ -56,6 +57,7 @@ S = {
  "Menu_Delete": ("Move to Recycle Bin", "Presunúť do koša"),
  "Delete_ConfirmTitle": ("Move this note to the Recycle Bin?", "Presunúť poznámku do koša?"),
  "Common_Cancel": ("Cancel", "Zrušiť"),
+ "Common_Save": ("Save", "Uložiť"),
  "Common_Close": ("Close", "Zavrieť"),
  "Common_Today": ("Today", "Dnes"),
  "Common_Yes": ("Yes", "Áno"),
@@ -125,6 +127,10 @@ S = {
  "Editor_Modified": ("edited {0}", "upravené {0}"),
  "Editor_Continues": ("continues", "pokračuje"),
  "Toolbar_NewNoteShort": ("New", "Nová"),
+ "Menu_Cut": ("Cut", "Vystrihnúť"),
+ "Menu_Copy": ("Copy", "Kopírovať"),
+ "Menu_Paste": ("Paste", "Prilepiť"),
+ "Menu_SelectAll": ("Select all", "Vybrať všetko"),
  "Format_Bold": ("Bold (Ctrl+B)", "Tučné (Ctrl+B)"),
  "Format_Italic": ("Italic (Ctrl+I)", "Kurzíva (Ctrl+I)"),
  "Format_Strike": ("Strikethrough", "Prečiarknuté"),
@@ -180,6 +186,8 @@ S = {
 
 import os, sys, html
 out = sys.argv[1]
+# R.cs and the fallback are shared by the Windows and the macOS/Linux app.
+SHARED = os.path.join(out, "..", "..", "WolfMark.Presentation", "Infrastructure")
 for lang, idx in (("en-US", 0), ("sk-SK", 1)):
     rows = "\n".join(
         f'  <data name="{k}" xml:space="preserve">\n    <value>{html.escape(v[idx], quote=False)}</value>\n  </data>' for k, v in S.items())
@@ -213,7 +221,7 @@ internal static class R
 {keys}
 }}
 '''
-open(os.path.join(out, "..", "Infrastructure", "R.cs"), "w", encoding="utf-8").write(cs)
+open(os.path.join(SHARED, "R.cs"), "w", encoding="utf-8").write(cs)
 # English fallback (used when resources.pri is missing, e.g. tests/dev hosts)
 fallback = "\n".join(f'        [R.{k}] = "{v[0].replace(chr(92), chr(92)*2).replace(chr(34), chr(92)+chr(34))}",' for k, v in S.items())
 cs2 = f'''namespace WolfMark.App.Infrastructure;
@@ -226,5 +234,24 @@ internal static partial class Strings
     }};
 }}
 '''
-open(os.path.join(out, "..", "Infrastructure", "Strings.Fallback.cs"), "w", encoding="utf-8").write(cs2)
+open(os.path.join(SHARED, "Strings.Fallback.cs"), "w", encoding="utf-8").write(cs2)
+# Slovak table of the macOS/Linux app (no .resw/.pri off Windows; English comes from the fallback).
+desktop = os.path.join(out, "..", "..", "WolfMark.Desktop", "Infrastructure")
+if os.path.isdir(desktop):
+    def lit(v):
+        return v.replace(chr(92), chr(92)*2).replace(chr(34), chr(92)+chr(34))
+    sk = "\n".join(f'        [R.{k}] = "{lit(v[1])}",' for k, v in S.items())
+    cs3 = f'''using WolfMark.App.Infrastructure;
+
+namespace WolfMark.Desktop.Infrastructure;
+
+internal static partial class DesktopStrings
+{{
+    private static readonly Dictionary<string, string> Slovak = new(StringComparer.Ordinal)
+    {{
+{sk}
+    }};
+}}
+'''
+    open(os.path.join(desktop, "Strings.Slovak.cs"), "w", encoding="utf-8").write(cs3)
 print(len(S), "strings")

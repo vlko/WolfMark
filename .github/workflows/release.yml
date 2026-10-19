@@ -1,7 +1,7 @@
 name: Release
 
-# Push a tag like v0.2.0 (or v0.2.0-rc.1 for a pre-release) to build both architectures
-# and publish a GitHub Release with the zipped Native AOT builds attached.
+# Push a tag like v0.2.0 (or v0.2.0-rc.1 for a pre-release) to build Windows (x64, ARM64), Linux (x64) and
+# macOS (Apple Silicon) and publish a GitHub Release with the Native AOT builds attached.
 on:
   push:
     tags: ['v*']
@@ -70,9 +70,59 @@ jobs:
           name: zip-${{ matrix.rid }}
           path: WolfMark-*.zip
 
+  desktop:
+    name: Publish ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: osx-arm64
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version from tag
+        id: version
+        shell: bash
+        run: |
+          full="${GITHUB_REF_NAME#v}"            # 0.2.0 or 0.2.0-rc.1
+          numeric="${full%%[-+]*}"               # 0.2.0
+          [[ "$numeric" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tag '$GITHUB_REF_NAME' is not vMAJOR.MINOR.PATCH[-suffix]"; exit 1; }
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "numeric=$numeric" >> "$GITHUB_OUTPUT"
+
+      - name: AOT toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Build
+        run: >
+          dotnet build src/WolfMark.Desktop -c Release -r ${{ matrix.rid }}
+          -p:Version=${{ steps.version.outputs.full }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric }}.0
+          -p:FileVersion=${{ steps.version.outputs.numeric }}.0
+
+      - name: AOT publish
+        # Two steps (ADR 0005): a direct publish hands ILC the assembly without the compiled XAML.
+        run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
+
+      - name: Package
+        run: tools/package-desktop.sh ${{ matrix.rid }} ${{ steps.version.outputs.full }} publish/${{ matrix.rid }} dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zip-${{ matrix.rid }}
+          path: dist/*
+
   release:
     name: GitHub Release
-    needs: build
+    needs: [build, desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +140,7 @@ jobs:
           prerelease=""
           # A suffix (v0.2.0-rc.1) or the .NET 11 release candidate SDK means pre-release.
           if [[ "$TAG" == *-* ]] || grep -q '"version": *"[0-9.]*-' global.json; then prerelease="--prerelease"; fi
-          gh release create "$TAG" WolfMark-*.zip \
+          gh release create "$TAG" WolfMark-*.zip WolfMark-*.tar.gz \
             --title "WolfMark ${TAG#v}" \
             --generate-notes \
             $prerelease

@@ -57,6 +57,7 @@ internal static class R
     public const string Menu_Delete = nameof(Menu_Delete);
     public const string Delete_ConfirmTitle = nameof(Delete_ConfirmTitle);
     public const string Common_Cancel = nameof(Common_Cancel);
+    public const string Common_Save = nameof(Common_Save);
     public const string Common_Close = nameof(Common_Close);
     public const string Common_Today = nameof(Common_Today);
     public const string Common_Yes = nameof(Common_Yes);
@@ -126,6 +127,10 @@ internal static class R
     public const string Editor_Modified = nameof(Editor_Modified);
     public const string Editor_Continues = nameof(Editor_Continues);
     public const string Toolbar_NewNoteShort = nameof(Toolbar_NewNoteShort);
+    public const string Menu_Cut = nameof(Menu_Cut);
+    public const string Menu_Copy = nameof(Menu_Copy);
+    public const string Menu_Paste = nameof(Menu_Paste);
+    public const string Menu_SelectAll = nameof(Menu_SelectAll);
     public const string Format_Bold = nameof(Format_Bold);
     public const string Format_Italic = nameof(Format_Italic);
     public const string Format_Strike = nameof(Format_Strike);

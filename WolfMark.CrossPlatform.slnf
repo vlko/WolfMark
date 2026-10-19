@@ -6,10 +6,13 @@
       "src\\WolfMark.Storage\\WolfMark.Storage.csproj",
       "src\\WolfMark.Index\\WolfMark.Index.csproj",
       "src\\WolfMark.Sync.ClaudeCode\\WolfMark.Sync.ClaudeCode.csproj",
+      "src\\WolfMark.Presentation\\WolfMark.Presentation.csproj",
+      "src\\WolfMark.Desktop\\WolfMark.Desktop.csproj",
       "tests\\WolfMark.Core.Tests\\WolfMark.Core.Tests.csproj",
       "tests\\WolfMark.Storage.Tests\\WolfMark.Storage.Tests.csproj",
       "tests\\WolfMark.Index.Tests\\WolfMark.Index.Tests.csproj",
-      "tests\\WolfMark.Sync.ClaudeCode.Tests\\WolfMark.Sync.ClaudeCode.Tests.csproj"
+      "tests\\WolfMark.Sync.ClaudeCode.Tests\\WolfMark.Sync.ClaudeCode.Tests.csproj",
+      "tests\\WolfMark.Presentation.Tests\\WolfMark.Presentation.Tests.csproj"
     ]
   }
 }

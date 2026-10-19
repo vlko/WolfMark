@@ -55,3 +55,35 @@ jobs:
         with:
           name: WolfMark-${{ matrix.rid }}
           path: publish/${{ matrix.rid }}
+
+  desktop:
+    name: macOS/Linux app, AOT publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+          # Native AOT for macOS needs the Apple toolchain – only on a Mac runner.
+          - rid: osx-arm64
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: AOT toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - name: Build
+        run: dotnet build src/WolfMark.Desktop -c Release -r ${{ matrix.rid }}
+      - name: AOT publish
+        # Two steps (ADR 0005): a direct publish hands ILC the assembly without the compiled XAML.
+        run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
+      - name: Package
+        run: tools/package-desktop.sh ${{ matrix.rid }} ci publish/${{ matrix.rid }} dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WolfMark-${{ matrix.rid }}
+          path: dist/*

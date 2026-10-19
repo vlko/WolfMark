@@ -171,6 +171,19 @@ Ready-to-run builds for **x64** and **ARM64** are on the [Releases](https://gith
 unzip and run `WolfMark.exe` – no installer, no .NET runtime needed (Native AOT, self-contained). The builds are not
 signed yet, so Windows SmartScreen asks for confirmation on the first start.
 
+### macOS and Linux (preview)
+
+The same release also has **Linux x64** (`WolfMark-<version>-linux-x64.tar.gz`) and **macOS Apple Silicon**
+(`WolfMark-<version>-osx-arm64.zip`) builds – the same notes, calendar, history, search and Claude Code import on
+an [Avalonia](https://avaloniaui.net) UI, also Native AOT and self-contained.
+
+- **Linux:** unpack and run `./wolfmark`; `INSTALL.txt` inside adds a menu entry. Data lives in
+  `~/.local/share/WolfMark`; notes default to a `WolfMark` folder in your Documents folder (XDG user dirs, else home).
+- **macOS:** unzip and move `WolfMark.app` to Applications. The app is not notarised: the first start needs
+  right-click → **Open** (or `xattr -dr com.apple.quarantine WolfMark.app`). Data lives in
+  `~/Library/Application Support/WolfMark`.
+- Not there yet compared to Windows: spell check, start with the system, app icon choice.
+
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed:
 
 ```powershell
@@ -194,6 +207,16 @@ dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64   # Native
 The domain libraries and all tests also build and run on Linux/WSL
 (`dotnet test --solution WolfMark.CrossPlatform.slnf`); the WinUI projects can be type-checked there but not run.
 
+The macOS/Linux app needs `clang` and `zlib1g-dev` (Linux) or Xcode command line tools (macOS) for Native AOT, and
+publishes in two steps – a direct `dotnet publish` loses the compiled XAML ([ADR 0005](docs/adr/0005-avalonia-port.md)):
+
+```bash
+dotnet run --project src/WolfMark.Desktop -- --demo /tmp/wolfmark-demo
+dotnet build src/WolfMark.Desktop -c Release -r linux-x64              # osx-arm64 on a Mac
+dotnet publish src/WolfMark.Desktop -c Release -r linux-x64 --no-build
+tools/package-desktop.sh linux-x64 0.2.0 src/WolfMark.Desktop/bin/Release/net11.0/linux-x64/publish dist
+```
+
 | Project | Contents | Target |
 |---|---|---|
 | `WolfMark.Core` | Note path/name grammar, tags and palette, Markdown lexer and incremental model, editing commands, undo, calendar maths, settings (System.Text.Json source generation) | `net11.0` |
@@ -201,7 +224,9 @@ The domain libraries and all tests also build and run on Linux/WSL
 | `WolfMark.Index` | SQLite (WAL, single writer), FTS5, sqlite-vec, incremental indexer, `calendar_days`, history, hybrid search | `net11.0` |
 | `WolfMark.Sync.ClaudeCode` | Import of prompts from Claude Code transcripts, filtering, secret redaction, idempotent sync | `net11.0` |
 | `WolfMark.Editor` | Markdown editor (RichEditBox + background lexer) | WinUI 3 |
+| `WolfMark.Presentation` | View models, `AppHost`, UI-neutral infrastructure shared by both apps | `net11.0` |
 | `WolfMark.App` | Window, calendar, history, search, settings – UI written in C# without XAML | WinUI 3 |
+| `WolfMark.Desktop` | The macOS/Linux app: the same UI on Avalonia, Markdown editor on AvaloniaEdit | Avalonia 12 |
 
 Engineering rules – no reflection under AOT, no I/O on the UI thread, files as the source of truth – are in
 [`CLAUDE.md`](CLAUDE.md); design decisions in [`docs/adr`](docs/adr), the full specification in

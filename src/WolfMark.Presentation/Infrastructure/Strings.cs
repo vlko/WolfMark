@@ -1,29 +1,22 @@
 using System.Globalization;
-using Microsoft.Windows.ApplicationModel.Resources;
 
 namespace WolfMark.App.Infrastructure;
 
-/// <summary>Localised UI strings from <c>Strings/&lt;lang&gt;/Resources.resw</c> (MRT Core).</summary>
+/// <summary>
+/// Localised UI strings. The host plugs in its lookup (<see cref="Source"/>: MRT resources on Windows, the
+/// generated tables elsewhere); a missing or empty value falls back to English.
+/// </summary>
 internal static partial class Strings
 {
-    private static readonly Lazy<ResourceLoader?> Loader = new(() =>
-    {
-        try
-        {
-            return new ResourceLoader();
-        }
-        catch (Exception)
-        {
-            return null; // resources.pri missing – fall back to English
-        }
-    });
+    /// <summary>Key → localised text of the hosting app; null or empty means "use the English fallback".</summary>
+    public static Func<string, string?>? Source { get; set; }
 
     public static string Get(string key)
     {
         string? value = null;
         try
         {
-            value = Loader.Value?.GetString(key);
+            value = Source?.Invoke(key);
         }
         catch (Exception)
         {
