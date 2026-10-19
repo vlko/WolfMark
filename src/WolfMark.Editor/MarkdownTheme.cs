@@ -31,6 +31,22 @@ public sealed class MarkdownTheme
 
     public string MonoFontFamily { get; init; } = "Cascadia Mono, Consolas";
 
+    /// <summary>
+    /// Face name for RichEdit character formats: unlike XAML it takes no fallback list, and names are limited to
+    /// LF_FACESIZE (32 with the terminator). The 48-character default list overran that and corrupted WinUIEdit's
+    /// memory – access violations at random later calls while switching notes.
+    /// </summary>
+    public string FaceName => ToFaceName(FontFamily);
+
+    public string MonoFaceName => ToFaceName(MonoFontFamily);
+
+    public static string ToFaceName(string family)
+    {
+        var first = family.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault() ?? "Segoe UI";
+        return first.Length <= 31 ? first : first[..31];
+    }
+
     /// <summary>Base size in device-independent pixels.</summary>
     public double FontSize { get; init; } = 15;
 

@@ -204,9 +204,16 @@ public sealed partial class MarkdownEditor : UserControl
             _box.IsReadOnly = false;
             // Before SetText, so an editable note is proofed and a read-only one never is.
             ApplySpellCheck();
-            _box.TextDocument.SetText(TextSetOptions.None, text);
+            // New text takes the format at the start of the old note – often a hidden "# " marker, which made
+            // the whole note hidden until the reset below; placing the caret in it then crashed WinUIEdit.dll
+            // (access violation). Start from an empty, plainly formatted document instead.
+            _box.TextDocument.SetText(TextSetOptions.None, string.Empty);
             ResetAllFormatting(); // while editable: RichEdit refuses format changes on a read-only document
-            var caret = caretToEnd ? text.Length : 0;
+            _box.TextDocument.SetText(TextSetOptions.None, text);
+            _text = ReadBoxText();
+            _lineTokens.Clear();
+            var caret = caretToEnd ? _text.Length : 0;
+            _activeLine = LineOf(_text, caret);
             _box.TextDocument.Selection.SetRange(caret, caret);
         }
         finally
@@ -215,10 +222,7 @@ public sealed partial class MarkdownEditor : UserControl
             Interlocked.Decrement(ref _applying);
         }
 
-        _text = ReadBoxText();
         _undo.Clear();
-        _lineTokens.Clear();
-        _activeLine = LineOf(_text, caretToEnd ? _text.Length : 0);
         RequestHighlight(full: true);
     }
 
@@ -235,8 +239,9 @@ public sealed partial class MarkdownEditor : UserControl
         try
         {
             _box.IsReadOnly = false;
-            _box.TextDocument.SetText(TextSetOptions.None, _text);
+            _box.TextDocument.SetText(TextSetOptions.None, string.Empty); // see Load
             ResetAllFormatting();
+            _box.TextDocument.SetText(TextSetOptions.None, _text);
             _box.TextDocument.Selection.SetRange(start, end);
         }
         finally
@@ -787,7 +792,7 @@ public sealed partial class MarkdownEditor : UserControl
     private void ResetFormat(ITextCharacterFormat f)
     {
         f.Size = _theme.BasePoints;
-        f.Name = _theme.FontFamily;
+        f.Name = _theme.FaceName;
         f.ForegroundColor = _theme.Text;
         f.BackgroundColor = Microsoft.UI.Colors.Transparent;
         f.Bold = FormatEffect.Off;
@@ -844,12 +849,12 @@ public sealed partial class MarkdownEditor : UserControl
                     f.Strikethrough = FormatEffect.On;
                     break;
                 case MarkdownTokenKind.InlineCode or MarkdownTokenKind.CodeBlock:
-                    f.Name = _theme.MonoFontFamily;
+                    f.Name = _theme.MonoFaceName;
                     f.ForegroundColor = _theme.Code;
                     f.BackgroundColor = _theme.CodeBackground;
                     break;
                 case MarkdownTokenKind.CodeFence or MarkdownTokenKind.FrontMatter:
-                    f.Name = _theme.MonoFontFamily;
+                    f.Name = _theme.MonoFaceName;
                     f.ForegroundColor = _theme.Muted;
                     f.Size = _theme.BasePoints * 0.9f;
                     break;
@@ -875,12 +880,12 @@ public sealed partial class MarkdownEditor : UserControl
                 case MarkdownTokenKind.TaskOpen:
                     f.ForegroundColor = _theme.TaskOpen;
                     f.Bold = FormatEffect.On;
-                    f.Name = _theme.MonoFontFamily;
+                    f.Name = _theme.MonoFaceName;
                     break;
                 case MarkdownTokenKind.TaskDone:
                     f.ForegroundColor = _theme.TaskDone;
                     f.Bold = FormatEffect.On;
-                    f.Name = _theme.MonoFontFamily;
+                    f.Name = _theme.MonoFaceName;
                     break;
                 case MarkdownTokenKind.TaskDoneText:
                     f.ForegroundColor = _theme.TaskDone;
