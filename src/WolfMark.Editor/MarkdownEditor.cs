@@ -205,13 +205,13 @@ public sealed partial class MarkdownEditor : UserControl
             // Before SetText, so an editable note is proofed and a read-only one never is.
             ApplySpellCheck();
             _box.TextDocument.SetText(TextSetOptions.None, text);
-            _box.IsReadOnly = readOnly;
-            ResetAllFormatting();
+            ResetAllFormatting(); // while editable: RichEdit refuses format changes on a read-only document
             var caret = caretToEnd ? text.Length : 0;
             _box.TextDocument.Selection.SetRange(caret, caret);
         }
         finally
         {
+            _box.IsReadOnly = readOnly;
             Interlocked.Decrement(ref _applying);
         }
 
@@ -236,12 +236,12 @@ public sealed partial class MarkdownEditor : UserControl
         {
             _box.IsReadOnly = false;
             _box.TextDocument.SetText(TextSetOptions.None, _text);
-            _box.IsReadOnly = _readOnly;
             ResetAllFormatting();
             _box.TextDocument.Selection.SetRange(start, end);
         }
         finally
         {
+            _box.IsReadOnly = _readOnly;
             Interlocked.Decrement(ref _applying);
         }
 
