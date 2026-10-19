@@ -95,6 +95,7 @@ internal static partial class Strings
         [R.Settings_LanguageSystem] = "System",
         [R.Settings_Editor] = "Editor",
         [R.Settings_FontFamily] = "Font",
+        [R.Settings_Monospace] = "Monospaced font (Cascadia Mono)",
         [R.Settings_FontSize] = "Font size",
         [R.Settings_LineWidth] = "Maximum line width",
         [R.Settings_DefaultMode] = "Default mode",

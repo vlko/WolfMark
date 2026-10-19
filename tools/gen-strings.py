@@ -93,6 +93,7 @@ S = {
  "Settings_LanguageSystem": ("System", "Podľa systému"),
  "Settings_Editor": ("Editor", "Editor"),
  "Settings_FontFamily": ("Font", "Písmo"),
+ "Settings_Monospace": ("Monospaced font (Cascadia Mono)", "Písmo s pevnou šírkou (Cascadia Mono)"),
  "Settings_FontSize": ("Font size", "Veľkosť písma"),
  "Settings_LineWidth": ("Maximum line width", "Maximálna šírka riadku"),
  "Settings_DefaultMode": ("Default mode", "Predvolený režim"),

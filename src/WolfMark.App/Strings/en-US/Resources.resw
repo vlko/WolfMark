@@ -285,6 +285,9 @@
   <data name="Settings_FontFamily" xml:space="preserve">
     <value>Font</value>
   </data>
+  <data name="Settings_Monospace" xml:space="preserve">
+    <value>Monospaced font (Cascadia Mono)</value>
+  </data>
   <data name="Settings_FontSize" xml:space="preserve">
     <value>Font size</value>
   </data>

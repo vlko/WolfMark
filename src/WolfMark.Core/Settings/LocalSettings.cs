@@ -38,6 +38,9 @@ public sealed class LocalSettings
 
     public string EditorFontFamily { get; set; } = "Cascadia Text, Segoe UI Variable Text, Segoe UI";
 
+    /// <summary>The editor uses the monospaced code font instead of <see cref="EditorFontFamily"/>.</summary>
+    public bool EditorMonospace { get; set; }
+
     public double EditorFontSize { get; set; } = 15;
 
     public double EditorMaxLineWidth { get; set; } = 760;

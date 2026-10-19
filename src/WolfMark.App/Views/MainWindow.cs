@@ -372,7 +372,7 @@ internal sealed partial class MainWindow : Window
             TaskOpen = baseTheme.TaskOpen,
             TaskDone = baseTheme.TaskDone,
             TagColor = tagColor,
-            FontFamily = s.EditorFontFamily,
+            FontFamily = s.EditorMonospace ? baseTheme.MonoFontFamily : s.EditorFontFamily,
             FontSize = s.EditorFontSize,
         };
         _editor.MaxLineWidth = s.EditorMaxLineWidth;

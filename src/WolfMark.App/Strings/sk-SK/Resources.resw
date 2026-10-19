@@ -285,6 +285,9 @@
   <data name="Settings_FontFamily" xml:space="preserve">
     <value>Písmo</value>
   </data>
+  <data name="Settings_Monospace" xml:space="preserve">
+    <value>Písmo s pevnou šírkou (Cascadia Mono)</value>
+  </data>
   <data name="Settings_FontSize" xml:space="preserve">
     <value>Veľkosť písma</value>
   </data>

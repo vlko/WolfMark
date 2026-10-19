@@ -141,7 +141,9 @@ internal static class SettingsDialog
         MarkIcon();
 
         // Editor
-        var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260 };
+        var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260, IsEnabled = !s.EditorMonospace };
+        var monospace = new ToggleSwitch { IsOn = s.EditorMonospace, Header = Strings.Get(R.Settings_Monospace) };
+        monospace.Toggled += (_, _) => font.IsEnabled = !monospace.IsOn;
         var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = 10, Maximum = 28, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
         var lineWidth = new NumberBox { Value = s.EditorMaxLineWidth, Minimum = 400, Maximum = 2000, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 20 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
@@ -206,6 +208,7 @@ internal static class SettingsDialog
             startWithWindows,
             closeToTray,
             Section(Strings.Get(R.Settings_Editor)),
+            monospace,
             Field(Strings.Get(R.Settings_FontFamily), font),
             Field(Strings.Get(R.Settings_FontSize), fontSize),
             Field(Strings.Get(R.Settings_LineWidth), lineWidth),
@@ -254,6 +257,7 @@ internal static class SettingsDialog
         restartNeeded |= newRendering != s.WindowRendering;
         s.WindowRendering = newRendering;
         s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
+        s.EditorMonospace = monospace.IsOn;
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
         s.EditorMaxLineWidth = double.IsNaN(lineWidth.Value) ? s.EditorMaxLineWidth : lineWidth.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
