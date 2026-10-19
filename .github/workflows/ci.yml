@@ -82,7 +82,7 @@ jobs:
         # Two steps (ADR 0005): a direct publish hands ILC the assembly without the compiled XAML.
         run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
       - name: Package
-        run: tools/package-desktop.sh ${{ matrix.rid }} ci publish/${{ matrix.rid }} dist
+        run: bash tools/package-desktop.sh ${{ matrix.rid }} ci publish/${{ matrix.rid }} dist
       - uses: actions/upload-artifact@v4
         with:
           name: WolfMark-${{ matrix.rid }}

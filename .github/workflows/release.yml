@@ -113,7 +113,7 @@ jobs:
         run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
 
       - name: Package
-        run: tools/package-desktop.sh ${{ matrix.rid }} ${{ steps.version.outputs.full }} publish/${{ matrix.rid }} dist
+        run: bash tools/package-desktop.sh ${{ matrix.rid }} ${{ steps.version.outputs.full }} publish/${{ matrix.rid }} dist
 
       - uses: actions/upload-artifact@v4
         with:
