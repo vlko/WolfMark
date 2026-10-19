@@ -294,6 +294,9 @@
   <data name="Settings_Monospace" xml:space="preserve">
     <value>Písmo s pevnou šírkou pre celý text</value>
   </data>
+  <data name="Settings_LineNumbers" xml:space="preserve">
+    <value>Čísla riadkov</value>
+  </data>
   <data name="Settings_MonoFont" xml:space="preserve">
     <value>Písmo s pevnou šírkou</value>
   </data>
@@ -305,9 +308,6 @@
   </data>
   <data name="Settings_FontSize" xml:space="preserve">
     <value>Veľkosť písma</value>
-  </data>
-  <data name="Settings_LineWidth" xml:space="preserve">
-    <value>Maximálna šírka riadku</value>
   </data>
   <data name="Settings_DefaultMode" xml:space="preserve">
     <value>Predvolený režim</value>

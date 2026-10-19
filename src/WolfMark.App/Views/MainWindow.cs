@@ -383,7 +383,7 @@ internal sealed partial class MainWindow : Window
             MonoFontFamily = monoFont,
             FontSize = s.EditorFontSize,
         };
-        _editor.MaxLineWidth = s.EditorMaxLineWidth;
+        _editor.ShowLineNumbers = s.EditorLineNumbers;
     }
 
     // ---------------------------------------------------------------- wiring
@@ -432,6 +432,8 @@ internal sealed partial class MainWindow : Window
             _editor.NoteDirectory = editorVm.Path is { } notePath
                 ? System.IO.Path.GetDirectoryName(_host.Engine.GetFullPath(notePath))
                 : _host.Engine.GetDayDirectory(editorVm.Day);
+            // Read-only goes with the text: switching it on its own (before the load) re-proofed the old note,
+            // which was then replaced while the spell checker ran – a WinUIEdit crash.
             _editor.Load(request.Text, request.CaretToEnd, editorVm.IsReadOnly);
             _editor.FocusEditor();
             _editor.ScrollToCaret();
@@ -442,9 +444,6 @@ internal sealed partial class MainWindow : Window
             {
                 case nameof(NoteEditorViewModel.Mode):
                     _editor.Mode = editorVm.Mode == EditorMode.Raw ? MarkdownEditorMode.Raw : MarkdownEditorMode.Formatted;
-                    break;
-                case nameof(NoteEditorViewModel.IsReadOnly):
-                    _editor.IsReadOnly = editorVm.IsReadOnly;
                     break;
                 case nameof(NoteEditorViewModel.CreatedAt) or nameof(NoteEditorViewModel.ModifiedAt):
                     UpdateGutter();

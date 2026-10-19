@@ -46,7 +46,6 @@ public sealed partial class MarkdownEditor : UserControl
     private int _applying;
     private bool _readOnly;
     private bool _spellCheck = true;
-    private double _maxLineWidth = 760;
 
     public MarkdownEditor()
     {
@@ -98,11 +97,14 @@ public sealed partial class MarkdownEditor : UserControl
             OnImageColumnResized();
             UpdateOverlay();
             ScheduleImageLayout();
+            ScheduleLineNumbers();
         };
         InitImages();
+        InitLineNumbers();
 
         var host = new Grid();
         host.Children.Add(_box);
+        host.Children.Add(_lineNumbers);
         host.Children.Add(_images);
         host.Children.Add(_overlay);
         Content = host;
@@ -150,6 +152,11 @@ public sealed partial class MarkdownEditor : UserControl
         get => _readOnly;
         set
         {
+            if (_readOnly == value)
+            {
+                return;
+            }
+
             _readOnly = value;
             _box.IsReadOnly = value;
             if (ApplySpellCheck())
@@ -176,16 +183,6 @@ public sealed partial class MarkdownEditor : UserControl
         }
     }
 
-    public double MaxLineWidth
-    {
-        get => _maxLineWidth;
-        set
-        {
-            _maxLineWidth = value;
-            UpdatePadding();
-        }
-    }
-
     public MarkdownTheme Theme
     {
         get => _theme;
@@ -195,6 +192,7 @@ public sealed partial class MarkdownEditor : UserControl
             _box.FontFamily = new FontFamily(value.FontFamily);
             _box.FontSize = value.FontSize;
             _box.Foreground = new SolidColorBrush(value.Text);
+            UpdatePadding(); // the line-number gutter follows the font size
             RequestHighlight(full: true);
         }
     }
@@ -214,8 +212,10 @@ public sealed partial class MarkdownEditor : UserControl
         {
             _readOnly = readOnly;
             _box.IsReadOnly = false;
-            // Before SetText, so an editable note is proofed and a read-only one never is.
-            ApplySpellCheck();
+            // The old text is never replaced while the spell checker works on it (a WinUIEdit crash): proofing
+            // is off until the formatted text replaces this plain one (LoadFormatted), and comes back – for an
+            // editable note only – with that.
+            _box.IsSpellCheckEnabled = false;
             ResetImages();
             // New text takes the format at the start of the old note – often a hidden "# " marker, which made
             // the whole note hidden until the reset below; placing the caret in it then crashed WinUIEdit.dll
@@ -236,7 +236,7 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _undo.Clear();
-        RequestHighlight(full: true);
+        RequestHighlight(full: true, load: true);
         HideUntilStyled();
     }
 
@@ -284,7 +284,8 @@ public sealed partial class MarkdownEditor : UserControl
         try
         {
             _box.IsReadOnly = false;
-            _box.TextDocument.SetText(TextSetOptions.None, string.Empty); // see Load
+            _box.IsSpellCheckEnabled = false; // see Load: comes back with the formatted text
+            _box.TextDocument.SetText(TextSetOptions.None, string.Empty);
             ResetAllFormatting();
             _box.TextDocument.SetText(TextSetOptions.None, _text);
             _box.TextDocument.Selection.SetRange(start, end);
@@ -296,7 +297,7 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _lineTokens.Clear();
-        RequestHighlight(full: true);
+        RequestHighlight(full: true, load: true);
         if (offset is { } y)
         {
             _scrollViewer?.ChangeView(null, y, null, disableAnimation: true);
@@ -652,6 +653,7 @@ public sealed partial class MarkdownEditor : UserControl
         {
             _undo.Seal();
             _activeLine = line;
+            HighlightActiveLineNumber();
         }
 
         // Markers stay hidden; the caret line only gets overlay chips and toolbar state.
@@ -673,14 +675,11 @@ public sealed partial class MarkdownEditor : UserControl
             return;
         }
 
-        if (AlignLeft)
-        {
-            _box.Padding = new Thickness(18, 6, Math.Max(24, width - _maxLineWidth - 18), 24);
-            return;
-        }
-
-        var side = Math.Max(24, (width - _maxLineWidth) / 2);
-        _box.Padding = new Thickness(side, 12, side, 48);
+        // The text uses the full width; long lines wrap at the right edge (marked in the line-number gutter).
+        var gutter = LineNumberGutter;
+        _box.Padding = AlignLeft
+            ? new Thickness(18 + gutter, 6, 24, 24)
+            : new Thickness(24 + gutter, 12, 24, 48);
     }
 
     public void ScrollToEnd()
@@ -703,6 +702,7 @@ public sealed partial class MarkdownEditor : UserControl
             UpdateOverflow();
             UpdateOverlay();
             ScrollImages();
+            ScrollLineNumbers();
         };
         sv.RegisterPropertyChangedCallback(ScrollViewer.ScrollableHeightProperty, (_, _) => UpdateOverflow());
         UpdateOverflow();
@@ -741,10 +741,11 @@ public sealed partial class MarkdownEditor : UserControl
 
     // ------------------------------------------------------------------ highlighting
 
-    private void RequestHighlight(bool full, int extraLine = -1)
+    /// <param name="load">The document was just replaced: the whole note is formatted in one go (RTF).</param>
+    private void RequestHighlight(bool full, int extraLine = -1, bool load = false)
     {
         var version = Interlocked.Increment(ref _version);
-        _snapshots.Writer.TryWrite(new Snapshot(version, _text, _activeLine, extraLine, _mode, full));
+        _snapshots.Writer.TryWrite(new Snapshot(version, _text, _activeLine, extraLine, _mode, full || load, load));
     }
 
     private async Task HighlightLoopAsync(CancellationToken ct)
@@ -760,11 +761,13 @@ public sealed partial class MarkdownEditor : UserControl
                 // Coalesce: only the newest snapshot matters, but "full" requests stick.
                 Snapshot? latest = null;
                 var full = false;
+                var load = false;
                 var extras = new HashSet<int>();
                 while (_snapshots.Reader.TryRead(out var s))
                 {
                     latest = s;
                     full |= s.Full;
+                    load |= s.Load;
                     if (s.ExtraLine >= 0)
                     {
                         extras.Add(s.ExtraLine);
@@ -821,6 +824,14 @@ public sealed partial class MarkdownEditor : UserControl
                     }
                 }
 
+                if (load && styles.Count > 0)
+                {
+                    pending = [.. styles.Select(st => st.Line)];
+                    dispatchedVersion = latest.Version;
+                    DispatchLoad(latest, styles);
+                    continue;
+                }
+
                 // Large updates (opening a note) style the lines around the caret first – that is what is
                 // on screen – instead of from the top of a long note down.
                 if (styles.Count > LinesPerBatch && latest.ActiveLine >= 0)
@@ -840,6 +851,141 @@ public sealed partial class MarkdownEditor : UserControl
         catch (OperationCanceledException)
         {
         }
+    }
+
+    /// <summary>A freshly loaded note: formatted in one go, or – if RichEdit read the RTF differently – in batches.</summary>
+    private void DispatchLoad(Snapshot snapshot, List<LineStyle> styles)
+    {
+        _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (snapshot.Version != Volatile.Read(ref _version))
+            {
+                // Typed meanwhile: the newer text gets the one-go formatting (and proofing) instead.
+                RequestHighlight(full: true, load: true);
+                return;
+            }
+
+            if (!LoadFormatted(snapshot, styles))
+            {
+                DispatchStyles(snapshot, styles, 0);
+                return;
+            }
+
+            foreach (var style in styles)
+            {
+                CacheLine(style);
+            }
+
+            Volatile.Write(ref _appliedVersion, snapshot.Version);
+            ScheduleImageLayout();
+            ScheduleLineNumbers();
+            RevealAfterLoad();
+            RefreshCaretState();
+        });
+    }
+
+    /// <summary>
+    /// Replaces the plain text of a just loaded note with the same text formatted as RTF – one call instead of a
+    /// range format per token. Checked: if RichEdit reads the text back differently, the plain text returns and
+    /// false sends the note through the batches. Proofing is switched on here, so the spell checker sees only
+    /// the final text (an editable note gets it set once more with proofing on).
+    /// </summary>
+    private bool LoadFormatted(Snapshot snapshot, List<LineStyle> styles)
+    {
+        var basis = BaseStyle();
+        var rtf = new RtfDocument(basis);
+        foreach (var style in styles.OrderBy(st => st.Line))
+        {
+            var chars = new CharStyle[style.Length];
+            Array.Fill(chars, basis);
+            StyleTokens(style, snapshot.Mode == MarkdownEditorMode.Formatted, (from, to) => new CharRangeFormat(chars, from, to));
+            rtf.AddLine(style.Text, chars);
+        }
+
+        var doc = _box.TextDocument;
+        var (start, end) = (doc.Selection.StartPosition, doc.Selection.EndPosition);
+        var offset = _scrollViewer?.VerticalOffset;
+        var ok = false;
+        Interlocked.Increment(ref _applying);
+        try
+        {
+            _box.IsReadOnly = false;
+            _box.IsSpellCheckEnabled = false;
+            string? accepted = null;
+            foreach (var extraParagraph in new[] { false, true })
+            {
+                var candidate = rtf.Build(extraParagraph);
+                doc.SetText(TextSetOptions.FormatRtf, candidate);
+                var read = ReadBoxText();
+                if (string.Equals(read, snapshot.Text, StringComparison.Ordinal))
+                {
+                    accepted = candidate;
+                    break;
+                }
+
+                if (!string.Equals(read + "\n", snapshot.Text, StringComparison.Ordinal))
+                {
+                    break; // only a lost final line break is worth the second try
+                }
+            }
+
+            ok = accepted is not null;
+            if (!ok)
+            {
+                doc.SetText(TextSetOptions.None, string.Empty);
+                ResetAllFormatting();
+            }
+
+            if (_spellCheck && !_readOnly)
+            {
+                // RichEdit proofs only text set after proofing was switched on; nothing is being checked yet.
+                ApplySpellCheck();
+                doc.SetText(ok ? TextSetOptions.FormatRtf : TextSetOptions.None, ok ? accepted : snapshot.Text);
+            }
+            else if (!ok)
+            {
+                doc.SetText(TextSetOptions.None, snapshot.Text);
+            }
+
+            if (ok)
+            {
+                // Image lines need paragraph space and collapsing – only a few, through the range calls.
+                doc.BatchDisplayUpdates();
+                foreach (var style in styles)
+                {
+                    if (style.Text.Contains("![", StringComparison.Ordinal))
+                    {
+                        ApplyLineStyle(style, snapshot.Mode, false);
+                    }
+                }
+
+                doc.ApplyDisplayUpdates();
+            }
+
+            var length = _text.Length;
+            doc.Selection.SetRange(Math.Clamp(start, 0, length), Math.Clamp(end, 0, length));
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            // RTF refused: plain text back, formatted in batches.
+            ok = false;
+            doc.SetText(TextSetOptions.None, string.Empty);
+            ResetAllFormatting();
+            ApplySpellCheck();
+            doc.SetText(TextSetOptions.None, snapshot.Text);
+        }
+        finally
+        {
+            _box.IsReadOnly = _readOnly;
+            Interlocked.Decrement(ref _applying);
+        }
+
+        if (offset is { } y)
+        {
+            _scrollViewer?.ChangeView(null, y, null, disableAnimation: true);
+        }
+
+        return ok;
     }
 
     private void DispatchStyles(Snapshot snapshot, List<LineStyle> styles, int from)
@@ -872,6 +1018,7 @@ public sealed partial class MarkdownEditor : UserControl
             }
 
             ScheduleImageLayout(); // reserved space above moves the previews below
+            ScheduleLineNumbers();
             RevealAfterLoad();
 
             if (to < styles.Count)
@@ -893,18 +1040,25 @@ public sealed partial class MarkdownEditor : UserControl
         range.ParagraphFormat.SpaceAfter = 0; // image previews; new text must not inherit the room
     }
 
-    private void ResetFormat(ITextCharacterFormat f)
+    private void ResetFormat(ITextCharacterFormat f) => ResetFormat(new RangeFormat(f));
+
+    private void ResetFormat(ICharFormatSink f)
     {
         f.Size = _theme.BasePoints;
         f.Name = _theme.FaceName;
-        f.ForegroundColor = _theme.Text;
-        f.BackgroundColor = Microsoft.UI.Colors.Transparent;
-        f.Bold = FormatEffect.Off;
-        f.Italic = FormatEffect.Off;
-        f.Strikethrough = FormatEffect.Off;
-        f.Underline = UnderlineType.None;
-        f.Hidden = FormatEffect.Off;
+        f.Foreground = _theme.Text;
+        f.Background = Microsoft.UI.Colors.Transparent;
+        f.Bold = false;
+        f.Italic = false;
+        f.Strikethrough = false;
+        f.Underline = false;
+        f.Hidden = false;
     }
+
+    /// <summary>The format <see cref="ResetFormat(ICharFormatSink)"/> sets, for the RTF path.</summary>
+    private CharStyle BaseStyle() => new(
+        _theme.FaceName, RtfDocument.HalfPoints(_theme.BasePoints), _theme.Text, Microsoft.UI.Colors.Transparent,
+        false, false, false, false, false);
 
     private void ApplyLineStyle(LineStyle style, MarkdownEditorMode mode, bool isActiveLine)
     {
@@ -925,8 +1079,12 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         // Formatted mode hides delimiters on every line – revealing them would shift the text (ADR 0001).
-        var hideSyntax = mode == MarkdownEditorMode.Formatted;
+        StyleTokens(style, mode == MarkdownEditorMode.Formatted, (from, to) => new RangeFormat(doc.GetRange(style.Start + from, style.Start + to).CharacterFormat));
+    }
 
+    /// <summary>Formats of a line's tokens, in order (later tokens override); <paramref name="format"/> gives the target of a token's range within the line.</summary>
+    private void StyleTokens(LineStyle style, bool hideSyntax, Func<int, int, ICharFormatSink> format)
+    {
         foreach (var token in style.Tokens)
         {
             if (token.Length <= 0)
@@ -934,91 +1092,91 @@ public sealed partial class MarkdownEditor : UserControl
                 continue;
             }
 
-            var f = doc.GetRange(style.Start + token.Start, style.Start + token.End).CharacterFormat;
+            var f = format(token.Start, token.End);
             switch (token.Kind)
             {
                 case MarkdownTokenKind.Heading1 or MarkdownTokenKind.Heading2 or MarkdownTokenKind.Heading3
                     or MarkdownTokenKind.Heading4 or MarkdownTokenKind.Heading5 or MarkdownTokenKind.Heading6:
                     f.Size = _theme.HeadingPoints(token.Kind);
-                    f.Bold = FormatEffect.On;
-                    f.ForegroundColor = _theme.Heading;
+                    f.Bold = true;
+                    f.Foreground = _theme.Heading;
                     break;
                 case MarkdownTokenKind.Syntax:
-                    f.ForegroundColor = _theme.Muted;
+                    f.Foreground = _theme.Muted;
                     if (hideSyntax)
                     {
-                        f.Hidden = FormatEffect.On;
+                        f.Hidden = true;
                     }
 
                     break;
                 case MarkdownTokenKind.Strong:
-                    f.Bold = FormatEffect.On;
+                    f.Bold = true;
                     break;
                 case MarkdownTokenKind.Emphasis:
-                    f.Italic = FormatEffect.On;
+                    f.Italic = true;
                     break;
                 case MarkdownTokenKind.Strikethrough:
-                    f.Strikethrough = FormatEffect.On;
+                    f.Strikethrough = true;
                     break;
                 case MarkdownTokenKind.InlineCode or MarkdownTokenKind.CodeBlock:
                     f.Name = _theme.MonoFaceName;
-                    f.ForegroundColor = _theme.Code;
-                    f.BackgroundColor = _theme.CodeBackground;
+                    f.Foreground = _theme.Code;
+                    f.Background = _theme.CodeBackground;
                     break;
                 case MarkdownTokenKind.CodeFence or MarkdownTokenKind.FrontMatter:
                     f.Name = _theme.MonoFaceName;
-                    f.ForegroundColor = _theme.Muted;
+                    f.Foreground = _theme.Muted;
                     f.Size = _theme.BasePoints * 0.9f;
                     break;
                 case MarkdownTokenKind.LinkText or MarkdownTokenKind.WikiLink or MarkdownTokenKind.AutoLink:
-                    f.ForegroundColor = _theme.Link;
-                    f.Underline = UnderlineType.Single;
+                    f.Foreground = _theme.Link;
+                    f.Underline = true;
                     break;
                 case MarkdownTokenKind.LinkUrl:
-                    f.ForegroundColor = _theme.Muted;
+                    f.Foreground = _theme.Muted;
                     if (hideSyntax)
                     {
-                        f.Hidden = FormatEffect.On;
+                        f.Hidden = true;
                     }
 
                     break;
                 case MarkdownTokenKind.Image:
-                    f.ForegroundColor = _theme.Link;
+                    f.Foreground = _theme.Link;
                     break;
                 case MarkdownTokenKind.ListMarker:
-                    f.ForegroundColor = _theme.Muted;
-                    f.Bold = FormatEffect.On;
+                    f.Foreground = _theme.Muted;
+                    f.Bold = true;
                     break;
                 case MarkdownTokenKind.TaskOpen:
-                    f.ForegroundColor = _theme.TaskOpen;
-                    f.Bold = FormatEffect.On;
+                    f.Foreground = _theme.TaskOpen;
+                    f.Bold = true;
                     f.Name = _theme.MonoFaceName;
                     break;
                 case MarkdownTokenKind.TaskDone:
-                    f.ForegroundColor = _theme.TaskDone;
-                    f.Bold = FormatEffect.On;
+                    f.Foreground = _theme.TaskDone;
+                    f.Bold = true;
                     f.Name = _theme.MonoFaceName;
                     break;
                 case MarkdownTokenKind.TaskDoneText:
-                    f.ForegroundColor = _theme.TaskDone;
-                    f.Strikethrough = FormatEffect.On;
+                    f.Foreground = _theme.TaskDone;
+                    f.Strikethrough = true;
                     break;
                 case MarkdownTokenKind.Quote:
-                    f.ForegroundColor = _theme.Quote;
-                    f.Italic = FormatEffect.On;
+                    f.Foreground = _theme.Quote;
+                    f.Italic = true;
                     break;
                 case MarkdownTokenKind.HorizontalRule:
-                    f.ForegroundColor = _theme.Muted;
+                    f.Foreground = _theme.Muted;
                     break;
                 case MarkdownTokenKind.Hashtag:
-                    f.ForegroundColor = _theme.TagColor(style.Text.Substring(token.Start + 1, token.Length - 1));
-                    f.Bold = FormatEffect.On;
+                    f.Foreground = _theme.TagColor(style.Text.Substring(token.Start + 1, token.Length - 1));
+                    f.Bold = true;
                     break;
             }
         }
     }
 
-    private sealed record Snapshot(int Version, string Text, int ActiveLine, int ExtraLine, MarkdownEditorMode Mode, bool Full);
+    private sealed record Snapshot(int Version, string Text, int ActiveLine, int ExtraLine, MarkdownEditorMode Mode, bool Full, bool Load);
 }
 
 public enum EditorCommand

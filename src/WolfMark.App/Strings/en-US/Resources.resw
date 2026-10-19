@@ -294,6 +294,9 @@
   <data name="Settings_Monospace" xml:space="preserve">
     <value>Monospaced font for all text</value>
   </data>
+  <data name="Settings_LineNumbers" xml:space="preserve">
+    <value>Line numbers</value>
+  </data>
   <data name="Settings_MonoFont" xml:space="preserve">
     <value>Monospaced font</value>
   </data>
@@ -305,9 +308,6 @@
   </data>
   <data name="Settings_FontSize" xml:space="preserve">
     <value>Font size</value>
-  </data>
-  <data name="Settings_LineWidth" xml:space="preserve">
-    <value>Maximum line width</value>
   </data>
   <data name="Settings_DefaultMode" xml:space="preserve">
     <value>Default mode</value>

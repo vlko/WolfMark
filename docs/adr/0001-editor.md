@@ -35,6 +35,11 @@ SPEC §4.4 požaduje dva režimy (raw / formátovaný) nad jedným textovým mod
 - Zvýrazňovanie: riadky odoslané na UI, ktoré UI ešte neaplikovalo (zastaraná dávka sa zahodí), sa
   prenášajú cez `MarkdownUpdate.MapLine` do ďalšej dávky – rýchle písanie po vložení viacerých
   riadkov nenechá riadky bez farbenia.
+- **Otvorenie poznámky je jeden `SetText` s RTF** (`RtfDocument`): celý naformátovaný text naraz namiesto
+  tisícov volaní formátu po rozsahoch. Rovnaké pravidlá tokenov (`StyleTokens`) píšu buď do rozsahu RichEditu,
+  alebo do RTF; veľkosti sa zaokrúhľujú na pol bodu (RTF `\fs`) v oboch cestách. Text sa po načítaní porovná
+  s modelom – pri rozdiele sa vráti plain text a formátuje sa po dávkach. Kontrola pravopisu sa zapína až
+  s týmto finálnym textom: výmena textu počas behu kontroly padala vo WinUIEdit.dll.
 
 ## Merania
 

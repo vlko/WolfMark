@@ -97,11 +97,11 @@ internal static class R
     public const string Editor_DropImage = nameof(Editor_DropImage);
     public const string Editor_OpenImage = nameof(Editor_OpenImage);
     public const string Settings_Monospace = nameof(Settings_Monospace);
+    public const string Settings_LineNumbers = nameof(Settings_LineNumbers);
     public const string Settings_MonoFont = nameof(Settings_MonoFont);
     public const string MonoFont_Filter = nameof(MonoFont_Filter);
     public const string MonoFont_Loading = nameof(MonoFont_Loading);
     public const string Settings_FontSize = nameof(Settings_FontSize);
-    public const string Settings_LineWidth = nameof(Settings_LineWidth);
     public const string Settings_DefaultMode = nameof(Settings_DefaultMode);
     public const string Settings_ClaudeCode = nameof(Settings_ClaudeCode);
     public const string Settings_ClaudeEnabled = nameof(Settings_ClaudeEnabled);

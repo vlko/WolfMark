@@ -44,9 +44,10 @@ public sealed class LocalSettings
     /// <summary>Monospaced font: inline code and code blocks, and all text with <see cref="EditorMonospace"/>.</summary>
     public string EditorMonoFontFamily { get; set; } = "Cascadia Mono";
 
-    public double EditorFontSize { get; set; } = 15;
+    /// <summary>A number before each line of the note.</summary>
+    public bool EditorLineNumbers { get; set; } = true;
 
-    public double EditorMaxLineWidth { get; set; } = 760;
+    public double EditorFontSize { get; set; } = 15;
 
     public EditorMode DefaultEditorMode { get; set; } = EditorMode.Formatted;
 

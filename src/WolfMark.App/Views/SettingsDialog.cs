@@ -145,8 +145,8 @@ internal static class SettingsDialog
         var monospace = new ToggleSwitch { IsOn = s.EditorMonospace, Header = Strings.Get(R.Settings_Monospace) };
         monospace.Toggled += (_, _) => font.IsEnabled = !monospace.IsOn;
         var monoFont = new MonoFontPicker(s.EditorMonoFontFamily);
+        var lineNumbers = new ToggleSwitch { IsOn = s.EditorLineNumbers, Header = Strings.Get(R.Settings_LineNumbers) };
         var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = 10, Maximum = 28, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
-        var lineWidth = new NumberBox { Value = s.EditorMaxLineWidth, Minimum = 400, Maximum = 2000, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 20 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
 
         // Claude Code
@@ -209,11 +209,11 @@ internal static class SettingsDialog
             startWithWindows,
             closeToTray,
             Section(Strings.Get(R.Settings_Editor)),
+            lineNumbers,
             monospace,
             Field(Strings.Get(R.Settings_MonoFont), monoFont.Element),
             Field(Strings.Get(R.Settings_FontFamily), font),
             Field(Strings.Get(R.Settings_FontSize), fontSize),
-            Field(Strings.Get(R.Settings_LineWidth), lineWidth),
             Field(Strings.Get(R.Settings_DefaultMode), mode),
             Section(Strings.Get(R.Settings_ClaudeCode)),
             ccEnabled,
@@ -261,8 +261,8 @@ internal static class SettingsDialog
         s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
         s.EditorMonospace = monospace.IsOn;
         s.EditorMonoFontFamily = monoFont.Selected;
+        s.EditorLineNumbers = lineNumbers.IsOn;
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
-        s.EditorMaxLineWidth = double.IsNaN(lineWidth.Value) ? s.EditorMaxLineWidth : lineWidth.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
         s.CloseToTray = closeToTray.IsOn;
         if (!LaunchOptions.Current.IsDemo && (startWithWindows.IsOn != startupWas || startupWas))
