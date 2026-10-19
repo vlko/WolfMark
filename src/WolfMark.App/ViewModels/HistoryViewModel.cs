@@ -18,6 +18,7 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
     private DateOnly? _lastDay;
     private int _generation;
     private string? _currentPath;
+    private bool _loaded;
 
     /// <summary><see cref="HistoryHeaderViewModel"/> and <see cref="HistoryRowViewModel"/> items.</summary>
     public ObservableCollection<object> Items { get; } = [];
@@ -71,6 +72,12 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 
     public Task SetDayFilterAsync(DateOnly? day)
     {
+        // Same filter: the list is current – index changes reload it on their own (MainViewModel).
+        if (day == DayFilter && _loaded)
+        {
+            return Task.CompletedTask;
+        }
+
         DayFilter = day;
         return ReloadAsync();
     }
@@ -133,6 +140,7 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
             _next = next;
             Append(items);
             IsEmpty = Items.Count == 0;
+            _loaded = true;
         }
         finally
         {

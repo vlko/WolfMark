@@ -169,24 +169,23 @@ internal sealed partial class MainViewModel : ObservableObject
             Week.Select(day);
         }
 
+        // The note first – that is what the user looks at; the history and month grid follow.
+        if (openLatest)
+        {
+            await _host.DatabaseReady;
+            var latest = await _host.History.GetLatestOnDayAsync(day, _host.ShutdownToken);
+            if (latest is not null && NotePath.TryParse(latest.RelativePath, out var path))
+            {
+                await Editor.OpenAsync(path);
+            }
+            else if (day == Today)
+            {
+                await Editor.NewAsync(null);
+            }
+        }
+
         await History.SetDayFilterAsync(filterHistory ? day : null);
         await SyncCalendarMonthAsync();
-
-        if (!openLatest)
-        {
-            return;
-        }
-
-        await _host.DatabaseReady;
-        var latest = await _host.History.GetLatestOnDayAsync(day, _host.ShutdownToken);
-        if (latest is not null && NotePath.TryParse(latest.RelativePath, out var path))
-        {
-            await Editor.OpenAsync(path);
-        }
-        else if (day == Today)
-        {
-            await Editor.NewAsync(null);
-        }
     }
 
     public Task MoveWeekAsync(int weeks) => Week.LoadAsync(Week.Monday.AddDays(7 * weeks), SelectedDay);
