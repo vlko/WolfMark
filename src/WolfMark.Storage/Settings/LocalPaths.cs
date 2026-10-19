@@ -3,8 +3,11 @@ namespace WolfMark.Storage.Settings;
 /// <summary>Machine-local, non-synchronised locations (<c>%LOCALAPPDATA%\WolfMark</c>).</summary>
 public sealed class LocalPaths(string baseDirectory)
 {
-    public static LocalPaths Default { get; } = new(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WolfMark"));
+    // Create: without it a missing folder (no ~/.local/share on a fresh Linux) comes back as "" and the data
+    // would land in the current directory.
+    public static LocalPaths Default { get; } = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create),
+        "WolfMark"));
 
     public string BaseDirectory { get; } = baseDirectory;
 

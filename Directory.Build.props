@@ -8,6 +8,9 @@
     <Deterministic>true</Deterministic>
     <InvariantGlobalization>false</InvariantGlobalization>
     <SatelliteResourceLanguages>en;sk</SatelliteResourceLanguages>
+    <!-- AOT tuned for speed (static PGO, vxsort) and runtime-native async (.NET 11), see docs/adr/0006-build-size.md. -->
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <Features>$(Features);runtime-async=on</Features>
 
     <!-- Domain libraries are plain net11.0 so they build and test on any OS (CI, Linux dev boxes). -->
     <WolfMarkCoreTargetFramework>net11.0</WolfMarkCoreTargetFramework>

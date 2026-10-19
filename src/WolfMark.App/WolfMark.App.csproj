@@ -44,10 +44,29 @@
     <ProjectReference Include="..\WolfMark.Sync.ClaudeCode\WolfMark.Sync.ClaudeCode.csproj" />
     <ProjectReference Include="..\WolfMark.Editor\WolfMark.Editor.csproj" />
     <ProjectReference Include="..\WolfMark.Presentation\WolfMark.Presentation.csproj" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Base" />
+    <!-- Ships no DLLs; required by the SDK checks when not self-contained (type-check builds off Windows). -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
   </ItemGroup>
+
+  <!--
+    The self-contained Windows App SDK copies WinUI's .mui string resources for ~85 languages next to the exe.
+    The app ships en and sk only (SatelliteResourceLanguages), so the others go; WinUI falls back to en-us.
+  -->
+  <Target Name="TrimWinUILanguages" AfterTargets="Publish">
+    <ItemGroup>
+      <_WinUIMui Include="$(PublishDir)*\*.mui" Exclude="$(PublishDir)en-us\*.mui;$(PublishDir)sk-SK\*.mui" />
+      <_WinUIMuiDir Include="@(_WinUIMui->'%(RootDir)%(Directory)'->Distinct())" />
+    </ItemGroup>
+    <Delete Files="@(_WinUIMui)" />
+    <RemoveDir Directories="@(_WinUIMuiDir)" />
+  </Target>
 </Project>

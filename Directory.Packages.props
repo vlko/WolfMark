@@ -16,7 +16,14 @@
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <!-- Windows App SDK 2.5.1 components the app uses; the metapackage would also bundle AI, ML
+         (onnxruntime, DirectML), Search and Widgets runtimes into the self-contained output. -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.9" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Foundation" Version="2.3.12" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.DWrite" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Base" Version="2.0.4" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Runtime" Version="2.5.1" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <!-- Tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />

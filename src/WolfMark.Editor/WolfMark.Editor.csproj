@@ -9,7 +9,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WolfMark.Core\WolfMark.Core.csproj" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
+    <!-- WinUI 2.3.9 asks for 2.1.8, which is not on nuget.org (NU1603). -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
   </ItemGroup>
 </Project>

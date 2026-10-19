@@ -11,7 +11,8 @@ public static class RootDirectoryResolver
         ResolveDefault(
             Environment.GetEnvironmentVariable,
             Directory.Exists,
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+            // Create: a missing ~/Documents would otherwise resolve to "" – notes in the current directory.
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.Create));
 
     public static string ResolveDefault(Func<string, string?> getEnvironmentVariable, Func<string, bool> directoryExists, string documentsFolder)
     {
