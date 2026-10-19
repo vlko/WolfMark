@@ -32,18 +32,32 @@ public sealed partial class MarkdownEditor
     /// <summary>Icons for the context menu; must return a new element per call (an element has one parent).</summary>
     public Func<EditorCommand, IconElement?>? CommandIcon { get; set; }
 
+    /// <summary>The user's choice; read-only notes are never proofed (see <see cref="ApplySpellCheck"/>).</summary>
     public bool IsSpellCheckEnabled
     {
-        get => _box.IsSpellCheckEnabled;
+        get => _spellCheck;
         set
         {
-            var turnedOn = value && !_box.IsSpellCheckEnabled;
-            _box.IsSpellCheckEnabled = value;
-            if (turnedOn)
+            _spellCheck = value;
+            if (ApplySpellCheck())
             {
                 Reproof();
             }
         }
+    }
+
+    /// <summary>
+    /// Proofing runs only on editable notes. The box is made editable for a moment on every format batch
+    /// (RichEdit refuses format changes on a read-only document); with proofing on that restarts a background
+    /// spell check of the whole note each time, and replacing a long read-only note while one runs crashed
+    /// WinUIEdit.dll (access violation). Returns true when proofing was switched on.
+    /// </summary>
+    private bool ApplySpellCheck()
+    {
+        var on = _spellCheck && !_readOnly;
+        var turnedOn = on && !_box.IsSpellCheckEnabled;
+        _box.IsSpellCheckEnabled = on;
+        return turnedOn;
     }
 
     private static readonly Dictionary<MarkdownTokenKind, EditorCommand> InlineCommands = new()

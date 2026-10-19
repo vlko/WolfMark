@@ -416,9 +416,7 @@ internal sealed partial class MainWindow : Window
 
         editorVm.LoadRequested += (_, request) =>
         {
-            _editor.IsReadOnly = false;
-            _editor.Load(request.Text, request.CaretToEnd);
-            _editor.IsReadOnly = editorVm.IsReadOnly;
+            _editor.Load(request.Text, request.CaretToEnd, editorVm.IsReadOnly);
             _editor.FocusEditor();
             _editor.ScrollToCaret();
         };

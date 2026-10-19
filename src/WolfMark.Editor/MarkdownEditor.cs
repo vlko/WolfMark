@@ -44,6 +44,8 @@ public sealed partial class MarkdownEditor : UserControl
     private int _activeLine = -1;
     private int _appliedVersion;
     private int _applying;
+    private bool _readOnly;
+    private bool _spellCheck = true;
     private double _maxLineWidth = 760;
 
     public MarkdownEditor()
@@ -133,8 +135,16 @@ public sealed partial class MarkdownEditor : UserControl
 
     public bool IsReadOnly
     {
-        get => _box.IsReadOnly;
-        set => _box.IsReadOnly = value;
+        get => _readOnly;
+        set
+        {
+            _readOnly = value;
+            _box.IsReadOnly = value;
+            if (ApplySpellCheck())
+            {
+                Reproof();
+            }
+        }
     }
 
     public MarkdownEditorMode Mode
@@ -184,16 +194,18 @@ public sealed partial class MarkdownEditor : UserControl
     }
 
     /// <summary>Replaces the whole document (opening a note). Clears undo history.</summary>
-    public void Load(string text, bool caretToEnd)
+    public void Load(string text, bool caretToEnd, bool readOnly)
     {
         text = text.Replace("\r\n", "\n");
         Interlocked.Increment(ref _applying);
         try
         {
-            var wasReadOnly = _box.IsReadOnly;
+            _readOnly = readOnly;
             _box.IsReadOnly = false;
+            // Before SetText, so an editable note is proofed and a read-only one never is.
+            ApplySpellCheck();
             _box.TextDocument.SetText(TextSetOptions.None, text);
-            _box.IsReadOnly = wasReadOnly;
+            _box.IsReadOnly = readOnly;
             ResetAllFormatting();
             var caret = caretToEnd ? text.Length : 0;
             _box.TextDocument.Selection.SetRange(caret, caret);
@@ -222,10 +234,9 @@ public sealed partial class MarkdownEditor : UserControl
         Interlocked.Increment(ref _applying);
         try
         {
-            var wasReadOnly = _box.IsReadOnly;
             _box.IsReadOnly = false;
             _box.TextDocument.SetText(TextSetOptions.None, _text);
-            _box.IsReadOnly = wasReadOnly;
+            _box.IsReadOnly = _readOnly;
             ResetAllFormatting();
             _box.TextDocument.Selection.SetRange(start, end);
         }
@@ -736,7 +747,6 @@ public sealed partial class MarkdownEditor : UserControl
             }
 
             var to = Math.Min(from + LinesPerBatch, styles.Count);
-            var readOnly = _box.IsReadOnly;
             Interlocked.Increment(ref _applying);
             try
             {
@@ -752,7 +762,7 @@ public sealed partial class MarkdownEditor : UserControl
             finally
             {
                 _box.TextDocument.ApplyDisplayUpdates();
-                _box.IsReadOnly = readOnly;
+                _box.IsReadOnly = _readOnly;
                 Interlocked.Decrement(ref _applying);
             }
 
