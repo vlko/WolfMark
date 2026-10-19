@@ -285,6 +285,12 @@
   <data name="Settings_FontFamily" xml:space="preserve">
     <value>Font</value>
   </data>
+  <data name="Editor_DropImage" xml:space="preserve">
+    <value>Insert image</value>
+  </data>
+  <data name="Editor_OpenImage" xml:space="preserve">
+    <value>Double-click to open</value>
+  </data>
   <data name="Settings_Monospace" xml:space="preserve">
     <value>Monospaced font (Cascadia Mono)</value>
   </data>

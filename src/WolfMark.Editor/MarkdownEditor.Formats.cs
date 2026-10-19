@@ -215,6 +215,7 @@ public sealed partial class MarkdownEditor
 
         var (lineStart, text, tokens) = info;
         _overlayOrigin = ViewportOrigin();
+        _overlayShift = ScrollShift();
         foreach (var t in tokens)
         {
             if (t.Kind is >= MarkdownTokenKind.Heading1 and <= MarkdownTokenKind.Heading6)
@@ -293,13 +294,30 @@ public sealed partial class MarkdownEditor
 
         // GetRect is relative to the text viewport, the overlay to the whole control.
         var left = _overlayOrigin.X + (before ? rect.Left - size.Width + 2 : rect.Right - 2);
-        var top = _overlayOrigin.Y + rect.Top - (size.Height * 0.55);
+        var top = _overlayOrigin.Y + _overlayShift + rect.Top - (size.Height * 0.55);
         Canvas.SetLeft(chip, left);
         Canvas.SetTop(chip, top);
         _overlay.Children.Add(chip);
     }
 
     private Point _overlayOrigin;
+    private double _overlayShift;
+
+    /// <summary>
+    /// Correction for <c>GetRect</c> results when the note is scrolled. They came back relative to the document,
+    /// not the visible viewport (image previews stayed put while the text scrolled). Detected instead of
+    /// assumed: in viewport coordinates the first line would be about one scroll offset above the top.
+    /// </summary>
+    private double ScrollShift()
+    {
+        if (_scrollViewer is not { VerticalOffset: > 1 } sv)
+        {
+            return 0;
+        }
+
+        _box.TextDocument.GetRange(0, 0).GetRect(PointOptions.ClientCoordinates, out var first, out _);
+        return first.Top > -sv.VerticalOffset / 2 ? -sv.VerticalOffset : 0;
+    }
 
     /// <summary>
     /// Top-left of the text viewport (the ScrollContentPresenter inside border and padding) in overlay

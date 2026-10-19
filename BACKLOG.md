@@ -109,6 +109,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M4-06 – Editovacie skratky.** Bold/italic/link, checkbox, odsadenie, pokračovanie zoznamu.
   *Stav:* Logika v `MarkdownEditing` + testy; napojenie v editore neoverené na Windows.
 - 🟨 **M4-07 – Vkladanie obrázkov** do `assets/` dňa.
+  *Stav:* Vloženie zo schránky (bitmapa aj súbory), drag & drop súborov, náhľad pod riadkom (SpaceAfter + overlay), Ctrl+klik otvorí súbor; len relatívne cesty v koreni poznámok. Overiť na Windows.
 - 🟨 **M4-08 – Externé zmeny otvoreného súboru** (tichý reload / porovnanie pri konflikte).
   *Stav:* Tichý reload / InfoBar „Načítať z disku | Ponechať moje“; diff/merge UI nie.
 - 🟨 **M4-09 – Hlavné okno v1.** Hlavička poznámky (výber tagu s farbou, čas, prepínač režimu, `+`), `Ctrl+N`, otvorenie poslednej poznámky pri štarte, vytvorenie súboru až po prvom znaku.

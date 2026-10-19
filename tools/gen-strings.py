@@ -93,6 +93,8 @@ S = {
  "Settings_LanguageSystem": ("System", "Podľa systému"),
  "Settings_Editor": ("Editor", "Editor"),
  "Settings_FontFamily": ("Font", "Písmo"),
+ "Editor_DropImage": ("Insert image", "Vložiť obrázok"),
+ "Editor_OpenImage": ("Double-click to open", "Dvojklikom otvoríte"),
  "Settings_Monospace": ("Monospaced font (Cascadia Mono)", "Písmo s pevnou šírkou (Cascadia Mono)"),
  "Settings_FontSize": ("Font size", "Veľkosť písma"),
  "Settings_LineWidth": ("Maximum line width", "Maximálna šírka riadku"),

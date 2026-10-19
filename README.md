@@ -129,6 +129,10 @@ files.
 - **Editor**: formatted mode hides Markdown markers outside the current line, checkboxes are clickable; raw mode
   keeps the markers visible but muted. Highlighting runs incrementally in the background and never blocks typing.
   Copy as Markdown, plain text or HTML.
+- **Images**: paste a screenshot or drop image files onto a note – they are copied into that day's `assets\`
+  folder and linked relatively, so they travel with the notes. In formatted mode an image line shows the picture (up
+  to five lines high) and behaves as one block: the caret sits before or after it, text typed there goes to its own
+  line, Backspace/Delete remove the whole image. Double-click opens it in the default Windows viewer. Only images inside the notes folder are shown, never remote or network paths.
 
 <table>
 <tr>

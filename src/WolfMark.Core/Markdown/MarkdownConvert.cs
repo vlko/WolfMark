@@ -275,12 +275,8 @@ public static class MarkdownConvert
                 case MarkdownTokenKind.Image:
                 {
                     // ![alt](url): the whole token becomes one <img>.
-                    var text = line.Substring(t.Start, t.Length);
-                    var mid = text.IndexOf("](", StringComparison.Ordinal);
-                    if (mid > 1)
+                    if (MarkdownImageLink.TryParse(line.AsSpan(t.Start, t.Length), out var alt, out var src))
                     {
-                        var alt = text[2..mid];
-                        var src = text[(mid + 2)..^1];
                         opens.Add((t.Start, 0, $"<img src=\"{EscapeAttribute(src)}\" alt=\"{EscapeAttribute(alt)}\">"));
                         Array.Fill(skip, true, t.Start, t.Length);
                     }

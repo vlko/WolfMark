@@ -94,6 +94,8 @@ internal static class R
     public const string Settings_LanguageSystem = nameof(Settings_LanguageSystem);
     public const string Settings_Editor = nameof(Settings_Editor);
     public const string Settings_FontFamily = nameof(Settings_FontFamily);
+    public const string Editor_DropImage = nameof(Editor_DropImage);
+    public const string Editor_OpenImage = nameof(Editor_OpenImage);
     public const string Settings_Monospace = nameof(Settings_Monospace);
     public const string Settings_FontSize = nameof(Settings_FontSize);
     public const string Settings_LineWidth = nameof(Settings_LineWidth);

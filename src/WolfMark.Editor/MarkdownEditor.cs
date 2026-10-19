@@ -85,16 +85,25 @@ public sealed partial class MarkdownEditor : UserControl
         _box.SelectionChanged += (_, _) => OnSelectionChanged();
         _box.Paste += OnPaste;
         _box.PreviewKeyDown += OnPreviewKeyDown;
-        _box.LostFocus += (_, _) => EditorLostFocus?.Invoke(this, EventArgs.Empty);
+        _box.LostFocus += (_, _) =>
+        {
+            UpdateImageCaret();
+            EditorLostFocus?.Invoke(this, EventArgs.Empty);
+        };
+        _box.GotFocus += (_, _) => UpdateImageCaret();
         _box.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnPointerReleased), handledEventsToo: true);
         SizeChanged += (_, _) =>
         {
             UpdatePadding();
+            OnImageColumnResized();
             UpdateOverlay();
+            UpdateImages();
         };
+        InitImageDrop();
 
         var host = new Grid();
         host.Children.Add(_box);
+        host.Children.Add(_images);
         host.Children.Add(_overlay);
         Content = host;
         InitContextMenu();
@@ -128,8 +137,11 @@ public sealed partial class MarkdownEditor : UserControl
     /// </summary>
     public bool AlignLeft { get; set; }
 
-    /// <summary>Stores a pasted image (PNG bytes) and returns the markdown link target, or null.</summary>
-    public Func<byte[], Task<string?>>? ImagePasteHandler { get; set; }
+    /// <summary>
+    /// Stores a pasted or dropped image (bytes, extension such as ".png") in the note's assets and returns the
+    /// markdown link target, or null.
+    /// </summary>
+    public Func<ReadOnlyMemory<byte>, string, Task<string?>>? ImagePasteHandler { get; set; }
 
     public string Text => _text;
 
@@ -204,6 +216,7 @@ public sealed partial class MarkdownEditor : UserControl
             _box.IsReadOnly = false;
             // Before SetText, so an editable note is proofed and a read-only one never is.
             ApplySpellCheck();
+            ResetImages();
             // New text takes the format at the start of the old note – often a hidden "# " marker, which made
             // the whole note hidden until the reset below; placing the caret in it then crashed WinUIEdit.dll
             // (access violation). Start from an empty, plainly formatted document instead.
@@ -386,6 +399,20 @@ public sealed partial class MarkdownEditor : UserControl
                 }
 
                 break;
+            case VirtualKey.Back when !ctrl && length == 0 && !_box.IsReadOnly && _mode == MarkdownEditorMode.Formatted:
+                edit = MarkdownImageBlock.Backspace(_text, start, IsCollapsedImageLine);
+                handled = edit is not null;
+                break;
+            case VirtualKey.Delete when !ctrl && length == 0 && !_box.IsReadOnly && _mode == MarkdownEditorMode.Formatted:
+                edit = MarkdownImageBlock.Delete(_text, start, IsCollapsedImageLine);
+                handled = edit is not null;
+                break;
+            case VirtualKey.Right when !ctrl && !shift && length == 0 && ImageEdgeStep(start, forward: true) is { } after:
+                _box.TextDocument.Selection.SetRange(after, after); // over the image in one step
+                break;
+            case VirtualKey.Left when !ctrl && !shift && length == 0 && ImageEdgeStep(start, forward: false) is { } before:
+                _box.TextDocument.Selection.SetRange(before, before);
+                break;
             case VirtualKey.Tab when !ctrl && !_box.IsReadOnly:
                 edit = MarkdownEditing.Indent(_text, start, length, outdent: shift);
                 handled = edit is not null;
@@ -410,6 +437,12 @@ public sealed partial class MarkdownEditor : UserControl
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        var point = e.GetCurrentPoint(_box).Position;
+        if (IsDown(VirtualKey.Control) && TryOpenImageAt(point))
+        {
+            return; // works in read-only notes too
+        }
+
         if (_box.IsReadOnly)
         {
             return;
@@ -421,7 +454,6 @@ public sealed partial class MarkdownEditor : UserControl
             return;
         }
 
-        var point = e.GetCurrentPoint(_box).Position;
         var range = _box.TextDocument.GetRangeFromPoint(point, PointOptions.ClientCoordinates);
         var pos = range.StartPosition;
         var (lineStart, lineEnd) = MarkdownEditing.LineAt(_text, pos);
@@ -455,15 +487,22 @@ public sealed partial class MarkdownEditor : UserControl
         try
         {
             var content = Clipboard.GetContent();
+            // Image files copied in Explorer are copied into the assets like dropped ones.
+            if (content.Contains(StandardDataFormats.StorageItems)
+                && await InsertImageFilesAsync(await content.GetStorageItemsAsync(), at: null))
+            {
+                return;
+            }
+
             if (content.Contains(StandardDataFormats.Bitmap) && ImagePasteHandler is { } handler)
             {
                 var reference = await content.GetBitmapAsync();
                 using var stream = await reference.OpenReadAsync();
                 var png = await ImageEncoding.ToPngAsync(stream);
-                var link = await handler(png);
+                var link = await handler(png, ".png");
                 if (link is not null)
                 {
-                    InsertAtSelection($"![]({link})");
+                    InsertImageLinks($"![]({link})", at: null);
                 }
 
                 return;
@@ -484,8 +523,15 @@ public sealed partial class MarkdownEditor : UserControl
     private void InsertAtSelection(string text)
     {
         var (start, length) = GetSelection();
+        var old = _text;
         _undo.Seal();
         ApplyEdit(new TextEdit(start, length, text, start + text.Length, 0), recordUndo: true);
+        if (_mode == MarkdownEditorMode.Formatted && MarkdownImageBlock.KeepOnOwnLine(old, _text, IsCollapsedImageLine) is { } ownLine)
+        {
+            ApplyEdit(ownLine, recordUndo: true); // pasted beside an image: on a line of its own
+            RestyleImageLines();
+        }
+
         _undo.Seal();
     }
 
@@ -508,6 +554,13 @@ public sealed partial class MarkdownEditor : UserControl
         _text = newText;
         var (caret, _) = GetSelection();
         _undo.Record(old, newText, Math.Min(caret, old.Length), caret);
+        if (_mode == MarkdownEditorMode.Formatted && MarkdownImageBlock.KeepOnOwnLine(old, newText, IsCollapsedImageLine) is { } ownLine)
+        {
+            ApplyEdit(ownLine, recordUndo: true); // typed beside an image: the text gets a line of its own
+            RestyleImageLines();
+            return;
+        }
+
         _activeLine = LineOf(_text, caret);
         RequestHighlight(full: false);
         TextEdited?.Invoke(this, newText);
@@ -556,6 +609,11 @@ public sealed partial class MarkdownEditor : UserControl
 
     private void OnSelectionChanged()
     {
+        if (SnapCaretOutOfImage())
+        {
+            return; // the caret lands before or after the image; that change comes back here
+        }
+
         var (caret, _) = GetSelection();
         var line = LineOf(_text, caret);
         if (line != _activeLine)
@@ -566,6 +624,7 @@ public sealed partial class MarkdownEditor : UserControl
 
         // Markers stay hidden; the caret line only gets overlay chips and toolbar state.
         RefreshCaretState();
+        UpdateImageCaret();
     }
 
     private static int LineOf(string text, int offset)
@@ -611,6 +670,7 @@ public sealed partial class MarkdownEditor : UserControl
         {
             UpdateOverflow();
             UpdateOverlay();
+            UpdateImages();
         };
         sv.RegisterPropertyChangedCallback(ScrollViewer.ScrollableHeightProperty, (_, _) => UpdateOverflow());
         UpdateOverflow();
@@ -771,6 +831,8 @@ public sealed partial class MarkdownEditor : UserControl
                 Interlocked.Decrement(ref _applying);
             }
 
+            UpdateImages(); // reserved space above moves the previews below
+
             if (to < styles.Count)
             {
                 DispatchStyles(snapshot, styles, to);
@@ -787,6 +849,7 @@ public sealed partial class MarkdownEditor : UserControl
     {
         var range = _box.TextDocument.GetRange(0, int.MaxValue);
         ResetFormat(range.CharacterFormat);
+        range.ParagraphFormat.SpaceAfter = 0; // image previews; new text must not inherit the room
     }
 
     private void ResetFormat(ITextCharacterFormat f)
@@ -811,7 +874,15 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         var lineRange = doc.GetRange(style.Start, style.Start + style.Length);
-        ResetFormat(lineRange.CharacterFormat);
+        // With the paragraph mark: a collapsed image line shrinks it too, and it has to grow back.
+        var withMark = doc.GetRange(style.Start, style.Start + style.Length + 1);
+        ResetFormat(withMark.CharacterFormat);
+        if (ReserveImageSpace(style, lineRange, mode))
+        {
+            CollapseImageLine(withMark);
+            return;
+        }
+
         // Formatted mode hides delimiters on every line – revealing them would shift the text (ADR 0001).
         var hideSyntax = mode == MarkdownEditorMode.Formatted;
 

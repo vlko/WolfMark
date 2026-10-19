@@ -411,14 +411,21 @@ internal sealed partial class MainWindow : Window
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();
         _editor.ModeChanged += (_, mode) => editorVm.Mode = mode == MarkdownEditorMode.Raw ? EditorMode.Raw : EditorMode.Formatted;
-        _editor.ImagePasteHandler = async png =>
+        _editor.ImagePasteHandler = async (data, extension) =>
         {
             var day = editorVm.Day;
-            return await Task.Run(() => _host.Engine.SaveAssetAsync(day, DateTime.Now, ".png", png, CancellationToken.None));
+            return await Task.Run(() => _host.Engine.SaveAssetAsync(day, DateTime.Now, extension, data, CancellationToken.None));
         };
+        _editor.DropImageCaption = Strings.Get(R.Editor_DropImage);
+        _editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
 
         editorVm.LoadRequested += (_, request) =>
         {
+            // Image links resolve against the note's folder (assets/ of its day).
+            _editor.NotesRoot = _host.Engine.Root;
+            _editor.NoteDirectory = editorVm.Path is { } notePath
+                ? System.IO.Path.GetDirectoryName(_host.Engine.GetFullPath(notePath))
+                : _host.Engine.GetDayDirectory(editorVm.Day);
             _editor.Load(request.Text, request.CaretToEnd, editorVm.IsReadOnly);
             _editor.FocusEditor();
             _editor.ScrollToCaret();
