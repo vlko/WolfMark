@@ -97,9 +97,9 @@ public sealed partial class MarkdownEditor : UserControl
             UpdatePadding();
             OnImageColumnResized();
             UpdateOverlay();
-            UpdateImages();
+            ScheduleImageLayout();
         };
-        InitImageDrop();
+        InitImages();
 
         var host = new Grid();
         host.Children.Add(_box);
@@ -702,7 +702,7 @@ public sealed partial class MarkdownEditor : UserControl
         {
             UpdateOverflow();
             UpdateOverlay();
-            UpdateImages();
+            ScrollImages();
         };
         sv.RegisterPropertyChangedCallback(ScrollViewer.ScrollableHeightProperty, (_, _) => UpdateOverflow());
         UpdateOverflow();
@@ -871,7 +871,7 @@ public sealed partial class MarkdownEditor : UserControl
                 Interlocked.Decrement(ref _applying);
             }
 
-            UpdateImages(); // reserved space above moves the previews below
+            ScheduleImageLayout(); // reserved space above moves the previews below
             RevealAfterLoad();
 
             if (to < styles.Count)

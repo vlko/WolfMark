@@ -16,5 +16,8 @@ public sealed class LocalPaths(string baseDirectory)
 
     public string ModelsDirectory => Path.Combine(BaseDirectory, "models");
 
+    /// <summary>Downscaled image previews of the editor (a cache – safe to delete).</summary>
+    public string PreviewCacheDirectory => Path.Combine(BaseDirectory, "cache", "previews");
+
     public string CrashDumpsDirectory => Path.Combine(BaseDirectory, "crashes");
 }

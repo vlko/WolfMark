@@ -25,23 +25,33 @@ public sealed partial class MarkdownEditor
 {
     private const int PreviewRows = 5;
     private const double PreviewGap = 4;
+    private const int MaxCachedPreviews = 32;
 
     // Hit-testable only where a preview is (no background): clicks place the caret, wheel is passed on.
+    // _images clips to the text viewport; _imageLayer holds the pictures in document coordinates and only
+    // moves when the note scrolls – no RichEdit measuring per scroll frame.
     private readonly Canvas _images = new();
+    private readonly Canvas _imageLayer = new() { RenderTransform = new TranslateTransform() };
 
-    // Previews placed by the last UpdateImages (line range, box in canvas coordinates) and the caret drawn
+    // Previews placed by the last LayoutImages (line range, box in layer coordinates) and the caret drawn
     // beside one: on an image line RichEdit's own caret is hidden behind the picture.
     private readonly List<(int Start, int End, Rect Box)> _imageBoxes = [];
     private readonly Microsoft.UI.Xaml.Shapes.Rectangle _imageCaret = new() { Width = 2, IsHitTestVisible = false };
 
-    // Pixel size per file; null = could not be read (missing, not an image).
-    private readonly Dictionary<string, (uint Width, uint Height)?> _imageSizes = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _imageSizeLoading = new(StringComparer.OrdinalIgnoreCase);
+    // Image elements reused between layouts (pictures, handlers and tooltips are not rebuilt).
+    private readonly List<Image> _imagePool = [];
+
+    // Downscaled picture per file; null = could not be read (missing, not an image).
+    private readonly Dictionary<string, ImagePreview?> _previews = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _previewLoading = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, BitmapImage> _bitmaps = new(StringComparer.OrdinalIgnoreCase);
+    private int _previewPixels;
 
     // Line text → image file, filled when lines are styled; keyed by text so edits that shift lines don't matter.
     private readonly Dictionary<string, string> _imageLines = new(StringComparer.Ordinal);
     private double _imageColumnWidth;
+    private bool _imageLayoutPending;
+    private Point _imageOrigin;
 
     /// <summary>Folder of the open note – relative image links resolve against it. Null disables previews.</summary>
     public string? NoteDirectory { get; set; }
@@ -49,20 +59,37 @@ public sealed partial class MarkdownEditor
     /// <summary>Notes root; images outside it are never shown.</summary>
     public string? NotesRoot { get; set; }
 
+    /// <summary>Machine-local folder for the downscaled previews; null = kept in memory only.</summary>
+    public string? PreviewCacheDirectory { get; set; }
+
     /// <summary>Caption of the drag &amp; drop cursor (the app provides a localised text).</summary>
     public string DropImageCaption { get; set; } = "Insert image";
 
     /// <summary>Tooltip of a preview (localised by the app).</summary>
     public string OpenImageTip { get; set; } = "Double-click to open";
 
+    private void InitImages()
+    {
+        _images.Children.Add(_imageLayer);
+        InitImageDrop();
+    }
+
     private void ResetImages()
     {
         _imageLines.Clear();
         _imageBoxes.Clear();
-        _images.Children.Clear();
-        foreach (var failed in _imageSizes.Where(p => p.Value is null).Select(p => p.Key).ToList())
+        _imageLayer.Children.Clear();
+        _imagePool.Clear();
+        if (_previews.Count > MaxCachedPreviews)
         {
-            _imageSizes.Remove(failed); // the file may have arrived since (OneDrive)
+            // Pictures of earlier notes; the disk cache brings them back quickly.
+            _previews.Clear();
+            _bitmaps.Clear();
+        }
+
+        foreach (var failed in _previews.Where(p => p.Value is null).Select(p => p.Key).ToList())
+        {
+            _previews.Remove(failed); // the file may have arrived since (OneDrive)
         }
     }
 
@@ -76,16 +103,17 @@ public sealed partial class MarkdownEditor
         var collapse = false;
         if (mode == MarkdownEditorMode.Formatted && ImageOf(style) is { } path)
         {
+            CheckPreviewHeight();
             _imageLines[style.Text] = path;
-            if (!_imageSizes.TryGetValue(path, out var size))
+            if (!_previews.TryGetValue(path, out var preview))
             {
-                EnsureImageSize(path);
+                EnsurePreview(path);
             }
-            else if (size is { } s)
+            else if (preview is not null)
             {
                 collapse = MarkdownImageBlock.IsImageLine(style.Text);
                 // A collapsed line's picture starts on its own (tiny) row, so only the gap below is added.
-                height = PreviewSize(s).Height + (collapse ? PreviewGap : 2 * PreviewGap);
+                height = PreviewSize(preview).Height + (collapse ? PreviewGap : 2 * PreviewGap);
             }
         }
 
@@ -124,8 +152,8 @@ public sealed partial class MarkdownEditor
         _mode == MarkdownEditorMode.Formatted
         && MarkdownImageBlock.IsImageLine(line)
         && _imageLines.TryGetValue(line, out var path)
-        && _imageSizes.TryGetValue(path, out var size)
-        && size is not null;
+        && _previews.TryGetValue(path, out var preview)
+        && preview is not null;
 
     private bool _snapPending;
     private long _lastSnap;
@@ -206,35 +234,47 @@ public sealed partial class MarkdownEditor
         return null;
     }
 
-    private void EnsureImageSize(string path)
+    private void EnsurePreview(string path)
     {
-        if (_imageSizeLoading.Add(path))
+        if (_previewLoading.Add(path))
         {
-            _ = LoadImageSizeAsync(path);
+            _ = LoadPreviewAsync(path, _previewPixels);
         }
     }
 
-    private async Task LoadImageSizeAsync(string path)
+    /// <summary>Another font size or display scale needs pictures of another height: they are made again.</summary>
+    private void CheckPreviewHeight()
     {
-        (uint, uint)? size = null;
+        var pixels = PreviewPixelHeight;
+        if (pixels != _previewPixels)
+        {
+            _previewPixels = pixels;
+            _previews.Clear();
+            _bitmaps.Clear();
+        }
+    }
+
+    private async Task LoadPreviewAsync(string path, int pixels)
+    {
+        ImagePreview? preview = null;
+        var cache = PreviewCacheDirectory;
         try
         {
-            // Header only, off the UI thread.
-            size = await Task.Run(async () =>
-            {
-                var file = await StorageFile.GetFileFromPathAsync(path);
-                using var stream = await file.OpenReadAsync();
-                var decoder = await BitmapDecoder.CreateAsync(stream);
-                return ((uint, uint)?)(decoder.PixelWidth, decoder.PixelHeight);
-            });
+            // Reading, decoding and downscaling all off the UI thread.
+            preview = await Task.Run(() => ImagePreviews.LoadAsync(path, pixels, cache));
         }
         catch (Exception)
         {
             // missing, not an image or not readable – the link just stays a link
         }
 
-        _imageSizeLoading.Remove(path);
-        _imageSizes[path] = size is { Item1: > 0, Item2: > 0 } ? size : null;
+        _previewLoading.Remove(path);
+        if (pixels != _previewPixels)
+        {
+            return; // made for another size; a newer request is on its way
+        }
+
+        _previews[path] = preview;
         RestyleImageLines();
     }
 
@@ -242,9 +282,9 @@ public sealed partial class MarkdownEditor
     /// Preview size in DIPs: <see cref="PreviewRows"/> text rows high (smaller images keep their size at the
     /// screen scale), narrower when the text column is too narrow for that.
     /// </summary>
-    private Size PreviewSize((uint Width, uint Height) pixels)
+    private Size PreviewSize(ImagePreview pixels)
     {
-        var scale = XamlRoot?.RasterizationScale ?? 1;
+        var scale = DisplayScale;
         var rows = PreviewRows * TextRowHeight;
         var height = Math.Min(rows, pixels.Height / scale);
         var width = height * pixels.Width / pixels.Height;
@@ -260,6 +300,9 @@ public sealed partial class MarkdownEditor
 
     private double TextRowHeight => _theme.FontSize * 1.4;
 
+    private double DisplayScale => XamlRoot?.RasterizationScale ?? 1;
+
+    private int PreviewPixelHeight => (int)Math.Ceiling(PreviewRows * TextRowHeight * DisplayScale);
 
     private void OnImageColumnResized()
     {
@@ -302,30 +345,55 @@ public sealed partial class MarkdownEditor
         }
     }
 
-    /// <summary>Places the previews of the visible image lines (after scrolling, resizing and styling).</summary>
-    private void UpdateImages()
+    /// <summary>
+    /// Lays the previews out again once the current dispatcher work is done – styling batches, edits and
+    /// resizes come in bursts, and measuring the lines in RichEdit is the expensive part.
+    /// </summary>
+    private void ScheduleImageLayout()
     {
-        _images.Children.Clear();
-        _imageBoxes.Clear();
-        if (_imageLines.Count == 0 || _mode != MarkdownEditorMode.Formatted || _scrollViewer is not { } sv)
+        if (_imageLayoutPending)
         {
             return;
         }
 
-        var origin = ViewportOrigin();
-        var shift = ScrollShift();
-        var viewportHeight = sv.ViewportHeight;
-        _images.Clip = new RectangleGeometry { Rect = new Rect(0, origin.Y, Math.Max(0, ActualWidth), Math.Max(0, viewportHeight)) };
+        if (_imageLines.Count == 0 && _imageLayer.Children.Count == 0)
+        {
+            return; // no pictures – nothing to place or clear
+        }
+
+        _imageLayoutPending = _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _imageLayoutPending = false;
+            LayoutImages();
+        });
+    }
+
+    /// <summary>Measures the image lines and places their previews in document coordinates.</summary>
+    private void LayoutImages()
+    {
+        _imageBoxes.Clear();
+        if (_imageLines.Count == 0 || _mode != MarkdownEditorMode.Formatted || _scrollViewer is not { } sv)
+        {
+            _imageLayer.Children.Clear();
+            _imagePool.Clear();
+            return;
+        }
+
+        _imageOrigin = ViewportOrigin();
+        // GetRect is viewport-relative, or document-relative while scrolled (ScrollShift); either way adding
+        // the offset back gives the position in the document.
+        var toDocument = ScrollShift() + sv.VerticalOffset;
         var doc = _box.TextDocument;
+        var used = 0;
         foreach (var (_, start, end) in ImageCandidateLines())
         {
             var text = _text[start..end];
-            if (!_imageLines.TryGetValue(text, out var path) || !_imageSizes.TryGetValue(path, out var pixels) || pixels is not { } px)
+            if (!_imageLines.TryGetValue(text, out var path) || !_previews.TryGetValue(path, out var preview) || preview is null)
             {
                 continue;
             }
 
-            var size = PreviewSize(px);
+            var size = PreviewSize(preview);
             double top, left;
             var block = MarkdownImageBlock.IsImageLine(text);
             if (block)
@@ -346,102 +414,156 @@ public sealed partial class MarkdownEditor
                 left = 0;
             }
 
-            top += shift;
-            if (top > viewportHeight || top + size.Height < 0)
-            {
-                continue;
-            }
-
-            var box = new Rect(origin.X + left, origin.Y + top, size.Width, size.Height);
-            var image = new Image { Source = Bitmap(path, size.Height), Width = size.Width, Height = size.Height, Stretch = Stretch.Uniform };
-            var (lineStart, lineEnd, file) = (start, end, path);
-            image.Tapped += (_, e) =>
-            {
-                // Like an inline picture: the left half puts the caret before it, the right half after it.
-                e.Handled = true;
-                var after = e.GetPosition(image).X > image.ActualWidth / 2;
-                _box.Focus(FocusState.Pointer);
-                _box.TextDocument.Selection.SetRange(after ? lineEnd : lineStart, after ? lineEnd : lineStart);
-            };
-            image.DoubleTapped += (_, e) =>
-            {
-                e.Handled = true;
-                _ = OpenFileAsync(file);
-            };
-            image.PointerWheelChanged += (_, e) =>
-            {
-                // The preview sits above the editor – scrolling over it must still scroll the note.
-                var delta = e.GetCurrentPoint(image).Properties.MouseWheelDelta;
-                sv.ChangeView(null, sv.VerticalOffset - delta, null);
-                e.Handled = true;
-            };
-            ToolTipService.SetToolTip(image, OpenImageTip);
+            var box = new Rect(left, top + toDocument, size.Width, size.Height);
+            var image = PooledImage(used++);
+            image.Tag = new ImageTarget(start, end, path);
+            image.Source = Bitmap(path, preview);
+            image.Width = size.Width;
+            image.Height = size.Height;
             Canvas.SetLeft(image, box.X);
             Canvas.SetTop(image, box.Y);
-            _images.Children.Add(image);
             if (block)
             {
                 _imageBoxes.Add((start, end, box));
             }
         }
 
+        while (_imagePool.Count > used)
+        {
+            _imageLayer.Children.Remove(_imagePool[^1]);
+            _imagePool.RemoveAt(_imagePool.Count - 1);
+        }
+
+        ScrollImages();
         UpdateImageCaret();
     }
+
+    /// <summary>Scrolling only moves the layer – the previews keep their place in the document.</summary>
+    private void ScrollImages()
+    {
+        if (_scrollViewer is not { } sv || _imageLayer.Children.Count == 0)
+        {
+            return;
+        }
+
+        var transform = (TranslateTransform)_imageLayer.RenderTransform;
+        transform.X = _imageOrigin.X;
+        transform.Y = _imageOrigin.Y - sv.VerticalOffset;
+        _images.Clip = new RectangleGeometry
+        {
+            Rect = new Rect(0, _imageOrigin.Y, Math.Max(0, ActualWidth), Math.Max(0, sv.ViewportHeight)),
+        };
+    }
+
+    private sealed record ImageTarget(int Start, int End, string Path);
+
+    private Image PooledImage(int index)
+    {
+        if (index < _imagePool.Count)
+        {
+            return _imagePool[index];
+        }
+
+        var image = new Image { Stretch = Stretch.Uniform };
+        image.Tapped += (_, e) =>
+        {
+            // Like an inline picture: the left half puts the caret before it, the right half after it.
+            if (image.Tag is not ImageTarget target)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            var at = e.GetPosition(image).X > image.ActualWidth / 2 ? target.End : target.Start;
+            _box.Focus(FocusState.Pointer);
+            _box.TextDocument.Selection.SetRange(at, at);
+        };
+        image.DoubleTapped += (_, e) =>
+        {
+            if (image.Tag is ImageTarget target)
+            {
+                e.Handled = true;
+                _ = OpenFileAsync(target.Path);
+            }
+        };
+        image.PointerWheelChanged += (_, e) =>
+        {
+            // The preview sits above the editor – scrolling over it must still scroll the note.
+            if (_scrollViewer is { } sv)
+            {
+                var delta = e.GetCurrentPoint(image).Properties.MouseWheelDelta;
+                sv.ChangeView(null, sv.VerticalOffset - delta, null);
+                e.Handled = true;
+            }
+        };
+        ToolTipService.SetToolTip(image, OpenImageTip);
+        _imagePool.Add(image);
+        _imageLayer.Children.Add(image);
+        return image;
+    }
+
+    private SolidColorBrush? _imageCaretBrush;
 
     /// <summary>Shows the caret before or after the picture when it is on an image line.</summary>
     private void UpdateImageCaret()
     {
-        _images.Children.Remove(_imageCaret);
         var (caret, length) = GetSelection();
-        if (length > 0 || _box.FocusState == FocusState.Unfocused)
+        if (length == 0 && _box.FocusState != FocusState.Unfocused)
         {
-            return;
-        }
-
-        foreach (var (start, end, box) in _imageBoxes)
-        {
-            if (caret < start || caret > end)
+            foreach (var (start, end, box) in _imageBoxes)
             {
-                continue;
-            }
+                if (caret < start || caret > end)
+                {
+                    continue;
+                }
 
-            var before = caret - start < end - caret;
-            _imageCaret.Height = box.Height;
-            _imageCaret.Fill = new SolidColorBrush(_theme.Text);
-            Canvas.SetLeft(_imageCaret, before ? box.Left - 4 : box.Right + 2);
-            Canvas.SetTop(_imageCaret, box.Top);
-            _images.Children.Add(_imageCaret);
-            return;
+                var before = caret - start < end - caret;
+                if (_imageCaretBrush?.Color != _theme.Text)
+                {
+                    _imageCaretBrush = new SolidColorBrush(_theme.Text);
+                }
+
+                _imageCaret.Fill = _imageCaretBrush;
+                _imageCaret.Height = box.Height;
+                Canvas.SetLeft(_imageCaret, before ? box.Left - 4 : box.Right + 2);
+                Canvas.SetTop(_imageCaret, box.Top);
+                if (_imageCaret.Parent is null)
+                {
+                    _imageLayer.Children.Add(_imageCaret);
+                }
+
+                return;
+            }
         }
+
+        _imageLayer.Children.Remove(_imageCaret);
     }
 
-    private BitmapImage Bitmap(string path, double height)
+    private BitmapImage Bitmap(string path, ImagePreview preview)
     {
-        var decodeHeight = (int)Math.Ceiling(height * (XamlRoot?.RasterizationScale ?? 1));
-        if (_bitmaps.TryGetValue(path, out var bitmap) && bitmap.DecodePixelHeight >= decodeHeight)
+        if (_bitmaps.TryGetValue(path, out var bitmap))
         {
             return bitmap;
         }
 
-        // A file:// UriSource does not load in an unpackaged app – hand WinUI the file stream instead.
-        // Decoded off the UI thread, at the displayed size only.
-        bitmap = new BitmapImage { DecodePixelHeight = decodeHeight };
+        // From the bytes already read off the UI thread (a file:// UriSource does not load in an unpackaged
+        // app anyway); large pictures arrive downscaled, so WinUI decodes only a small image.
+        bitmap = new BitmapImage();
         _bitmaps[path] = bitmap;
-        _ = SetBitmapSourceAsync(bitmap, path);
+        _ = SetBitmapSourceAsync(bitmap, preview);
         return bitmap;
     }
 
-    private static async Task SetBitmapSourceAsync(BitmapImage bitmap, string path)
+    private static async Task SetBitmapSourceAsync(BitmapImage bitmap, ImagePreview preview)
     {
         try
         {
-            var file = await StorageFile.GetFileFromPathAsync(path);
-            using var stream = await file.OpenReadAsync();
+            using var stream = await ImagePreviews.OpenAsync(preview);
             await bitmap.SetSourceAsync(stream);
         }
         catch (Exception)
         {
-            // unreadable – the space stays empty, the link still opens
+            // undecodable – the space stays empty, the link still opens
         }
     }
 

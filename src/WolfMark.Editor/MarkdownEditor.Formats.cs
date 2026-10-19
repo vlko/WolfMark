@@ -301,6 +301,7 @@ public sealed partial class MarkdownEditor
     }
 
     private Point _overlayOrigin;
+    private ScrollContentPresenter? _presenter;
     private double _overlayShift;
 
     /// <summary>
@@ -325,7 +326,9 @@ public sealed partial class MarkdownEditor
     /// </summary>
     private Point ViewportOrigin()
     {
-        if (_scrollViewer is not null && FindDescendant<ScrollContentPresenter>(_scrollViewer) is { } presenter)
+        // Looked up once: this runs on every scroll frame.
+        _presenter ??= _scrollViewer is null ? null : FindDescendant<ScrollContentPresenter>(_scrollViewer);
+        if (_presenter is { } presenter)
         {
             try
             {

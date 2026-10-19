@@ -423,6 +423,7 @@ internal sealed partial class MainWindow : Window
         };
         _editor.DropImageCaption = Strings.Get(R.Editor_DropImage);
         _editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
+        _editor.PreviewCacheDirectory = _host.Paths.PreviewCacheDirectory;
 
         editorVm.LoadRequested += (_, request) =>
         {

@@ -116,7 +116,7 @@ Files that do not follow the convention are still indexed and marked as non-stan
 - Changes made outside the app (another PC, a text editor) are picked up by a file watcher and re-indexed.
 
 **What stays on the machine.** `%LOCALAPPDATA%\WolfMark` holds the SQLite index (WAL mode, single writer, FTS5 and
-optional vectors), logs and window placement. It is a cache – delete `index.db` and WolfMark rebuilds it from the
+optional vectors), downscaled image previews (`cache\previews`), logs and window placement. It is a cache – delete `index.db` and WolfMark rebuilds it from the
 files.
 
 ## Search, editor and the rest
