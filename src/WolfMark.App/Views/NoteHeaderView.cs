@@ -414,10 +414,6 @@ internal sealed partial class NoteHeaderView
     {
         var editor = _vm.Editor;
 
-        var claude = Info(Strings.Get(R.ReadOnly_ClaudeTitle), Strings.Get(R.ReadOnly_ClaudeMessage), InfoBarSeverity.Informational,
-            Strings.Get(R.ReadOnly_CopyButton), () => _ = editor.CopyToOwnNoteAsync());
-        claude.Bind(editor, nameof(NoteEditorViewModel.IsClaudeCode), () => claude.IsOpen = editor.IsClaudeCode);
-
         var external = Info(Strings.Get(R.External_Title), Strings.Get(R.External_Message), InfoBarSeverity.Warning,
             Strings.Get(R.External_Reload), () => _ = editor.ReloadFromDiskAsync());
         var keep = Ui.Ui.TextButton(Strings.Get(R.External_Keep));
@@ -471,7 +467,7 @@ internal sealed partial class NoteHeaderView
 
         // The area exists only while a notice is open: closed InfoBars take no space, but spacing and
         // margins would leave an empty strip. Each open bar gets its own gap instead.
-        var bars = new[] { error, claude, external, deleted, conflict, nonStandard, cleanup, test };
+        var bars = new[] { error, external, deleted, conflict, nonStandard, cleanup, test };
         var panel = Ui.Ui.VStack(0, bars);
         void Update()
         {

@@ -98,7 +98,10 @@ internal sealed partial class MainWindow : Window
         gutter.Padding = new Thickness(0, 0, Metrics.TimeGutterGap, 26);
         _editor.AlignLeft = true;
         // Same gutter width as history rows: the two dotted lines form one line.
-        var editorPane = Ui.Ui.Columns((Ui.Ui.Px(Metrics.TimeGutter), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, _editor));
+        var editorCell = new Grid();
+        editorCell.Children.Add(_editor);
+        editorCell.Children.Add(ClaudeBadge());
+        var editorPane = Ui.Ui.Columns((Ui.Ui.Px(Metrics.TimeGutter), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, editorCell));
 
         var main = new Grid { Padding = new Thickness(24, 4, 8, 0) };
         main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // day heading
@@ -444,6 +447,40 @@ internal sealed partial class MainWindow : Window
     }
 
     /// <summary>Created time on top of the gutter; "edited 14:20" on the last visible line.</summary>
+    /// <summary>
+    /// Bottom-right corner of an imported Claude Code note: where it came from, why it is read-only (tooltip)
+    /// and a way to continue in an own note.
+    /// </summary>
+    private Border ClaudeBadge()
+    {
+        var editor = _vm.Editor;
+        var copy = new Button
+        {
+            Content = Typo.Caps(Strings.Get(R.ReadOnly_CopyButton), 11, Palette.Accent),
+            Padding = new Thickness(6, 2, 6, 2),
+            CornerRadius = Radius.Control,
+        };
+        copy.StyleButton(Palette.Transparent, Palette.Accent);
+        copy.Click += (_, _) => _ = editor.CopyToOwnNoteAsync();
+        var label = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Lock, 11, Palette.InkTertiary), Typo.Caps(Strings.Get(R.ReadOnly_ClaudeTitle), 11, Palette.InkTertiary));
+        label.VerticalAlignment = VerticalAlignment.Center;
+        ToolTipService.SetToolTip(label, Strings.Get(R.ReadOnly_ClaudeMessage));
+        var badge = new Border
+        {
+            Child = Ui.Ui.HStack(8, label, copy),
+            Background = Palette.Card,
+            BorderBrush = Palette.CardStroke,
+            BorderThickness = new Thickness(1),
+            CornerRadius = Radius.Tag,
+            Padding = new Thickness(10, 2, 2, 2),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 16, 26),
+        };
+        return badge.Bind(editor, nameof(NoteEditorViewModel.IsClaudeCode),
+            () => badge.Visibility = editor.IsClaudeCode ? Visibility.Visible : Visibility.Collapsed);
+    }
+
     private void UpdateGutter()
     {
         var editor = _vm.Editor;
