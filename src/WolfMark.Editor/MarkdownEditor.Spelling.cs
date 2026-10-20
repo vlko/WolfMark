@@ -223,6 +223,29 @@ public sealed partial class MarkdownEditor
             _anchor = 0;
             SetCaret(_doc.Length, extend: true);
         }));
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(CommandItem(EditorCommand.CopyPlainText));
+        menu.Items.Add(CommandItem(EditorCommand.CopyHtml));
+        if (!_readOnly)
+        {
+            // The line's type and the inline formats, the current ones checked (as the toolbar).
+            var block = MarkdownEditing.GetBlock(_doc.GetText(), _caret);
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(CommandItem(EditorCommand.Paragraph, block == BlockKind.Paragraph));
+            menu.Items.Add(CommandItem(EditorCommand.Heading1, block == BlockKind.Heading1));
+            menu.Items.Add(CommandItem(EditorCommand.Heading2, block == BlockKind.Heading2));
+            menu.Items.Add(CommandItem(EditorCommand.Heading3, block == BlockKind.Heading3));
+            menu.Items.Add(CommandItem(EditorCommand.Quote, block == BlockKind.Quote));
+            menu.Items.Add(CommandItem(EditorCommand.BulletList, block == BlockKind.Bullet));
+            menu.Items.Add(CommandItem(EditorCommand.NumberedList, block == BlockKind.Numbered));
+            menu.Items.Add(CommandItem(EditorCommand.Task, block == BlockKind.Task));
+            menu.Items.Add(new MenuFlyoutSeparator());
+            foreach (var inline in new[] { EditorCommand.Bold, EditorCommand.Italic, EditorCommand.Strikethrough, EditorCommand.Code, EditorCommand.Link })
+            {
+                menu.Items.Add(CommandItem(inline, _activeFormats.Contains(inline)));
+            }
+        }
+
         menu.ShowAt(_canvas, new FlyoutShowOptions { Position = point });
     }
 
@@ -230,6 +253,19 @@ public sealed partial class MarkdownEditor
     {
         var item = new MenuFlyoutItem { Text = text, IsEnabled = enabled };
         item.Click += (_, _) => action();
+        return item;
+    }
+
+    /// <summary>An editor command with the app's label and icon; "✓" in the accelerator column when it is active.</summary>
+    private MenuFlyoutItem CommandItem(EditorCommand command, bool isChecked = false)
+    {
+        var item = new MenuFlyoutItem { Text = CommandText?.Invoke(command) ?? command.ToString(), Icon = CommandIcon?.Invoke(command) };
+        if (isChecked)
+        {
+            item.KeyboardAcceleratorTextOverride = "\u2713";
+        }
+
+        item.Click += (_, _) => Execute(command);
         return item;
     }
 }

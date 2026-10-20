@@ -309,6 +309,7 @@ public sealed partial class MarkdownEditor
     private readonly TextBlock _hintText = new() { FontSize = 12 };
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _hintTimer;
     private Rect? _hoverPicture;
+    private bool _hoverTask;
 
     /// <summary>Over a picture: a hand cursor and, after a moment, "double-click to open" at its lower edge.</summary>
     private void UpdatePictureHover(Point? point)
@@ -321,6 +322,14 @@ public sealed partial class MarkdownEditor
             {
                 over = r;
             }
+        }
+
+        // Over a task box: the hand too (a click toggles it).
+        var overTask = over is null && point is { } q && TaskBoxAt(q) is not null;
+        if (overTask != _hoverTask)
+        {
+            _hoverTask = overTask;
+            ProtectedCursor = InputSystemCursor.Create(overTask ? InputSystemCursorShape.Hand : InputSystemCursorShape.IBeam);
         }
 
         if (over == _hoverPicture)

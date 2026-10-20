@@ -198,7 +198,7 @@ public sealed partial class MarkdownEditor : UserControl
     {
         if (command is EditorCommand.CopyPlainText or EditorCommand.CopyHtml)
         {
-            CopySelection(cut: false);
+            _ = CopyAsync(command == EditorCommand.CopyHtml ? CopyKind.Html : CopyKind.PlainText, cut: false);
             return;
         }
 
@@ -210,7 +210,8 @@ public sealed partial class MarkdownEditor : UserControl
         var text = _doc.GetText();
         var (start, end) = Selection;
         var length = end - start;
-        var edit = command switch
+        var unwrap = length == 0 && _activeFormats.Contains(command) ? UnwrapAtCaret(command) : null;
+        var edit = unwrap ?? command switch
         {
             EditorCommand.Bold => MarkdownEditing.ToggleWrap(text, start, length, "**"),
             EditorCommand.Italic => MarkdownEditing.ToggleWrap(text, start, length, "*"),
@@ -240,6 +241,54 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         FocusEditor();
+    }
+
+    private static readonly Dictionary<MarkdownTokenKind, EditorCommand> InlineCommands = new()
+    {
+        [MarkdownTokenKind.Strong] = EditorCommand.Bold,
+        [MarkdownTokenKind.Emphasis] = EditorCommand.Italic,
+        [MarkdownTokenKind.Strikethrough] = EditorCommand.Strikethrough,
+        [MarkdownTokenKind.InlineCode] = EditorCommand.Code,
+        [MarkdownTokenKind.LinkText] = EditorCommand.Link,
+        [MarkdownTokenKind.WikiLink] = EditorCommand.Link,
+    };
+
+    /// <summary>An active inline format at the caret, pressed again: its markers go (the text stays).</summary>
+    private TextEdit? UnwrapAtCaret(EditorCommand command)
+    {
+        var line = _doc.GetLineAtOffset(_caret);
+        var lineStart = _doc.GetLineStart(line);
+        var text = _doc.GetLineText(line);
+        var column = _caret - lineStart;
+        var tokens = _doc.GetTokens(line);
+        foreach (var content in tokens)
+        {
+            if (!InlineCommands.TryGetValue(content.Kind, out var c) || c != command || column < content.Start || column > content.End)
+            {
+                continue;
+            }
+
+            var open = tokens.FirstOrDefault(t => t.Kind == MarkdownTokenKind.Syntax && t.End == content.Start && t.Length > 0);
+            var close = tokens.FirstOrDefault(t => t.Kind == MarkdownTokenKind.Syntax && t.Start == content.End && t.Length > 0);
+            if (open.Length == 0 || close.Length == 0)
+            {
+                continue;
+            }
+
+            if (content.Kind == MarkdownTokenKind.LinkText)
+            {
+                // "[text](url)": the closing part is "](" + url + ")".
+                var urlEnd = tokens.FirstOrDefault(t => t.Kind == MarkdownTokenKind.Syntax && t.Start > content.End && t.Start < text.Length && text[t.Start] == ')');
+                if (urlEnd.Length > 0)
+                {
+                    close = new MarkdownToken(close.Start, urlEnd.End - close.Start, MarkdownTokenKind.Syntax);
+                }
+            }
+
+            return MarkdownEditing.Unwrap(_doc.GetText(), lineStart + open.Start, open.Length, lineStart + close.Start, close.Length, _caret);
+        }
+
+        return null;
     }
 
     public void Undo()

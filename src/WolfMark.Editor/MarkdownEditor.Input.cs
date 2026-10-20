@@ -517,9 +517,50 @@ public sealed partial class MarkdownEditor
             return;
         }
 
+        if (TaskBoxAt(point.Position) is { } box)
+        {
+            // A click on a task's box toggles it (as in the desktop app); the caret and selection stay.
+            var toggle = MarkdownEditing.ToggleTask(_doc.GetText(), box);
+            _undo.Seal();
+            Edit(toggle with { SelectionStart = _anchor, SelectionLength = _caret - _anchor });
+            _undo.Seal();
+            e.Handled = true;
+            return;
+        }
+
         SetCaret(OffsetAt(point.Position), extend: IsDown(VirtualKey.Shift));
         _dragging = _canvas.CapturePointer(e.Pointer);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// The source offset of the task box "[ ]" / "[x]" under a point – in formatted mode, or with Ctrl in raw mode;
+    /// never in a read-only note.
+    /// </summary>
+    private int? TaskBoxAt(Point point)
+    {
+        if (_readOnly || (_mode != MarkdownEditorMode.Formatted && !IsDown(VirtualKey.Control)) || _lines.Count == 0)
+        {
+            return null;
+        }
+
+        var line = LineAtY(point.Y);
+        if (IsBlock(line))
+        {
+            return null;
+        }
+
+        var lineStart = _doc.GetLineStart(line);
+        var column = OffsetAt(point) - lineStart;
+        foreach (var t in _doc.GetTokens(line))
+        {
+            if (t.Kind is MarkdownTokenKind.TaskOpen or MarkdownTokenKind.TaskDone && column >= t.Start && column <= t.End)
+            {
+                return lineStart + t.Start;
+            }
+        }
+
+        return null;
     }
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
@@ -542,9 +583,9 @@ public sealed partial class MarkdownEditor
 
     private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (TryOpenPictureAt(e.GetPosition(_canvas)))
+        if (TryOpenPictureAt(e.GetPosition(_canvas)) || TaskBoxAt(e.GetPosition(_canvas)) is not null)
         {
-            return;
+            return; // a double-click on a task box toggles it twice (each press), no word selection
         }
 
         var offset = OffsetAt(e.GetPosition(_canvas));
@@ -569,20 +610,67 @@ public sealed partial class MarkdownEditor
 
     // ---------------------------------------------------------------- clipboard
 
-    private void CopySelection(bool cut)
+    private enum CopyKind
     {
-        if (!HasSelection)
+        Markdown,
+        PlainText,
+        Html,
+    }
+
+    private void CopySelection(bool cut) => _ = CopyAsync(CopyKind.Markdown, cut);
+
+    /// <summary>
+    /// Copy and cut give the Markdown, widened to the markup around the selection (hidden in formatted mode, it
+    /// would be cut off otherwise). Plain text and HTML are converted from it – the selection, or the whole note
+    /// when nothing is selected. Widening and conversion run off the UI thread.
+    /// </summary>
+    private async Task CopyAsync(CopyKind kind, bool cut)
+    {
+        if (!HasSelection && kind == CopyKind.Markdown)
         {
             return;
         }
 
-        var (start, end) = Selection;
-        var package = new DataPackage();
-        package.SetText(Slice(start, end - start).Replace("\n", "\r\n", StringComparison.Ordinal));
-        Clipboard.SetContent(package);
-        if (cut)
+        var text = _doc.GetText();
+        var (start, end) = HasSelection ? Selection : (0, text.Length);
+        var (from, to, payload, plain) = await Task.Run(() =>
         {
-            Insert(string.Empty);
+            var (s, e) = MarkdownEditing.ExpandToMarkup(text, start, end);
+            var markdown = text[s..e];
+            return kind switch
+            {
+                CopyKind.PlainText => (s, e, MarkdownConvert.ToPlainText(markdown), (string?)null),
+                CopyKind.Html => (s, e, MarkdownConvert.ToHtml(markdown), MarkdownConvert.ToPlainText(markdown)),
+                _ => (s, e, markdown, (string?)null),
+            };
+        });
+
+        static string Crlf(string s) => s.Replace("\n", "\r\n", StringComparison.Ordinal);
+        var package = new DataPackage();
+        if (kind == CopyKind.Html)
+        {
+            package.SetHtmlFormat(HtmlFormatHelper.CreateHtmlFormat(payload));
+            package.SetText(Crlf(plain!));
+        }
+        else
+        {
+            package.SetText(Crlf(payload));
+        }
+
+        try
+        {
+            Clipboard.SetContent(package);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return; // the clipboard is locked by another process
+        }
+
+        if (cut && !_readOnly && ReferenceEquals(text, _doc.GetText()))
+        {
+            _undo.Seal();
+            Edit(new TextEdit(from, to - from, string.Empty, from, 0));
+            _undo.Seal();
         }
     }
 
