@@ -13,7 +13,7 @@ namespace WolfMark.Editor.Win2D;
 /// Markdown editor drawn with Win2D (docs/adr/0007-canvas-editor.md): one <see cref="MarkdownDocumentModel"/> is
 /// both the text and its tokens, every line has its own DirectWrite layout, and only the lines in view are drawn.
 /// Unlike RichEdit nothing scales with the note: an edit retokenizes and re-lays out the lines it touched.
-/// Prototype – no images, line numbers or accessibility yet.
+/// Prototype – no images or accessibility yet.
 /// </summary>
 public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
 {
@@ -51,6 +51,7 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
         _canvas.CreateResources += (_, _) =>
         {
             ClearLayouts(); // a new device: layouts made on the old one cannot be drawn
+            ClearNumberLayouts();
             _canvas.Invalidate();
         };
 
@@ -116,15 +117,14 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
         set
         {
             _theme = value;
+            _numberFormat?.Dispose();
+            _numberFormat = null; // size follows the theme; the number layouts go with it
             RecreateFormat();
             RelayoutAll();
         }
     }
 
     public bool AlignLeft { get; set; }
-
-    /// <summary>Not drawn yet by this prototype.</summary>
-    public bool ShowLineNumbers { get; set; }
 
     public string PlaceholderText { get; set; } = string.Empty;
 
@@ -163,6 +163,8 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
         _caret = _anchor = caretToEnd ? _doc.Length : 0;
         _preferredX = -1;
         ResetLines();
+        _numberDigits = Math.Max(MinNumberDigits, _doc.LineCount.ToString(System.Globalization.CultureInfo.InvariantCulture).Length);
+        _layoutWidth = TextWidth(); // the gutter may have grown: one layout pass, not two
         RelayoutAll(keepView: false);
         EditorTrace.Current?.RecordSince(EditorPhase.LoadFormatted, started, _doc.LineCount, () => $"canvas, {_doc.Length} chars, {_doc.LineCount} lines, {_mode}");
         EditorTrace.Current?.Mark($"editor: canvas loaded ({_doc.Length} chars)");
@@ -291,6 +293,7 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
     private void AfterChange()
     {
         RestartBlink();
+        UpdateNumberDigits();
         UpdateCanvasSize();
         _canvas.Invalidate();
         EnsureCaretVisible();

@@ -58,6 +58,7 @@ public sealed partial class CanvasMarkdownEditor
         var caretLine = _doc.GetLineAtOffset(_caret);
         var selection = WithAlpha(_theme.Link, 0x40);
         var count = 0;
+        DrawGutterBand(ds, region);
         for (var i = LineAtY(region.Top); i < _lines.Count; i++)
         {
             var top = LineTop(i);
@@ -103,6 +104,8 @@ public sealed partial class CanvasMarkdownEditor
 
             ds.DrawTextLayout(layout, x, y, _theme.Text);
             DrawSquiggles(ds, i, layout, presentation, x, y);
+            DrawLineNumber(ds, i, layout, y, i == caretLine);
+            DrawChips(ds, i, layout, presentation, x, y);
             DrawComposition(ds, i, layout, presentation, x, y);
 
             if (i == caretLine && _hasFocus && _caretOn)

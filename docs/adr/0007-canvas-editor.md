@@ -42,12 +42,15 @@ ostáva predvolený. Oba spĺňajú `IMarkdownEditor`, zvyšok aplikácie sa nem
   netreba limit pre dlhé poznámky). Viac jazykov naraz (jazyk klávesnice, UI, sk-SK, en-US): slovo je chybné,
   len ak ho označia všetky. Rozpísané slovo sa neoznačí, kým z neho kurzor neodíde. Kontextové menu: návrhy,
   Pridať do slovníka, Ignorovať, Vystrihnúť/Kopírovať/Prilepiť/Vybrať všetko.
+- **Čísla riadkov a čipy**: kreslia sa v tom istom prechode ako text z layoutov riadkov (číslo na účiarí prvého
+  riadku odseku, `↪` na zalomených riadkoch z `LineMetrics`, podklad stĺpca); čipy skrytých značiek riadku s
+  kurzorom v horných rohoch ako v RichEdit editore – bez dopytov na polohu (`GetRect`).
 - **Alokácie**: zobrazený text riadku, maska pre pravopis a úpravy modelu pracujú so `Span` (`string.Create`,
   `stackalloc`/`ArrayPool`); polia tokenov sa nekopírujú (model ich po vytvorení nemení).
 - **Meranie**: `--trace-editor` – `KeyToFrame`, `CanvasEdit`, `CanvasDraw`, `CanvasMeasure`.
 
 ## Zatiaľ chýba (pred prípadným prechodom)
-Obrázky v texte, čísla riadkov, čipy značiek, formátovacie príkazy v kontextovom menu, prístupnosť (UIA text pattern),
+Obrázky v texte, formátovacie príkazy v kontextovom menu, prístupnosť (UIA text pattern),
 vkladanie obrázkov, drag & drop, automatický posun pri ťahaní.
 
 ## Merania (Windows, 5 000 riadkov / 255 k znakov, prvý prototyp)

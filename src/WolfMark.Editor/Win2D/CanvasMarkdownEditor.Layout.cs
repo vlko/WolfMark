@@ -25,7 +25,7 @@ public sealed partial class CanvasMarkdownEditor
     private CanvasTextFormat? _format;
     private double _emptyLineHeight = 20;
 
-    private double PadLeft => AlignLeft ? 18 : 24;
+    private double PadLeft => (AlignLeft ? 18 : 24) + Gutter;
 
     private const double PadTop = 12;
     private const double PadRight = 24;
@@ -458,9 +458,12 @@ public sealed partial class CanvasMarkdownEditor
         _canvas.Height = Math.Min(16_000_000, Math.Max(_scroll.ViewportHeight, PadTop + _totalHeight + PadBottom));
     }
 
+    /// <summary>Width the lines wrap at (before the first layout pass the last known one).</summary>
+    private float TextWidth() => _scroll.ViewportWidth > 0 ? (float)Math.Max(50, _scroll.ViewportWidth - PadLeft - PadRight) : _layoutWidth;
+
     private void OnViewportResized()
     {
-        var width = (float)Math.Max(50, _scroll.ViewportWidth - PadLeft - PadRight);
+        var width = TextWidth();
         if (Math.Abs(width - _layoutWidth) > 0.5f)
         {
             _layoutWidth = width;
