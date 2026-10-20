@@ -13,7 +13,7 @@ namespace WolfMark.Editor.Win2D;
 /// Markdown editor drawn with Win2D (docs/adr/0007-canvas-editor.md): one <see cref="MarkdownDocumentModel"/> is
 /// both the text and its tokens, every line has its own DirectWrite layout, and only the lines in view are drawn.
 /// Unlike RichEdit nothing scales with the note: an edit retokenizes and re-lays out the lines it touched.
-/// Prototype – no images or accessibility yet.
+/// Prototype – no accessibility yet.
 /// </summary>
 public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
 {
@@ -52,6 +52,7 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
         {
             ClearLayouts(); // a new device: layouts made on the old one cannot be drawn
             ClearNumberLayouts();
+            ClearPictures();
             _canvas.Invalidate();
         };
 
@@ -70,6 +71,7 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.IBeam);
 
         InitInput();
+        InitImageDrop();
         InitIme();
         InitCaretBlink();
         Load(string.Empty, caretToEnd: false, readOnly: false);
@@ -304,7 +306,8 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
     private void SetCaret(int offset, bool extend)
     {
         _typingWord = false; // the caret left the word: its squiggle may show
-        _caret = Math.Clamp(offset, 0, _doc.Length);
+        _preferredX = -1; // any move but up/down (SetCaretKeepX) starts a new column
+        _caret = SnapOutOfBlock(Math.Clamp(offset, 0, _doc.Length));
         if (!extend)
         {
             _anchor = _caret;

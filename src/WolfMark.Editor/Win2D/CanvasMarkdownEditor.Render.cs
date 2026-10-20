@@ -73,6 +73,25 @@ public sealed partial class CanvasMarkdownEditor
             var y = (float)top;
             var lineStart = _doc.GetLineStart(i);
             var lineEnd = lineStart + presentation.SourceLength;
+            if (IsBlock(i))
+            {
+                // An image block: just its picture (selected as a whole), its number and the caret beside it.
+                DrawLineNumber(ds, i, layout, y, i == caretLine);
+                DrawPicture(ds, i, y);
+                if (selStart <= lineStart && selEnd >= lineEnd && selEnd > selStart)
+                {
+                    ds.FillRectangle(PictureRect(i, PictureOf(i, out _)!, top), selection);
+                }
+
+                if (i == caretLine && _hasFocus && _caretOn)
+                {
+                    var bar = CaretRect(_caret);
+                    ds.FillRectangle((float)bar.X, (float)bar.Y, 1.5f, (float)bar.Height, _theme.Text);
+                }
+
+                count++;
+                continue;
+            }
 
             foreach (var run in CodeRuns(presentation))
             {
@@ -107,6 +126,7 @@ public sealed partial class CanvasMarkdownEditor
             DrawLineNumber(ds, i, layout, y, i == caretLine);
             DrawChips(ds, i, layout, presentation, x, y);
             DrawComposition(ds, i, layout, presentation, x, y);
+            DrawPicture(ds, i, y);
 
             if (i == caretLine && _hasFocus && _caretOn)
             {
@@ -126,6 +146,11 @@ public sealed partial class CanvasMarkdownEditor
     private Rect CaretRect(int offset)
     {
         var line = _doc.GetLineAtOffset(offset);
+        if (IsBlock(line))
+        {
+            return BlockCaretRect(line, after: offset > _doc.GetLineStart(line));
+        }
+
         var layout = EnsureLayout(line);
         var presentation = _lines[line].Presentation!;
         var shown = presentation.ToShown(offset - _doc.GetLineStart(line));
@@ -138,6 +163,14 @@ public sealed partial class CanvasMarkdownEditor
     private int OffsetAt(Point point)
     {
         var line = LineAtY(point.Y);
+        if (IsBlock(line))
+        {
+            // Left half of the picture: before it; right half: after it.
+            var picture = PictureRect(line, PictureOf(line, out _)!, LineTop(line));
+            var start = _doc.GetLineStart(line);
+            return point.X < picture.X + picture.Width / 2 ? start : start + _doc.GetLineText(line).Length;
+        }
+
         var layout = EnsureLayout(line);
         var presentation = _lines[line].Presentation!;
         var x = (float)(point.X - PadLeft);

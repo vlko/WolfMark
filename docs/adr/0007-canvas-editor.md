@@ -45,13 +45,20 @@ ostáva predvolený. Oba spĺňajú `IMarkdownEditor`, zvyšok aplikácie sa nem
 - **Čísla riadkov a čipy**: kreslia sa v tom istom prechode ako text z layoutov riadkov (číslo na účiarí prvého
   riadku odseku, `↪` na zalomených riadkoch z `LineMetrics`, podklad stĺpca); čipy skrytých značiek riadku s
   kurzorom v horných rohoch ako v RichEdit editore – bez dopytov na polohu (`GetRect`).
+- **Obrázky** (formátovaný režim): náhľad `PreviewRows` riadkov vysoký pod riadkom s obrázkom. Riadok iba s
+  obrázkom je **blok – jeden znak**: vidno len obrázok, kurzor stojí pred ním alebo za ním na celú výšku obrázka,
+  šípky ho preskočia naraz, klik do ľavej/pravej polovice dá kurzor pred/za neho; text napísaný pred obrázkom
+  ide do nového riadku nad ním, za obrázkom pod ním (obrázok má vždy vlastný riadok), Enter pridá prázdny
+  riadok, Backspace/Delete zmažú celý obrázok (`MarkdownImageBlock`). Nad obrázkom kurzor ruky a po chvíli
+  nápoveda „dvojklik otvorí“. Náhľady z `ImagePreviews` (zmenšené, cache na disku, mimo UI vlákna)
+  ako `CanvasBitmap`; načítavajú sa len pre kreslené riadky, najviac 128 v pamäti. Dvojklik otvorí súbor;
+  vloženie súborov a bitmáp zo schránky a drag & drop ako v RichEdit editore.
 - **Alokácie**: zobrazený text riadku, maska pre pravopis a úpravy modelu pracujú so `Span` (`string.Create`,
   `stackalloc`/`ArrayPool`); polia tokenov sa nekopírujú (model ich po vytvorení nemení).
 - **Meranie**: `--trace-editor` – `KeyToFrame`, `CanvasEdit`, `CanvasDraw`, `CanvasMeasure`.
 
 ## Zatiaľ chýba (pred prípadným prechodom)
-Obrázky v texte, formátovacie príkazy v kontextovom menu, prístupnosť (UIA text pattern),
-vkladanie obrázkov, drag & drop, automatický posun pri ťahaní.
+Formátovacie príkazy v kontextovom menu, prístupnosť (UIA text pattern), automatický posun pri ťahaní výberu.
 
 ## Merania (Windows, 5 000 riadkov / 255 k znakov, prvý prototyp)
 

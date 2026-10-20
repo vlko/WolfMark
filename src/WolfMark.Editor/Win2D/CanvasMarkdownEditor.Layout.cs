@@ -33,7 +33,10 @@ public sealed partial class CanvasMarkdownEditor
 
     private sealed class LineView
     {
-        public double Height = -1;
+        public double Height = -1; // of the text; the picture below comes on top (LineHeight)
+        public bool ImageChecked;
+        public string? ImagePath;
+        public bool ImageOnly;
         public bool Exact; // measured; otherwise estimated until the background pass delivers
         public CanvasTextLayout? Layout;
         public LinePresentation? Presentation;
@@ -413,7 +416,7 @@ public sealed partial class CanvasMarkdownEditor
         for (var i = 0; i < _lines.Count; i++)
         {
             _tops[i] = y;
-            y += _lines[i].Height < 0 ? _emptyLineHeight : _lines[i].Height;
+            y += LineHeight(i);
         }
 
         _tops[_lines.Count] = y;

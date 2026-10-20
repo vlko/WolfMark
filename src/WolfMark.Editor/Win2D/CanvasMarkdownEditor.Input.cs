@@ -213,6 +213,15 @@ public sealed partial class CanvasMarkdownEditor
     private void Insert(string text)
     {
         var (start, end) = Selection;
+        if (!HasSelection && text.Length > 0 && BlockAt(_caret) is { } block)
+        {
+            // Beside an image: the text gets a line of its own before or after it.
+            Edit(_caret == block.Start
+                ? new TextEdit(block.Start, 0, text + "\n", block.Start + text.Length, 0)
+                : new TextEdit(block.End, 0, "\n" + text, block.End + 1 + text.Length, 0));
+            return;
+        }
+
         Edit(new TextEdit(start, end - start, text, start + text.Length, 0));
     }
 
@@ -222,7 +231,14 @@ public sealed partial class CanvasMarkdownEditor
     {
         _undo.Seal();
         var (start, end) = Selection;
-        if (!HasSelection && MarkdownEditing.ContinueList(_doc.GetText(), _caret) is { } list)
+        if (!HasSelection && BlockAt(_caret) is { } block)
+        {
+            // Before an image: an empty line above it, the caret stays before the image; after it: a new line below.
+            Edit(_caret == block.Start
+                ? new TextEdit(block.Start, 0, "\n", block.Start + 1, 0)
+                : new TextEdit(block.End, 0, "\n", block.End + 1, 0));
+        }
+        else if (!HasSelection && MarkdownEditing.ContinueList(_doc.GetText(), _caret) is { } list)
         {
             Edit(list);
         }
@@ -239,6 +255,12 @@ public sealed partial class CanvasMarkdownEditor
         if (HasSelection)
         {
             Insert(string.Empty);
+            return;
+        }
+
+        if (_mode == MarkdownEditorMode.Formatted && MarkdownImageBlock.Backspace(_doc.GetText(), _caret, IsShownBlock) is { } blockEdit)
+        {
+            ApplyBlockEdit(blockEdit); // the image goes as a whole, or the caret steps over it
             return;
         }
 
@@ -274,6 +296,12 @@ public sealed partial class CanvasMarkdownEditor
             return;
         }
 
+        if (_mode == MarkdownEditorMode.Formatted && MarkdownImageBlock.Delete(_doc.GetText(), _caret, IsShownBlock) is { } blockEdit)
+        {
+            ApplyBlockEdit(blockEdit);
+            return;
+        }
+
         var (line, presentation, shown) = Locate(_caret);
         var lineStart = _doc.GetLineStart(line);
         if (word)
@@ -290,6 +318,19 @@ public sealed partial class CanvasMarkdownEditor
         {
             var end = lineStart + presentation.SourceLength;
             Edit(new TextEdit(end, 1, string.Empty, end, 0)); // joins the next line
+        }
+    }
+
+    /// <summary>A block rule's result: a removal is an edit, an empty one only moves the caret.</summary>
+    private void ApplyBlockEdit(TextEdit edit)
+    {
+        if (edit.Length == 0 && edit.Insert.Length == 0)
+        {
+            SetCaret(edit.SelectionStart, extend: false);
+        }
+        else
+        {
+            Edit(edit);
         }
     }
 
@@ -310,6 +351,11 @@ public sealed partial class CanvasMarkdownEditor
         if (HasSelection && !extend)
         {
             return forward ? Selection.End : Selection.Start; // collapse to the side the arrow points to
+        }
+
+        if (BlockAt(offset) is { } block && (forward ? offset == block.Start : offset == block.End))
+        {
+            return forward ? block.End : block.Start; // over the image in one step
         }
 
         var (line, presentation, shown) = Locate(offset);
@@ -410,6 +456,14 @@ public sealed partial class CanvasMarkdownEditor
         }
 
         var y = direction < 0 ? caret.Y - 2 : caret.Bottom + 2;
+        if (BlockAt(_caret) is { } block)
+        {
+            // Beside an image the caret is as tall as the picture, but the line has a gap around it: step from the
+            // line's own edge, or the point would land in the same line again.
+            EnsureTops();
+            y = direction < 0 ? LineTop(block.Line) - 1 : LineTop(block.Line) + LineHeight(block.Line) + 1;
+        }
+
         var x = _preferredX;
         if (y < PadTop)
         {
@@ -468,6 +522,7 @@ public sealed partial class CanvasMarkdownEditor
 
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
+        UpdatePictureHover(e.GetCurrentPoint(_canvas).Position);
         if (_dragging)
         {
             SetCaret(OffsetAt(e.GetCurrentPoint(_canvas).Position), extend: true);
@@ -485,6 +540,11 @@ public sealed partial class CanvasMarkdownEditor
 
     private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        if (TryOpenPictureAt(e.GetPosition(_canvas)))
+        {
+            return;
+        }
+
         var offset = OffsetAt(e.GetPosition(_canvas));
         var (line, presentation, shown) = Locate(offset);
         var text = presentation.Text;
@@ -527,12 +587,21 @@ public sealed partial class CanvasMarkdownEditor
     private async Task PasteAsync()
     {
         var content = Clipboard.GetContent();
-        if (!content.Contains(StandardDataFormats.Text))
+        string text;
+        try
         {
-            return;
+            if (await PasteImageAsync(content) || !content.Contains(StandardDataFormats.Text))
+            {
+                return;
+            }
+
+            text = await content.GetTextAsync();
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException or IOException)
+        {
+            return; // the clipboard is locked by another process
         }
 
-        var text = await content.GetTextAsync();
         _undo.Seal();
         Insert(text.Replace("\r\n", "\n", StringComparison.Ordinal));
         _undo.Seal();

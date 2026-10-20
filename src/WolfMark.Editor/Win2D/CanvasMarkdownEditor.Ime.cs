@@ -139,6 +139,13 @@ public sealed partial class CanvasMarkdownEditor
         _keyDownStamp = 0; // composed text is not a key's latency (the emoji panel waits for the user's pick)
         try
         {
+            if (!HasSelection && BlockAt(_caret) is { } block)
+            {
+                // Beside an image: compose on a new line before or after it.
+                ApplyEdit(_caret == block.Start ? new TextEdit(block.Start, 0, "\n", block.Start, 0) : new TextEdit(block.End, 0, "\n", block.End + 1, 0), recordUndo: true);
+                RememberImeBuffer();
+            }
+
             var line = _doc.GetLineAtOffset(_caret);
             var lineStart = _doc.GetLineStart(line);
             var length = _doc.GetLineText(line).Length;

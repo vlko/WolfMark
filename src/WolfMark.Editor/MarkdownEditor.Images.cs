@@ -697,7 +697,7 @@ public sealed partial class MarkdownEditor
             var bytes = await Task.Run(() => File.ReadAllBytesAsync(file.Path));
             if (await handler(bytes, Path.GetExtension(file.Path).ToLowerInvariant()) is { } link)
             {
-                links.Add($"![{EscapeAlt(Path.GetFileNameWithoutExtension(file.Path))}]({link})");
+                links.Add($"![{EscapeAlt(Path.GetFileName(file.Path))}]({link})");
             }
         }
 
