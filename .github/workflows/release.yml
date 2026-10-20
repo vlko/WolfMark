@@ -2,6 +2,7 @@ name: Release
 
 # Push a tag like v0.2.0 (or v0.2.0-rc.1 for a pre-release) to build Windows (x64, ARM64), Linux (x64) and
 # macOS (Apple Silicon) and publish a GitHub Release with the Native AOT builds attached.
+# The release text is docs/release-notes/<tag>.md when it exists, otherwise GitHub's generated commit list.
 on:
   push:
     tags: ['v*']
@@ -140,7 +141,10 @@ jobs:
           prerelease=""
           # A suffix (v0.2.0-rc.1) or the .NET 11 release candidate SDK means pre-release.
           if [[ "$TAG" == *-* ]] || grep -q '"version": *"[0-9.]*-' global.json; then prerelease="--prerelease"; fi
+          # Release notes written for the tag (docs/release-notes/v0.3.1.md) win over the generated commit list.
+          notes=(--generate-notes)
+          if [[ -f "docs/release-notes/$TAG.md" ]]; then notes=(--notes-file "docs/release-notes/$TAG.md"); fi
           gh release create "$TAG" WolfMark-*.zip WolfMark-*.tar.gz \
             --title "WolfMark ${TAG#v}" \
-            --generate-notes \
+            "${notes[@]}" \
             $prerelease
