@@ -13,10 +13,10 @@ public sealed class EditorTraceTests
         var trace = new EditorTrace();
         for (var i = 1; i <= 100; i++)
         {
-            trace.Record(EditorPhase.TextChanged, Ms(i), count: 2);
+            trace.Record(EditorPhase.Edit, Ms(i), count: 2);
         }
 
-        var s = trace.Stats(EditorPhase.TextChanged)!;
+        var s = trace.Stats(EditorPhase.Edit)!;
         Assert.Equal(100, s.Samples);
         Assert.Equal(50, s.P50, 3);
         Assert.Equal(95, s.P95, 3);
@@ -30,16 +30,16 @@ public sealed class EditorTraceTests
     public void Report_lists_only_phases_with_samples_and_reset_clears()
     {
         var trace = new EditorTrace();
-        using (trace.Measure(EditorPhase.StyleBatch))
+        using (trace.Measure(EditorPhase.Draw))
         {
         }
 
         var report = trace.Report();
-        Assert.Contains("StyleBatch", report, StringComparison.Ordinal);
-        Assert.DoesNotContain("LineNumbers", report, StringComparison.Ordinal);
+        Assert.Contains("Draw", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("Measure", report, StringComparison.Ordinal);
 
         trace.Reset();
-        Assert.Null(trace.Stats(EditorPhase.StyleBatch));
+        Assert.Null(trace.Stats(EditorPhase.Draw));
     }
 
     [Fact]
@@ -47,8 +47,8 @@ public sealed class EditorTraceTests
     {
         var trace = new EditorTrace { SlowMs = 50 };
         var asked = 0;
-        trace.Record(EditorPhase.StyleBatch, Ms(10), 3, () => { asked++; return "fast"; });
-        trace.Record(EditorPhase.StyleBatch, Ms(80), 150, () => { asked++; return "mode switch"; });
+        trace.Record(EditorPhase.Draw, Ms(10), 3, () => { asked++; return "fast"; });
+        trace.Record(EditorPhase.Draw, Ms(80), 150, () => { asked++; return "mode switch"; });
 
         var slow = Assert.Single(trace.SlowEvents());
         Assert.Equal(1, asked);

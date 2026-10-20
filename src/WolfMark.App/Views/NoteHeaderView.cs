@@ -23,9 +23,9 @@ internal sealed partial class NoteHeaderView
 {
     private readonly MainViewModel _vm;
     private readonly TagBrushes _brushes;
-    private readonly IMarkdownEditor _editor;
+    private readonly MarkdownEditor _editor;
 
-    public NoteHeaderView(MainViewModel vm, TagBrushes brushes, IMarkdownEditor editor)
+    public NoteHeaderView(MainViewModel vm, TagBrushes brushes, MarkdownEditor editor)
     {
         _vm = vm;
         _brushes = brushes;
@@ -262,21 +262,9 @@ internal sealed partial class NoteHeaderView
         {
             var on = button.IsChecked == true;
             _editor.IsSpellCheckEnabled = on;
-            ShowState();
-        }
-
-        // A long note is not proofed even with the button on (MarkdownEditor.LongNoteChars): shown dimmed with a reason.
-        void ShowState()
-        {
-            var on = button.IsChecked == true && !_editor.IsSpellCheckSuspended;
             squiggle.Opacity = on ? 1 : 0.25;
             abc.Opacity = on ? 1 : 0.45;
-            var text = button.IsChecked == true && _editor.IsSpellCheckSuspended ? Strings.Get(R.Proofing_LongNote) : tip;
-            ToolTipService.SetToolTip(button, text);
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, text);
         }
-
-        _editor.SpellCheckSuspendedChanged += (_, _) => ShowState();
 
         button.Click += (_, _) =>
         {

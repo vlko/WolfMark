@@ -29,9 +29,7 @@ internal sealed partial class MainWindow : Window
     private readonly Grid _root = new();
     private readonly Grid _titleBar;
     private readonly List<FrameworkElement> _titleBarInteractive = [];
-    private readonly IMarkdownEditor _editor = LaunchOptions.Current.CanvasEditor
-        ? new WolfMark.Editor.Win2D.CanvasMarkdownEditor()
-        : new MarkdownEditor();
+    private readonly MarkdownEditor _editor = new();
     private readonly CalendarPanel _calendar;
     private readonly SearchPalette _search;
     private readonly Action<DateTime?> _setCreated;
@@ -101,7 +99,7 @@ internal sealed partial class MainWindow : Window
         _editor.AlignLeft = true;
         // Same gutter width as history rows: the two dotted lines form one line.
         var editorCell = new Grid();
-        editorCell.Children.Add(_editor.View);
+        editorCell.Children.Add(_editor);
         editorCell.Children.Add(ClaudeBadge());
         var editorPane = Ui.Ui.Columns((Ui.Ui.Px(Metrics.TimeGutter), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, editorCell));
 
@@ -394,17 +392,14 @@ internal sealed partial class MainWindow : Window
     {
         var editorVm = _vm.Editor;
         _editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
-        if (_editor is WolfMark.Editor.Win2D.CanvasMarkdownEditor canvas)
-        {
-            canvas.MenuTexts = new WolfMark.Editor.Win2D.CanvasMenuTexts(
-                Strings.Get(R.Menu_Cut),
-                Strings.Get(R.Menu_Copy),
-                Strings.Get(R.Menu_Paste),
-                Strings.Get(R.Menu_SelectAll),
-                Strings.Get(R.Spell_AddToDictionary),
-                Strings.Get(R.Spell_Ignore),
-                Strings.Get(R.Spell_NoSuggestions));
-        }
+        _editor.MenuTexts = new EditorMenuTexts(
+            Strings.Get(R.Menu_Cut),
+            Strings.Get(R.Menu_Copy),
+            Strings.Get(R.Menu_Paste),
+            Strings.Get(R.Menu_SelectAll),
+            Strings.Get(R.Spell_AddToDictionary),
+            Strings.Get(R.Spell_Ignore),
+            Strings.Get(R.Spell_NoSuggestions));
 
         _editor.CommandIcon = FormatIcons.CreateForMenu;
         _editor.CommandText = command => command switch

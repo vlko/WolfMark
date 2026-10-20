@@ -144,7 +144,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
                     WolfMark.Core.Diagnostics.EditorPhase.UiStall,
                     (long)(late.TotalSeconds * System.Diagnostics.Stopwatch.Frequency),
                     marks.Count,
-                    () => marks.Count == 0 ? "(no marks – editor/RichEdit or layout)" : string.Join(", ", marks));
+                    () => marks.Count == 0 ? "(no marks – editor, layout or rendering)" : string.Join(", ", marks));
             }
 
             last = now;

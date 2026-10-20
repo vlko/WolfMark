@@ -3,7 +3,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>
 /// AltGr arrives as Ctrl+Alt. On the Slovak layout AltGr types @ { } [ ] \ | € and more, so a Ctrl+Alt chord that

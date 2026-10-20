@@ -5,7 +5,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.Globalization;
 using Windows.Win32.System.Com;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 internal readonly record struct SpellError(int Start, int Length);
 

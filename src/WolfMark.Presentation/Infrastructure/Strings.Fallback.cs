@@ -149,7 +149,6 @@ internal static partial class Strings
         [R.Spell_AddToDictionary] = "Add to dictionary",
         [R.Spell_Ignore] = "Ignore",
         [R.Spell_NoSuggestions] = "No suggestions",
-        [R.Proofing_LongNote] = "Spell check is off for this note: it is too long (over 50,000 characters)",
         [R.History_Created] = "created {0}",
         [R.Copy_Plain] = "Copy as plain text",
         [R.Copy_Html] = "Copy as HTML",

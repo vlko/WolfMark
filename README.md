@@ -223,7 +223,7 @@ tools/package-desktop.sh linux-x64 0.2.0 src/WolfMark.Desktop/bin/Release/net11.
 | `WolfMark.Storage` | Directory engine (enumeration, CRUD, atomic writes, recycle bin), debounced watcher with echo suppression, `tags.json`, local settings, logging | `net11.0` |
 | `WolfMark.Index` | SQLite (WAL, single writer), FTS5, sqlite-vec, incremental indexer, `calendar_days`, history, hybrid search | `net11.0` |
 | `WolfMark.Sync.ClaudeCode` | Import of prompts from Claude Code transcripts, filtering, secret redaction, idempotent sync | `net11.0` |
-| `WolfMark.Editor` | Markdown editor (RichEditBox + background lexer) | WinUI 3 |
+| `WolfMark.Editor` | Markdown editor drawn with Win2D/DirectWrite (per-line layouts, Windows spell checker) | WinUI 3 |
 | `WolfMark.Presentation` | View models, `AppHost`, UI-neutral infrastructure shared by both apps | `net11.0` |
 | `WolfMark.App` | Window, calendar, history, search, settings – UI written in C# without XAML | WinUI 3 |
 | `WolfMark.Desktop` | The macOS/Linux app: the same UI on Avalonia, Markdown editor on AvaloniaEdit | Avalonia 12 |

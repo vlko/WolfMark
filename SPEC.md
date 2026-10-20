@@ -183,7 +183,7 @@ Dva režimy nad **jedným textovým modelom**:
 Prepínanie: `Ctrl+E` alebo tlačidlo; pozícia kurzora a scroll sa zachová.
 
 Implementačný prístup (preferovaný vlastný, natívny):
-- Základ: WinUI `RichEditBox` (RichEdit/TOM) s vlastným formátovaním cez `ITextDocument`/`ITextRange`, alebo – ak sa ukáže ako pomalý pri veľkých dokumentoch – vlastný control nad Win2D / `Microsoft.UI.Composition` s vlastným layoutom textu (DirectWrite).
+- Základ: vlastný control nad Win2D s layoutom textu po riadkoch (DirectWrite) – RichEditBox sa pri veľkých dokumentoch ukázal ako pomalý (ADR 0001, ADR 0007).
 - **Inkrementálny lexer po riadkoch** (stav na začiatku riadku kvôli blokom kódu) – pri úprave prefarbiť len dotknuté riadky. Zvýrazňovanie musí byť asynchrónne/dávkové, nikdy nesmie zablokovať písanie.
 - Prvý spike (M4) má porovnať: `RichEditBox` + vlastné farbenie vs. vlastný control. Merať latenciu písania na dokumente s 5 000 riadkami. Knižnice tretích strán len ako fallback (vyhodnotiť AOT kompatibilitu).
 
@@ -193,7 +193,7 @@ Správanie:
 - Undo/redo v rámci sedenia.
 - Klávesové skratky: `Ctrl+B/I/K` (bold/italic/link), `Ctrl+Shift+L` checkbox, `Tab/Shift+Tab` odsadenie zoznamu, automatické pokračovanie zoznamu na Enter.
 - **Vloženie obrázka** (`Ctrl+V` zo schránky) → uloží do `assets/` daného dňa a vloží relatívny odkaz.
-- Spell check (RichEditBox ho má natívne cez Windows; jazyk sk/en).
+- Spell check cez Windows Spell Checking API (jazyk sk/en, ADR 0007).
 - Pri externej zmene otvoreného súboru: ak editor nemá neuložené zmeny → potichu načítať; ak má → ponúknuť porovnanie/zlúčenie.
 
 ### 4.5 Hlavné okno – rozloženie

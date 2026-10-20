@@ -1,6 +1,6 @@
 # ADR 0001 – Markdown editor: RichEditBox + background incremental lexer
 
-- Stav: prijaté (v1), meranie na Windows otvorené
+- Stav: **nahradené ADR 0007** (vlastný editor nad Win2D, RichEdit editor odstránený); merania nižšie ostávajú ako porovnanie
 - Backlog: M4-01 … M4-06
 
 ## Kontext

@@ -31,35 +31,15 @@ public sealed class MarkdownTheme
 
     public string MonoFontFamily { get; init; } = "Cascadia Mono, Consolas";
 
-    /// <summary>
-    /// Face name for RichEdit character formats: unlike XAML it takes no fallback list, and names are limited to
-    /// LF_FACESIZE (32 with the terminator). The 48-character default list overran that and corrupted WinUIEdit's
-    /// memory – access violations at random later calls while switching notes.
-    /// </summary>
-    public string FaceName => ToFaceName(FontFamily);
-
-    public string MonoFaceName => ToFaceName(MonoFontFamily);
-
+    /// <summary>The first family of a XAML fallback list – DirectWrite takes one family name.</summary>
     public static string ToFaceName(string family)
     {
-        var first = family.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        return family.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .FirstOrDefault() ?? "Segoe UI";
-        return first.Length <= 31 ? first : first[..31];
     }
 
     /// <summary>Base size in device-independent pixels.</summary>
     public double FontSize { get; init; } = 15;
-
-    /// <summary>RichEdit uses points.</summary>
-    public float BasePoints => (float)(FontSize * 0.75);
-
-    public float HeadingPoints(MarkdownTokenKind kind) => kind switch
-    {
-        MarkdownTokenKind.Heading1 => BasePoints * 1.6f,
-        MarkdownTokenKind.Heading2 => BasePoints * 1.35f,
-        MarkdownTokenKind.Heading3 => BasePoints * 1.18f,
-        _ => BasePoints * 1.05f,
-    };
 
     public static MarkdownTheme Light(Func<string, Color> tagColor) => new()
     {

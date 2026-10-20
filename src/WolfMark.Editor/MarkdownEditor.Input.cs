@@ -11,10 +11,10 @@ using Windows.UI.Core;
 using WolfMark.Core.Diagnostics;
 using WolfMark.Core.Markdown;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>Keyboard, characters, pointer and clipboard. Positions move over shown characters (hidden markers are skipped).</summary>
-public sealed partial class CanvasMarkdownEditor
+public sealed partial class MarkdownEditor
 {
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _blink;
     private bool _caretOn = true;

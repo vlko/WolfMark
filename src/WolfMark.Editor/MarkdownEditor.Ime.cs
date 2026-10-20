@@ -4,14 +4,14 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using WolfMark.Core.Markdown;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>
 /// Input method composition (IME, emoji panel) through <see cref="CoreTextEditContext"/>, which works in WinUI 3
 /// desktop without a hidden TextBox (verified by WinUIRichEditor). The IME sees the caret's line in source
 /// columns; plain typing still arrives as <c>CharacterReceived</c>, composed text as <c>TextUpdating</c>.
 /// </summary>
-public sealed partial class CanvasMarkdownEditor
+public sealed partial class MarkdownEditor
 {
     private CoreTextEditContext? _ime;
     private bool _composing;

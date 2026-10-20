@@ -6,14 +6,14 @@ using Windows.UI;
 using WolfMark.Core.Diagnostics;
 using WolfMark.Core.Markdown;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>
 /// Line layouts. Every line's height is known (measured on open, on a mode or width change, and for the lines an
 /// edit touches), so the scroll extent is exact; a <see cref="CanvasTextLayout"/> is kept only for lines that were
 /// drawn recently.
 /// </summary>
-public sealed partial class CanvasMarkdownEditor
+public sealed partial class MarkdownEditor
 {
     private const int MaxLiveLayouts = 400;
 
@@ -151,7 +151,7 @@ public sealed partial class CanvasMarkdownEditor
         UpdateCanvasSize();
         RestoreViewAnchor(anchor);
         _canvas.Invalidate();
-        EditorTrace.Current?.RecordSince(EditorPhase.CanvasMeasure, started, _lines.Count - pending.Count, () => $"view, {_lines.Count} lines, {_mode}, width {_layoutWidth:0}");
+        EditorTrace.Current?.RecordSince(EditorPhase.Measure, started, _lines.Count - pending.Count, () => $"view, {_lines.Count} lines, {_mode}, width {_layoutWidth:0}");
         if (pending.Count > 0)
         {
             MeasureInBackground(generation, pending);
@@ -209,7 +209,7 @@ public sealed partial class CanvasMarkdownEditor
                     return format;
                 },
                 format => format.Dispose());
-            EditorTrace.Current?.RecordSince(EditorPhase.CanvasMeasure, started, texts.Length, () => $"background, {texts.Length} lines");
+            EditorTrace.Current?.RecordSince(EditorPhase.Measure, started, texts.Length, () => $"background, {texts.Length} lines");
             _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () => ApplyMeasured(generation, texts, heights));
         });
     }
@@ -305,7 +305,7 @@ public sealed partial class CanvasMarkdownEditor
         return layout;
     }
 
-    /// <summary>Token formats on a line's layout, in lexer order (later tokens refine earlier ones) – as the RichEdit editor.</summary>
+    /// <summary>Token formats on a line's layout, in lexer order (later tokens refine earlier ones).</summary>
     /// <param name="measureOnly">Off the UI thread, for heights: colours (and the app's tag colour lookup) are left out.</param>
     private static void ApplyStyles(CanvasTextLayout layout, LinePresentation presentation, MarkdownTheme theme, bool measureOnly = false)
     {

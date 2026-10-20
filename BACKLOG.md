@@ -91,8 +91,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 
 ## M4 – Markdown editor 🟢
 
-- 🟨 **M4-01 – Spike: voľba prístupu.** Porovnať `RichEditBox` + vlastné farbenie vs. vlastný control (Win2D/DirectWrite). Merať latenciu písania na 5 000 riadkoch, pamäť, AOT kompatibilitu. Výsledok zapísať do `docs/adr/0001-editor.md`.
-  *Stav:* ADR 0001 – rozhodnutie RichEditBox; merania latencie na Windows chýbajú.
+- ✅ **M4-01 – Spike: voľba prístupu.** Porovnať `RichEditBox` + vlastné farbenie vs. vlastný control (Win2D/DirectWrite). Merať latenciu písania na 5 000 riadkoch, pamäť, AOT kompatibilitu. Výsledok zapísať do `docs/adr/0001-editor.md`.
+  *Stav:* Merania v ADR 0001 (RichEdit: kláves → snímka p95 144 ms na 5 000 riadkoch) a ADR 0007 (Win2D: 2,5 ms p50, ~20 ms p95); aplikácia používa vlastný Win2D editor, RichEdit editor odstránený.
   *AK:* ADR s meraniami a rozhodnutím.
 - ✅ **M4-02 – Inkrementálny markdown lexer.** Riadkový lexer so stavom (bloky kódu, front matter), výstup = rozsahy tokenov.
   *Stav:* Test: úprava riadku = 1 retokenizovaný riadok.

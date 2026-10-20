@@ -6,34 +6,18 @@ namespace WolfMark.Core.Diagnostics;
 
 public enum EditorPhase
 {
-    /// <summary>Key down until the first rendered frame after the text changed – the latency the user feels.</summary>
+    /// <summary>Key down until the first rendered frame after the edit – the latency the user feels.</summary>
     KeyToFrame,
-    /// <summary>Key down until TextChanged with the new text – RichEdit's own work on the key.</summary>
-    KeyToText,
     /// <summary>The UI thread did not run a 20 ms heartbeat for this long (count = marks in the window).</summary>
     UiStall,
-    TextChanged,
-    ReadText,
-    UndoRecord,
-    TextEditedHandler,
-    SelectionChanged,
-    CaretOverlay,
-    LexerUpdate,
-    StyleQueueDelay,
-    StyleBatch,
-    /// <summary>Within <see cref="StyleBatch"/>: setting the formats.</summary>
-    StyleFormats,
-    /// <summary>Within <see cref="StyleBatch"/>: <c>ApplyDisplayUpdates</c> (RichEdit's layout of the batch).</summary>
-    StyleDisplay,
-    ImageLayout,
-    LineNumbers,
-    LoadFormatted,
-    /// <summary>Canvas editor: one edit applied (model, layouts of the changed lines, undo).</summary>
-    CanvasEdit,
-    /// <summary>Canvas editor: one draw pass of the invalidated regions (count = lines drawn).</summary>
-    CanvasDraw,
-    /// <summary>Canvas editor: measuring every line (open, mode or width change; count = lines).</summary>
-    CanvasMeasure,
+    /// <summary>Opening a note (count = lines).</summary>
+    Load,
+    /// <summary>One edit applied: model, layouts of the changed lines, undo (count = lines retokenized).</summary>
+    Edit,
+    /// <summary>One draw pass of the invalidated regions (count = lines drawn).</summary>
+    Draw,
+    /// <summary>Measuring line heights: the view at once, the rest in the background (count = lines).</summary>
+    Measure,
 }
 
 /// <summary>
@@ -68,7 +52,7 @@ public sealed class EditorTrace
     /// <summary>Calls at least this long are also listed one by one, with their context.</summary>
     public double SlowMs { get; init; } = 50;
 
-    /// <summary>Times a block: <c>using var _ = EditorTrace.Current?.Measure(EditorPhase.X);</c></summary>
+    /// <summary>Times a block: <c>using var _ = EditorTrace.Current?.Measure(EditorPhase.Edit);</c></summary>
     /// <param name="context">What was going on – evaluated only for a slow call.</param>
     public Scope Measure(EditorPhase phase, Func<string>? context = null) => new(this, phase, Stopwatch.GetTimestamp(), context);
 

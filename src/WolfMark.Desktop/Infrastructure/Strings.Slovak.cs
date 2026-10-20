@@ -151,7 +151,6 @@ internal static partial class DesktopStrings
         [R.Spell_AddToDictionary] = "Pridať do slovníka",
         [R.Spell_Ignore] = "Ignorovať",
         [R.Spell_NoSuggestions] = "Žiadne návrhy",
-        [R.Proofing_LongNote] = "Kontrola pravopisu je pre túto poznámku vypnutá: je príliš dlhá (viac ako 50 000 znakov)",
         [R.History_Created] = "vznik {0}",
         [R.Copy_Plain] = "Kopírovať ako text",
         [R.Copy_Html] = "Kopírovať ako HTML",

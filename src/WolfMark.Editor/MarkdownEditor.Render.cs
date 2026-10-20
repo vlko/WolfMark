@@ -6,10 +6,10 @@ using Windows.Foundation;
 using WolfMark.Core.Diagnostics;
 using WolfMark.Core.Markdown;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>Drawing: only the lines inside the invalidated regions, from the cached layouts.</summary>
-public sealed partial class CanvasMarkdownEditor
+public sealed partial class MarkdownEditor
 {
     private void OnRegionsInvalidated(CanvasVirtualControl sender, CanvasRegionsInvalidatedEventArgs args)
     {
@@ -31,7 +31,7 @@ public sealed partial class CanvasMarkdownEditor
         }
 
         TrimLayouts();
-        EditorTrace.Current?.RecordSince(EditorPhase.CanvasDraw, started, drawn);
+        EditorTrace.Current?.RecordSince(EditorPhase.Draw, started, drawn);
     }
 
     /// <summary>

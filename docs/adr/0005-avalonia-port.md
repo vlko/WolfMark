@@ -28,4 +28,4 @@ bez zmeny správania Windows aplikácie.
 
 ## Dôsledky
 - Farby a typografia (`Theming/Palette.cs`, `Typo.cs`) sú v Desktop zatiaľ kópiou hodnôt z Windows aplikácie.
-- Kontrola pravopisu mimo Windows zatiaľ chýba (RichEdit ju dáva zadarmo); neskôr Hunspell po AOT overení.
+- Kontrola pravopisu mimo Windows zatiaľ chýba (na Windows ju dáva Windows Spell Checking API, ADR 0007); neskôr Hunspell po AOT overení.

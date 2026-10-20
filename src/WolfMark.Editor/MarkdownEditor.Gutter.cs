@@ -4,13 +4,13 @@ using Microsoft.Graphics.Canvas.Text;
 using Windows.Foundation;
 using WolfMark.Core.Markdown;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>
-/// Line numbers in a gutter left of the text and the marker chips of the caret line – the same look as the
-/// RichEdit editor, but drawn in the same pass as the text from the line layouts (no position queries).
+/// Line numbers in a gutter left of the text and the marker chips of the caret line, drawn in the same pass as
+/// the text from the line layouts.
 /// </summary>
-public sealed partial class CanvasMarkdownEditor
+public sealed partial class MarkdownEditor
 {
     private const int MinNumberDigits = 3;
     private const string WrapGlyph = "↪"; // ↪ on the rows a long line wraps onto
@@ -151,7 +151,7 @@ public sealed partial class CanvasMarkdownEditor
 
     /// <summary>
     /// Formatted mode keeps the markers hidden on every line; the caret line shows them as small chips at the top
-    /// corners before and after the formatted text (as the RichEdit editor), so nothing shifts.
+    /// corners before and after the formatted text, so nothing shifts.
     /// </summary>
     private void DrawChips(CanvasDrawingSession ds, int line, CanvasTextLayout layout, LinePresentation presentation, float x, float y)
     {

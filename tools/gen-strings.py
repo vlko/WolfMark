@@ -148,7 +148,6 @@ S = {
  "Spell_AddToDictionary": ("Add to dictionary", "Pridať do slovníka"),
  "Spell_Ignore": ("Ignore", "Ignorovať"),
  "Spell_NoSuggestions": ("No suggestions", "Žiadne návrhy"),
- "Proofing_LongNote": ("Spell check is off for this note: it is too long (over 50,000 characters)", "Kontrola pravopisu je pre túto poznámku vypnutá: je príliš dlhá (viac ako 50 000 znakov)"),
  "History_Created": ("created {0}", "vznik {0}"),
  "Copy_Plain": ("Copy as plain text", "Kopírovať ako text"),
  "Copy_Html": ("Copy as HTML", "Kopírovať ako HTML"),

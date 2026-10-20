@@ -8,10 +8,10 @@ using Windows.Foundation;
 using Windows.UI;
 using WolfMark.Core.Markdown;
 
-namespace WolfMark.Editor.Win2D;
+namespace WolfMark.Editor;
 
 /// <summary>Labels of the editor's context menu (the app sets them in its language).</summary>
-public sealed record CanvasMenuTexts(
+public sealed record EditorMenuTexts(
     string Cut = "Cut",
     string Copy = "Copy",
     string Paste = "Paste",
@@ -25,7 +25,7 @@ public sealed record CanvasMenuTexts(
 /// <see cref="SpellService"/> thread once, the result is cached by that text – the note's length does not matter.
 /// The word being typed is not marked until the caret leaves it.
 /// </summary>
-public sealed partial class CanvasMarkdownEditor
+public sealed partial class MarkdownEditor
 {
     private static readonly Color SquiggleColor = Color.FromArgb(255, 0xD1, 0x34, 0x38);
 
@@ -35,7 +35,7 @@ public sealed partial class CanvasMarkdownEditor
     private bool _spellCheck;
     private bool _typingWord;
 
-    public CanvasMenuTexts MenuTexts { get; set; } = new();
+    public EditorMenuTexts MenuTexts { get; set; } = new();
 
     /// <summary>The user's choice; read-only notes are never proofed.</summary>
     public bool IsSpellCheckEnabled

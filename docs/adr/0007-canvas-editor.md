@@ -1,6 +1,6 @@
-# ADR 0007 – Vlastný editor nad Win2D (prototyp)
+# ADR 0007 – Vlastný editor nad Win2D
 
-- Stav: prototyp na vetve `canvas-editor`, rozhodnutie po meraní
+- Stav: prijaté – jediný editor aplikácie (RichEdit editor z ADR 0001 odstránený)
 - Súvisí: ADR 0001 (RichEdit), ADR 0006 (veľkosť buildu)
 
 ## Kontext
@@ -13,9 +13,10 @@ Zvažované: WinUIEdit/Scintilla (jedna výška riadku pre celý dokument, bez o
 režimu), WinUIRichEditor (Win2D, rich text editor s vlastným formátom, nie Markdown – vhodný ako predloha),
 CodeMirror 6 vo WebView2 (najviac hotového, ale proti natívnemu zámeru).
 
-## Rozhodnutie (prototyp)
-Vlastný editor `WolfMark.Editor.Win2D.CanvasMarkdownEditor`, zapnutý prepínačom `--canvas-editor`; RichEdit
-ostáva predvolený. Oba spĺňajú `IMarkdownEditor`, zvyšok aplikácie sa nemení.
+## Rozhodnutie
+Vlastný editor `WolfMark.Editor.MarkdownEditor` nad Win2D. Najprv prototyp vedľa RichEditu (prepínač, spoločné
+rozhranie), po splnení kritérií a doplnení funkcií RichEdit editor odstránený spolu s obmedzením pravopisu pre dlhé
+poznámky a fázami merania, ktoré patrili len jemu.
 
 - **Text a tokeny v jednom modeli**: `MarkdownDocumentModel` (Core) drží riadky; `Replace(start, length, text)`
   prestavia len dotknuté riadky a retokenizuje po konvergenciu stavu. Úpravy idú priamo na UI vlákne – trvajú
@@ -57,7 +58,7 @@ ostáva predvolený. Oba spĺňajú `IMarkdownEditor`, zvyšok aplikácie sa nem
   `stackalloc`/`ArrayPool`); polia tokenov sa nekopírujú (model ich po vytvorení nemení).
 - **Meranie**: `--trace-editor` – `KeyToFrame`, `CanvasEdit`, `CanvasDraw`, `CanvasMeasure`.
 
-## Zatiaľ chýba (pred prípadným prechodom)
+## Zatiaľ chýba
 Formátovacie príkazy v kontextovom menu, prístupnosť (UIA text pattern), automatický posun pri ťahaní výberu.
 
 ## Merania (Windows, 5 000 riadkov / 255 k znakov, prvý prototyp)
