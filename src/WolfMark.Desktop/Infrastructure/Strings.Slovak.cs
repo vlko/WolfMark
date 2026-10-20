@@ -163,6 +163,7 @@ internal static partial class DesktopStrings
         [R.Status_ClaudeSyncNow] = "Synchronizovať teraz",
         [R.Status_NotesFolder] = "Priečinok poznámok",
         [R.Settings_Diagnostics] = "Diagnostika",
+        [R.Settings_CopyDiagnostics] = "Kopírovať diagnostické údaje",
         [R.Settings_TestNotice] = "Zobraziť testovacie upozornenie",
         [R.TestNotice_Title] = "Testovacie upozornenie",
         [R.TestNotice_Message] = "Upozornenia sa zobrazujú tu, nad stavovou lištou. Zavrieš ho cez ✕.",

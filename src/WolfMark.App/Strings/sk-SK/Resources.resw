@@ -483,6 +483,9 @@
   <data name="Settings_Diagnostics" xml:space="preserve">
     <value>Diagnostika</value>
   </data>
+  <data name="Settings_CopyDiagnostics" xml:space="preserve">
+    <value>Kopírovať diagnostické údaje</value>
+  </data>
   <data name="Settings_TestNotice" xml:space="preserve">
     <value>Zobraziť testovacie upozornenie</value>
   </data>

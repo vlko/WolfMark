@@ -160,6 +160,7 @@ S = {
  "Status_ClaudeSyncNow": ("Sync now", "Synchronizovať teraz"),
  "Status_NotesFolder": ("Notes folder", "Priečinok poznámok"),
  "Settings_Diagnostics": ("Diagnostics", "Diagnostika"),
+ "Settings_CopyDiagnostics": ("Copy diagnostic info", "Kopírovať diagnostické údaje"),
  "Settings_TestNotice": ("Show test notice", "Zobraziť testovacie upozornenie"),
  "TestNotice_Title": ("Test notice", "Testovacie upozornenie"),
  "TestNotice_Message": ("Notices appear here, above the status bar. Close it with ✕.", "Upozornenia sa zobrazujú tu, nad stavovou lištou. Zavrieš ho cez ✕."),

@@ -97,6 +97,7 @@ public sealed partial class MarkdownEditor
 
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        _followCaret = false;
         if (_composing)
         {
             return; // the IME owns the keys while composing
@@ -508,6 +509,7 @@ public sealed partial class MarkdownEditor
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        _followCaret = false;
         _canvas.Focus(FocusState.Pointer);
         var point = e.GetCurrentPoint(_canvas);
         if (!point.Properties.IsLeftButtonPressed)

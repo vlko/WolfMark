@@ -240,7 +240,21 @@ public sealed partial class MarkdownEditor
 
         _topsDirty = true;
         UpdateCanvasSize();
-        RestoreViewAnchor(anchor);
+        if (_followCaret)
+        {
+            // A note just opened at its end: the real heights move the caret – follow it, not the top line.
+            EnsureCaretVisible();
+            _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                EnsureCaretVisible();
+                _followCaret = false;
+            });
+        }
+        else
+        {
+            RestoreViewAnchor(anchor);
+        }
+
         _canvas.Invalidate();
     }
 

@@ -189,6 +189,20 @@ internal static class SettingsDialog
         paths.TextWrapping = TextWrapping.Wrap;
         paths.IsTextSelectionEnabled = true;
 
+        // Version and environment, selectable and copyable for bug reports (the index size is read off the UI thread).
+        var scale = root.RasterizationScale;
+        var noteCount = vm.NoteCount;
+        var diagnostics = await Task.Run(() => DiagnosticInfo.Build(host, noteCount, scale));
+        var diagnosticText = Typo.Body(diagnostics, 11.5, Palette.InkTertiary);
+        diagnosticText.TextWrapping = TextWrapping.Wrap;
+        diagnosticText.IsTextSelectionEnabled = true;
+        var copyDiagnostics = Ui.Ui.TextButton(Strings.Get(R.Settings_CopyDiagnostics), () =>
+        {
+            var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            package.SetText(diagnostics);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        });
+
         var content = Ui.Ui.VStack(
             10,
             restartBar,
@@ -226,13 +240,15 @@ internal static class SettingsDialog
             rebuild,
             paths,
             Section(Strings.Get(R.Settings_Diagnostics)),
+            diagnosticText,
+            copyDiagnostics,
             Field(Strings.Get(R.Settings_WindowRendering), rendering),
             testNotice);
 
         var dialog = new ContentDialog
         {
             XamlRoot = root,
-            Title = Strings.Get(R.Settings_Title),
+            Title = $"{Strings.Get(R.Settings_Title)} · {DiagnosticInfo.ShortVersion}",
             Content = new ScrollViewer { Content = content, MaxHeight = 620, Padding = new Thickness(0, 0, 16, 0) },
             PrimaryButtonText = "OK",
             CloseButtonText = Strings.Get(R.Common_Cancel),

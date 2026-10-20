@@ -483,6 +483,9 @@
   <data name="Settings_Diagnostics" xml:space="preserve">
     <value>Diagnostics</value>
   </data>
+  <data name="Settings_CopyDiagnostics" xml:space="preserve">
+    <value>Copy diagnostic info</value>
+  </data>
   <data name="Settings_TestNotice" xml:space="preserve">
     <value>Show test notice</value>
   </data>

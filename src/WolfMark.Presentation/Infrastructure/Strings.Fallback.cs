@@ -161,6 +161,7 @@ internal static partial class Strings
         [R.Status_ClaudeSyncNow] = "Sync now",
         [R.Status_NotesFolder] = "Notes folder",
         [R.Settings_Diagnostics] = "Diagnostics",
+        [R.Settings_CopyDiagnostics] = "Copy diagnostic info",
         [R.Settings_TestNotice] = "Show test notice",
         [R.TestNotice_Title] = "Test notice",
         [R.TestNotice_Message] = "Notices appear here, above the status bar. Close it with ✕.",

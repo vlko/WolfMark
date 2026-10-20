@@ -160,6 +160,7 @@ internal static class R
     public const string Status_ClaudeSyncNow = nameof(Status_ClaudeSyncNow);
     public const string Status_NotesFolder = nameof(Status_NotesFolder);
     public const string Settings_Diagnostics = nameof(Settings_Diagnostics);
+    public const string Settings_CopyDiagnostics = nameof(Settings_CopyDiagnostics);
     public const string Settings_TestNotice = nameof(Settings_TestNotice);
     public const string TestNotice_Title = nameof(TestNotice_Title);
     public const string TestNotice_Message = nameof(TestNotice_Message);

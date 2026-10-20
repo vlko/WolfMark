@@ -29,6 +29,7 @@ public sealed partial class MarkdownEditor : UserControl
     private bool _readOnly;
     private bool _hasFocus;
     private bool _moreBelow;
+    private bool _followCaret; // after ScrollToCaret, until the user scrolls, clicks or types
 
     // Selection in source offsets: the caret moves, the anchor stays (equal when nothing is selected).
     private int _caret;
@@ -66,6 +67,14 @@ public sealed partial class MarkdownEditor : UserControl
         };
         _scroll.SizeChanged += (_, _) => OnViewportResized();
         _scroll.ViewChanged += (_, _) => UpdateOverflow();
+        _canvas.SizeChanged += (_, _) =>
+        {
+            if (_followCaret)
+            {
+                EnsureCaretVisible();
+            }
+        };
+        _canvas.AddHandler(PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => _followCaret = false), handledEventsToo: true);
         Content = _scroll;
         IsTabStop = false;
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.IBeam);
@@ -173,7 +182,16 @@ public sealed partial class MarkdownEditor : UserControl
 
     public void ScrollToEnd() => _scroll.ChangeView(null, _scroll.ScrollableHeight, null);
 
-    public void ScrollToCaret() => _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, EnsureCaretVisible);
+    /// <summary>
+    /// Brings the caret into view – right after opening a note, again when the canvas has its new height and when
+    /// the background measure delivers the real line heights (until then only the lines around the caret are exact),
+    /// until the user scrolls, clicks or types.
+    /// </summary>
+    public void ScrollToCaret()
+    {
+        _followCaret = true;
+        _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, EnsureCaretVisible);
+    }
 
     /// <summary>Applies an editing command at the current selection (toolbar buttons call this).</summary>
     public void Execute(EditorCommand command)
