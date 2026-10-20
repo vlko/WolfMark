@@ -136,6 +136,7 @@ internal sealed partial class MainViewModel : ObservableObject
             && await Task.Run(() => File.Exists(_host.Engine.GetFullPath(lastPath))))
         {
             await Editor.OpenAsync(lastPath, caretToEnd: true);
+            WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: note opened");
             SelectedDay = Editor.Day;
         }
         else
@@ -278,6 +279,7 @@ internal sealed partial class MainViewModel : ObservableObject
 
     private async Task OnIndexChangedAsync(IndexChangedEventArgs e)
     {
+        WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark($"index changed ({e.Paths.Count} notes)");
         if (e.IsFullScan || e.Days.Any(d => d >= Week.Monday && d <= Week.Monday.AddDays(6)))
         {
             await Week.LoadAsync(Week.Monday, SelectedDay);
@@ -285,6 +287,7 @@ internal sealed partial class MainViewModel : ObservableObject
 
         if (IsCalendarExpanded)
         {
+            WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("calendar");
             if (e.IsFullScan)
             {
                 await Calendar.LoadAsync();

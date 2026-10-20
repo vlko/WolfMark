@@ -135,10 +135,9 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
                 return;
             }
 
-            Items.Clear();
             _lastDay = null;
             _next = next;
-            Append(items);
+            Replace([.. Entries(items)]);
             IsEmpty = Items.Count == 0;
             _loaded = true;
         }
@@ -176,20 +175,68 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 
     private void Append(IReadOnlyList<NoteSummary> notes)
     {
+        foreach (var entry in Entries(notes))
+        {
+            Items.Add(entry);
+        }
+    }
+
+    /// <summary>Headers and rows for <paramref name="notes"/>, continuing after <see cref="_lastDay"/>.</summary>
+    private IEnumerable<object> Entries(IReadOnlyList<NoteSummary> notes)
+    {
         foreach (var note in notes)
         {
             // History is ordered by the last edit, so it is also grouped by the day of the last edit.
             var editedDay = DateOnly.FromDateTime(note.ModifiedAt);
             if (DayFilter is null && editedDay != _lastDay)
             {
-                Items.Add(new HistoryHeaderViewModel(HeaderLabel(editedDay)));
+                yield return new HistoryHeaderViewModel(HeaderLabel(editedDay));
                 _lastDay = editedDay;
             }
 
-            Items.Add(new HistoryRowViewModel(note)
+            yield return new HistoryRowViewModel(note)
             {
                 IsCurrent = string.Equals(note.RelativePath, _currentPath, StringComparison.OrdinalIgnoreCase),
-            });
+            };
+        }
+    }
+
+    /// <summary>
+    /// A reload with the same notes in the same order (the usual case after an autosave: the open note is already
+    /// on top) only swaps the rows whose summary changed. Clearing and refilling recreated every row on the UI
+    /// thread – a ~0.4 s freeze a moment after typing stopped.
+    /// </summary>
+    private void Replace(List<object> fresh)
+    {
+        var sameShape = fresh.Count == Items.Count;
+        for (var i = 0; sameShape && i < fresh.Count; i++)
+        {
+            sameShape = (fresh[i], Items[i]) switch
+            {
+                (HistoryHeaderViewModel a, HistoryHeaderViewModel b) => a.Label == b.Label,
+                (HistoryRowViewModel a, HistoryRowViewModel b) => a.Note.RelativePath == b.Note.RelativePath,
+                _ => false,
+            };
+        }
+
+        WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark(sameShape ? "history: rows updated" : $"history: rebuilt {fresh.Count} items");
+        if (!sameShape)
+        {
+            Items.Clear();
+            foreach (var entry in fresh)
+            {
+                Items.Add(entry);
+            }
+
+            return;
+        }
+
+        for (var i = 0; i < fresh.Count; i++)
+        {
+            if (fresh[i] is HistoryRowViewModel row && Items[i] is HistoryRowViewModel old && old.Note != row.Note)
+            {
+                Items[i] = row;
+            }
         }
     }
 

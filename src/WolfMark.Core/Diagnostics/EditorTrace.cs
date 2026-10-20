@@ -8,6 +8,10 @@ public enum EditorPhase
 {
     /// <summary>Key down until the first rendered frame after the text changed – the latency the user feels.</summary>
     KeyToFrame,
+    /// <summary>Key down until TextChanged with the new text – RichEdit's own work on the key.</summary>
+    KeyToText,
+    /// <summary>The UI thread did not run a 20 ms heartbeat for this long (count = marks in the window).</summary>
+    UiStall,
     TextChanged,
     ReadText,
     UndoRecord,
@@ -35,12 +39,14 @@ public sealed class EditorTrace
 {
     private const int MaxSamples = 20_000; // per phase; older samples go first
     private const int MaxSlow = 200;
+    private const int MaxMarks = 64;
 
     private static readonly int PhaseCount = Enum.GetValues<EditorPhase>().Length;
 
     private readonly Lock _lock = new();
     private readonly List<Sample>[] _samples;
     private readonly Queue<SlowEvent> _slow = new();
+    private readonly Queue<(long At, string Label)> _marks = new();
 
     public EditorTrace()
     {
@@ -90,6 +96,30 @@ public sealed class EditorTrace
     public void RecordSince(EditorPhase phase, long startTimestamp, int count = 0, Func<string>? context = null) =>
         Record(phase, Stopwatch.GetTimestamp() - startTimestamp, count, context);
 
+    /// <summary>Notes what the app is doing (history reload, autosave…) so a <see cref="EditorPhase.UiStall"/> can name it.</summary>
+    public void Mark(string label)
+    {
+        lock (_lock)
+        {
+            if (_marks.Count == MaxMarks)
+            {
+                _marks.Dequeue();
+            }
+
+            _marks.Enqueue((Stopwatch.GetTimestamp(), label));
+        }
+    }
+
+    /// <summary>Labels marked since <paramref name="sinceTimestamp"/>, oldest first, with "+ms" from that moment.</summary>
+    public IReadOnlyList<string> MarksSince(long sinceTimestamp)
+    {
+        lock (_lock)
+        {
+            return [.. _marks.Where(m => m.At >= sinceTimestamp)
+                .Select(m => $"{m.Label} +{Stopwatch.GetElapsedTime(sinceTimestamp, m.At).TotalMilliseconds:0}")];
+        }
+    }
+
     /// <summary>The latest calls of at least <see cref="SlowMs"/>, oldest first.</summary>
     public IReadOnlyList<SlowEvent> SlowEvents()
     {
@@ -134,6 +164,7 @@ public sealed class EditorTrace
             }
 
             _slow.Clear();
+            _marks.Clear();
         }
     }
 

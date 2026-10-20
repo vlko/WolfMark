@@ -233,6 +233,7 @@ public sealed partial class MarkdownEditor : UserControl
             _box.TextDocument.SetText(TextSetOptions.None, text);
             _text = ReadBoxText();
             _storyLength = StoryLength();
+            UpdateSpellCheckSuspended();
             _lineTokens.Clear();
             var caret = caretToEnd ? _text.Length : 0;
             _activeLine = LineOf(_text, caret);
@@ -245,6 +246,7 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _undo.Clear();
+        EditorTrace.Current?.Mark($"editor: plain text set ({_text.Length} chars)");
         RequestHighlight(full: true, load: true);
         HideUntilStyled();
     }
@@ -609,6 +611,11 @@ public sealed partial class MarkdownEditor : UserControl
         }
 
         _storyLength = length;
+        if (_keyDownStamp != 0)
+        {
+            EditorTrace.Current?.RecordSince(EditorPhase.KeyToText, _keyDownStamp);
+        }
+
         using var traced = EditorTrace.Current?.Measure(EditorPhase.TextChanged, () => $"content {content}, {_text.Length} chars");
         string newText;
         using (EditorTrace.Current?.Measure(EditorPhase.ReadText))
@@ -996,6 +1003,7 @@ public sealed partial class MarkdownEditor : UserControl
             }
 
             Volatile.Write(ref _appliedVersion, snapshot.Version);
+            EditorTrace.Current?.Mark("editor: formatted");
             ScheduleImageLayout();
             ScheduleLineNumbers();
             RevealAfterLoad();
@@ -1015,7 +1023,7 @@ public sealed partial class MarkdownEditor : UserControl
     {
         using var traced = EditorTrace.Current?.Measure(
             EditorPhase.LoadFormatted,
-            () => $"{snapshot.Text.Length} chars, {styles.Count} lines, {snapshot.Mode}, spell check {_spellCheck && !_readOnly}");
+            () => $"{snapshot.Text.Length} chars, {styles.Count} lines, {snapshot.Mode}, spell check {ProofingWanted}");
         var basis = BaseStyle();
         var rtf = new RtfDocument(basis);
         foreach (var style in styles.OrderBy(st => st.Line))
@@ -1029,13 +1037,14 @@ public sealed partial class MarkdownEditor : UserControl
         var doc = _box.TextDocument;
         var (start, end) = (doc.Selection.StartPosition, doc.Selection.EndPosition);
         var offset = _scrollViewer?.VerticalOffset;
+        var anchor = ViewAnchor();
         var ok = false;
         Interlocked.Increment(ref _applying);
         try
         {
             _box.IsReadOnly = false;
             _box.IsSpellCheckEnabled = false; // stops a check of the previous note before its text goes
-            var proof = _spellCheck && !_readOnly;
+            var proof = ProofingWanted;
             if (proof)
             {
                 doc.SetText(TextSetOptions.None, string.Empty);
@@ -1109,9 +1118,19 @@ public sealed partial class MarkdownEditor : UserControl
         if (offset is { } y)
         {
             // Again after RichEdit has laid out the new text: until then the scroll range is not updated and the
-            // view ended at the last line (mode switch).
+            // view ended at the last line (mode switch). Then by the anchor line: line heights differ per mode.
             _scrollViewer?.ChangeView(null, y, null, disableAnimation: true);
-            _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () => _scrollViewer?.ChangeView(null, y, null, disableAnimation: true));
+            _dispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                if (anchor is { } a)
+                {
+                    RestoreViewAnchor(a);
+                }
+                else
+                {
+                    _scrollViewer?.ChangeView(null, y, null, disableAnimation: true);
+                }
+            });
         }
 
         return ok;

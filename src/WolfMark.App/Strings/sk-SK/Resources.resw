@@ -438,6 +438,9 @@
   <data name="Proofing_Toggle" xml:space="preserve">
     <value>Kontrola pravopisu</value>
   </data>
+  <data name="Proofing_LongNote" xml:space="preserve">
+    <value>Kontrola pravopisu je pre túto poznámku vypnutá: je príliš dlhá (viac ako 50 000 znakov)</value>
+  </data>
   <data name="History_Created" xml:space="preserve">
     <value>vznik {0}</value>
   </data>

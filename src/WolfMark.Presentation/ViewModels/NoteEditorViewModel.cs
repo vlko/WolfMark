@@ -191,6 +191,7 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
                 return;
             }
 
+            WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("autosave");
             var text = Text;
             var content = _useCrLf ? text.Replace("\n", "\r\n", StringComparison.Ordinal) : text;
             if (!IsPersisted)

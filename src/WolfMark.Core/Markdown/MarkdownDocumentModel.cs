@@ -56,32 +56,47 @@ public sealed class MarkdownDocumentModel
         return idx >= 0 ? idx : Math.Max(0, ~idx - 1);
     }
 
+    /// <remarks>
+    /// The unchanged lines before and after the edit are compared in place (spans), so typing in a long note
+    /// allocates only the changed lines – splitting the whole text on every keystroke churned the GC.
+    /// </remarks>
     public MarkdownUpdate Update(string text)
     {
-        var newLines = text.Split('\n');
-        for (var k = 0; k < newLines.Length; k++)
-        {
-            if (newLines[k].EndsWith('\r'))
-            {
-                newLines[k] = newLines[k][..^1];
-            }
-        }
-
+        var span = text.AsSpan();
         var oldCount = _lines.Count;
-        var newCount = newLines.Length;
-
-        var prefix = 0;
+        var newCount = span.Count('\n') + 1;
         var max = Math.Min(oldCount, newCount);
-        while (prefix < max && string.Equals(_lines[prefix].Text, newLines[prefix], StringComparison.Ordinal))
+
+        // Common leading lines; `head` ends up at the start of the first differing line.
+        var prefix = 0;
+        var head = 0;
+        while (prefix < max)
         {
+            var nl = span[head..].IndexOf('\n');
+            var lineEnd = nl < 0 ? span.Length : head + nl;
+            if (!SameLine(_lines[prefix].Text, span[head..lineEnd]))
+            {
+                break;
+            }
+
             prefix++;
+            head = lineEnd + 1;
         }
 
+        // Common trailing lines, not overlapping the leading ones; `tail` ends up at the end of the last differing
+        // line (exclusive, before its '\n').
         var suffix = 0;
-        while (suffix < max - prefix
-               && string.Equals(_lines[oldCount - 1 - suffix].Text, newLines[newCount - 1 - suffix], StringComparison.Ordinal))
+        var tail = span.Length;
+        while (suffix < max - prefix)
         {
+            var nl = span[..tail].LastIndexOf('\n');
+            if (!SameLine(_lines[oldCount - 1 - suffix].Text, span[(nl + 1)..tail]))
+            {
+                break;
+            }
+
             suffix++;
+            tail = nl; // -1 only after matching the first line, which ends the loop
         }
 
         var removed = oldCount - prefix - suffix;
@@ -96,9 +111,13 @@ public sealed class MarkdownDocumentModel
 
         _lines.RemoveRange(prefix, removed);
         var insertedLines = new Line[inserted];
+        var pos = head;
         for (var k = 0; k < inserted; k++)
         {
-            insertedLines[k] = new Line(newLines[prefix + k]);
+            var nl = k == inserted - 1 ? -1 : span[pos..].IndexOf('\n');
+            var lineEnd = nl < 0 ? Math.Max(pos, tail) : pos + nl;
+            insertedLines[k] = new Line(StripCr(span[pos..lineEnd]).ToString());
+            pos = lineEnd + 1;
         }
 
         _lines.InsertRange(prefix, insertedLines);
@@ -128,6 +147,10 @@ public sealed class MarkdownDocumentModel
 
         return diff with { LineCount = i - prefix };
     }
+
+    private static bool SameLine(string line, ReadOnlySpan<char> text) => StripCr(text).SequenceEqual(line);
+
+    private static ReadOnlySpan<char> StripCr(ReadOnlySpan<char> line) => line.EndsWith('\r') ? line[..^1] : line;
 
     private void EnsureLineStarts()
     {

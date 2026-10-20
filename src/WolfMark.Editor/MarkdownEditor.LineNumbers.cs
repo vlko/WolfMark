@@ -275,6 +275,56 @@ public sealed partial class MarkdownEditor
     }
 
     /// <summary>
+    /// The first line at the top of the view and how far its top lies above the viewport, in document coordinates.
+    /// A restyle of the whole note (mode switch) changes line heights – hidden markers wrap long lines less – so
+    /// the same scroll offset would show other text; the anchor line keeps it.
+    /// </summary>
+    private (int Line, double Delta)? ViewAnchor()
+    {
+        if (_scrollViewer is not { VerticalOffset: > 0 } sv || _text.Length == 0)
+        {
+            return null;
+        }
+
+        var starts = LineStarts(_text);
+        var toDocument = ScrollShift() + sv.VerticalOffset;
+        var lo = 0;
+        var hi = starts.Count - 1;
+        while (lo < hi)
+        {
+            var mid = (lo + hi + 1) / 2;
+            if (LineRow(mid, starts).Top + toDocument <= sv.VerticalOffset)
+            {
+                lo = mid;
+            }
+            else
+            {
+                hi = mid - 1;
+            }
+        }
+
+        return (lo, LineRow(lo, starts).Top + toDocument - sv.VerticalOffset);
+    }
+
+    /// <summary>Scrolls so the anchor line sits where it was (call after RichEdit's layout).</summary>
+    private void RestoreViewAnchor((int Line, double Delta) anchor)
+    {
+        if (_scrollViewer is not { } sv)
+        {
+            return;
+        }
+
+        var starts = LineStarts(_text);
+        if (anchor.Line >= starts.Count)
+        {
+            return;
+        }
+
+        var top = LineRow(anchor.Line, starts).Top + ScrollShift() + sv.VerticalOffset;
+        sv.ChangeView(null, Math.Max(0, top - anchor.Delta), null, disableAnimation: true);
+    }
+
+    /// <summary>
     /// Top and baseline of a line's first row in GetRect coordinates, measured on its first visible character
     /// (formatted mode hides leading syntax such as "# ", and hidden text has no usable position).
     /// </summary>

@@ -50,8 +50,21 @@ SPEC §4.4 požaduje dva režimy (raw / formátovaný) nad jedným textovým mod
 - **`TextChanged` len pri zmene obsahu**: RichEdit ho vyvoláva aj pre vlastné zmeny formátu (~20× na dávku
   farbenia); celý text sa číta len keď `TextChanging` hlási `IsContentChanging` alebo sa zmenila dĺžka
   dokumentu (poistka).
+- **Lexer bez delenia celého textu**: `MarkdownDocumentModel.Update` porovnáva nezmenené riadky na začiatku
+  a konci priamo v texte (spany) a alokuje len zmenené riadky (255 k znakov: 0,6 → 0,2 ms a ~640 kB menej
+  alokácií na úpravu, Linux Release). Na Windows trval krok lexera ~60 ms naraz so špičkou písania – pauzy GC.
+- **Po autosave** sa história neprestavuje: pri rovnakom poradí poznámok sa vymenia len zmenené riadky
+  (inak `Items.Clear()` + všetky riadky znova, ~0,4 s na UI vlákne); týždenný pás sa pred obnovením
+  nevyprázdňuje.
+- **Kontrola pravopisu sa na dlhých poznámkach nepoužíva** (≥ 50 000 znakov, `LongNoteChars`; tlačidlo je
+  stlmené s vysvetlením v tooltipe). RichEdit kontroluje celý dokument: na 5 000 riadkoch trvalo prepnutie
+  do formátovaného režimu 2,4–12,6 s s kontrolou a 0,74 s bez nej. Písanie a Enter (~140 ms) to nezlepšilo –
+  to je layout RichEditu nad celým dokumentom. Zapnutie až po zobrazení poznámky by vyžadovalo nastaviť text
+  druhýkrát (RichEdit kontroluje len text nastavený so zapnutou kontrolou), preto nie.
 - **Meranie** (`--trace-editor`, `EditorTrace` v Core): časy fáz editora a pomalé volania (≥ 50 ms) s kontextom
-  do `logs/editor-trace.txt`; testovacia poznámka `tools/gen-big-note.py`.
+  do `logs/editor-trace.txt`; `KeyToText` (kláves → nový text, práca RichEditu) a `UiStall` (20 ms
+  heartbeat UI vlákna, s označeniami `EditorTrace.Mark` – autosave, index, história, týždeň, kalendár);
+  testovacia poznámka `tools/gen-big-note.py`.
 
 ## Merania
 

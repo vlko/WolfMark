@@ -94,4 +94,31 @@ public sealed class MarkdownDocumentModelTests
         // Full split + compare + retokenize one line on 5 000 lines.
         Assert.True(best < 50, $"took {best} ms");
     }
+
+    [Fact]
+    public void Random_edits_match_a_fresh_model()
+    {
+        var rng = new Random(7);
+        string[] pieces = ["# h", "text **b**", "```", "code", "", "- [ ] task", "> quote", "\r", "\n", "\n\n", "x"];
+        var text = string.Join('\n', Enumerable.Range(0, 40).Select(_ => pieces[rng.Next(pieces.Length)]));
+        var model = new MarkdownDocumentModel();
+        model.Update(text);
+        for (var round = 0; round < 500; round++)
+        {
+            var start = rng.Next(text.Length + 1);
+            var length = rng.Next(Math.Min(12, text.Length - start) + 1);
+            text = text.Remove(start, length).Insert(start, pieces[rng.Next(pieces.Length)]);
+            model.Update(text);
+
+            var fresh = new MarkdownDocumentModel();
+            fresh.Update(text);
+            Assert.Equal(fresh.LineCount, model.LineCount);
+            for (var i = 0; i < fresh.LineCount; i++)
+            {
+                Assert.Equal(fresh.GetLineText(i), model.GetLineText(i));
+                Assert.Equal(fresh.GetLineStart(i), model.GetLineStart(i));
+                Assert.Equal(fresh.GetTokens(i), model.GetTokens(i));
+            }
+        }
+    }
 }

@@ -13,6 +13,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
 {
     private readonly AppHost _host;
     private int _generation;
+    private bool _loaded;
 
     public WeekStripViewModel(AppHost host)
     {
@@ -40,6 +41,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
     {
         var generation = ++_generation;
         var monday = CalendarMath.StartOfWeek(anyDay);
+        var sameWeek = _loaded && monday == Monday;
         Monday = monday;
         var culture = CultureInfo.CurrentCulture;
         var mid = monday.AddDays(3);
@@ -47,10 +49,15 @@ internal sealed partial class WeekStripViewModel : ObservableObject
 
         var today = DateOnly.FromDateTime(DateTime.Now);
         var names = CalendarMath.WeekdayNames(culture, abbreviated: true);
-        for (var i = 0; i < 7; i++)
+        // A refresh of the shown week (after every save) keeps the old values until the new ones arrive –
+        // blanking the days first redrew the strip twice.
+        if (!sameWeek)
         {
-            var date = monday.AddDays(i);
-            Days[i].Set(date, names[i], today, date == selected, CalendarDay.Empty(date));
+            for (var i = 0; i < 7; i++)
+            {
+                var date = monday.AddDays(i);
+                Days[i].Set(date, names[i], today, date == selected, CalendarDay.Empty(date));
+            }
         }
 
         await _host.DatabaseReady;
@@ -61,6 +68,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
             return;
         }
 
+        WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("week strip");
         for (var i = 0; i < 7; i++)
         {
             var date = monday.AddDays(i);
@@ -68,6 +76,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
         }
 
         Topics = topics;
+        _loaded = true;
     }
 
     public void Select(DateOnly selected)

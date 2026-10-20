@@ -56,4 +56,15 @@ public sealed class EditorTraceTests
         Assert.Equal("mode switch", slow.Context);
         Assert.Contains("mode switch", trace.Report(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Marks_are_listed_since_a_timestamp()
+    {
+        var trace = new EditorTrace();
+        trace.Mark("before");
+        var since = Stopwatch.GetTimestamp();
+        trace.Mark("history reload");
+        var mark = Assert.Single(trace.MarksSince(since));
+        Assert.StartsWith("history reload +", mark, StringComparison.Ordinal);
+    }
 }

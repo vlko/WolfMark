@@ -148,6 +148,7 @@ internal static partial class DesktopStrings
         [R.Format_Bullet] = "Odrážkový zoznam",
         [R.Format_Numbered] = "Číslovaný zoznam",
         [R.Proofing_Toggle] = "Kontrola pravopisu",
+        [R.Proofing_LongNote] = "Kontrola pravopisu je pre túto poznámku vypnutá: je príliš dlhá (viac ako 50 000 znakov)",
         [R.History_Created] = "vznik {0}",
         [R.Copy_Plain] = "Kopírovať ako text",
         [R.Copy_Html] = "Kopírovať ako HTML",

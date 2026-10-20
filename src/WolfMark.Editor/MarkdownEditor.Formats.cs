@@ -33,6 +33,17 @@ public sealed partial class MarkdownEditor
     /// <summary>Icons for the context menu; must return a new element per call (an element has one parent).</summary>
     public Func<EditorCommand, IconElement?>? CommandIcon { get; set; }
 
+    /// <summary>
+    /// Notes at least this long are not proofed: RichEdit checks the whole document, which made opening such a note
+    /// and every mode switch take seconds (5,000 lines: 2–13 s with proofing, 0.75 s without; ADR 0001).
+    /// </summary>
+    public const int LongNoteChars = 50_000;
+
+    /// <summary>Spell check is on but not used for the open note, because it is long (<see cref="LongNoteChars"/>).</summary>
+    public bool IsSpellCheckSuspended { get; private set; }
+
+    public event EventHandler? SpellCheckSuspendedChanged;
+
     /// <summary>The user's choice; read-only notes are never proofed (see <see cref="ApplySpellCheck"/>).</summary>
     public bool IsSpellCheckEnabled
     {
@@ -55,10 +66,23 @@ public sealed partial class MarkdownEditor
     /// </summary>
     private bool ApplySpellCheck()
     {
-        var on = _spellCheck && !_readOnly;
+        var on = ProofingWanted;
         var turnedOn = on && !_box.IsSpellCheckEnabled;
         _box.IsSpellCheckEnabled = on;
         return turnedOn;
+    }
+
+    private bool ProofingWanted => _spellCheck && !_readOnly && !IsSpellCheckSuspended;
+
+    /// <summary>Decided per opened note: a note that grows past the limit while open keeps its proofing.</summary>
+    private void UpdateSpellCheckSuspended()
+    {
+        var suspended = _text.Length >= LongNoteChars;
+        if (suspended != IsSpellCheckSuspended)
+        {
+            IsSpellCheckSuspended = suspended;
+            SpellCheckSuspendedChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private static readonly Dictionary<MarkdownTokenKind, EditorCommand> InlineCommands = new()

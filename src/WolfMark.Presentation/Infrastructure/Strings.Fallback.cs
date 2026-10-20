@@ -146,6 +146,7 @@ internal static partial class Strings
         [R.Format_Bullet] = "Bulleted list",
         [R.Format_Numbered] = "Numbered list",
         [R.Proofing_Toggle] = "Spell check",
+        [R.Proofing_LongNote] = "Spell check is off for this note: it is too long (over 50,000 characters)",
         [R.History_Created] = "created {0}",
         [R.Copy_Plain] = "Copy as plain text",
         [R.Copy_Html] = "Copy as HTML",

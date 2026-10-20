@@ -21,6 +21,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
     private readonly XamlControlsXamlMetaDataProvider _metadata = new();
     private MainWindow? _window;
     private ILogger? _logger;
+    private static DispatcherQueueTimer? _stallTimer; // --trace-editor; kept alive here
 
     public App()
     {
@@ -56,6 +57,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             {
                 StartEditorTrace(host.Paths.LogsDirectory);
             }
+
             if (host.Settings.Current.Language is { } language)
             {
                 Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
@@ -64,9 +66,14 @@ public sealed partial class App : Application, IXamlMetadataProvider
             var brushes = new TagBrushes(host.Tags);
             var vm = new MainViewModel(host);
             _window = new MainWindow(vm, brushes);
+            WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: window built");
             if (!(StartupRegistration.LaunchedAtStartup && host.Settings.Current.CloseToTray))
             {
                 _window.Activate();
+                // The shell (title bar, calendar, empty history) is drawn before the note loads – loading a long
+                // note keeps the UI thread busy, and until then the window stayed blank.
+                await NextFrameAsync();
+                WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: first frame");
             }
 
             // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
@@ -99,6 +106,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
     {
         var trace = new WolfMark.Core.Diagnostics.EditorTrace();
         WolfMark.Core.Diagnostics.EditorTrace.Current = trace;
+        StartStallWatch(trace);
         var file = Path.Combine(logsDirectory, "editor-trace.txt");
         _ = Task.Run(async () =>
         {
@@ -116,6 +124,46 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 }
             }
         });
+    }
+
+    /// <summary>A 20 ms heartbeat on the UI thread: a late tick is a stall, listed with the marks made meanwhile.</summary>
+    private static void StartStallWatch(WolfMark.Core.Diagnostics.EditorTrace trace)
+    {
+        var interval = TimeSpan.FromMilliseconds(20);
+        var timer = _stallTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        timer.Interval = interval;
+        var last = System.Diagnostics.Stopwatch.GetTimestamp();
+        timer.Tick += (_, _) =>
+        {
+            var now = System.Diagnostics.Stopwatch.GetTimestamp();
+            var late = System.Diagnostics.Stopwatch.GetElapsedTime(last, now) - interval;
+            if (late.TotalMilliseconds >= 50)
+            {
+                var marks = trace.MarksSince(last);
+                trace.Record(
+                    WolfMark.Core.Diagnostics.EditorPhase.UiStall,
+                    (long)(late.TotalSeconds * System.Diagnostics.Stopwatch.Frequency),
+                    marks.Count,
+                    () => marks.Count == 0 ? "(no marks – editor/RichEdit or layout)" : string.Join(", ", marks));
+            }
+
+            last = now;
+        };
+        timer.Start();
+    }
+
+    /// <summary>The next rendered frame, or 500 ms – a hidden or minimized window may not render.</summary>
+    private static Task NextFrameAsync()
+    {
+        var drawn = new TaskCompletionSource();
+        EventHandler<object>? handler = null;
+        handler = (_, _) =>
+        {
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= handler;
+            drawn.TrySetResult();
+        };
+        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += handler;
+        return drawn.Task.WaitAsync(TimeSpan.FromMilliseconds(500)).ContinueWith(_ => { }, TaskScheduler.Default);
     }
 
     internal void OnRedirectedActivation(AppActivationArguments e) => UiThread.Post(() => _window?.BringToFront());
