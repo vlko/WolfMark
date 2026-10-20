@@ -6,6 +6,7 @@
     <UseWinUI>true</UseWinUI>
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WolfMark.Core\WolfMark.Core.csproj" />
@@ -13,5 +14,7 @@
     <!-- WinUI 2.3.9 asks for 2.1.8, which is not on nuget.org (NU1603). -->
     <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="Microsoft.Graphics.Win2D" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
   </ItemGroup>
 </Project>

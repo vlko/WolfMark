@@ -9,6 +9,8 @@
     <PackageVersion Include="System.IO.Hashing" Version="11.0.0-rc.2.26504.105" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0-rc.2.26504.105" />
     <PackageVersion Include="sqlite-vec" Version="0.1.7-alpha.2.1" />
+    <!-- Canvas editor (docs/adr/0007-canvas-editor.md); depends only on the WinUI component. -->
+    <PackageVersion Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
     <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.363" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <!-- macOS/Linux app (src/WolfMark.Desktop); AOT-checked: docs/adr/0005-avalonia-port.md -->

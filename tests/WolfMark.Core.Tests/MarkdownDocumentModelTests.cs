@@ -121,4 +121,42 @@ public sealed class MarkdownDocumentModelTests
             }
         }
     }
+
+    [Fact]
+    public void Replace_edits_match_a_fresh_model()
+    {
+        var rng = new Random(11);
+        string[] pieces = ["# h", "text **b**", "```", "code", "", "- [ ] task", "> q", "\n", "\n\n", "x", "\r\n"];
+        var text = string.Join('\n', Enumerable.Range(0, 30).Select(_ => pieces[rng.Next(pieces.Length)])).Replace("\r", string.Empty);
+        var model = new MarkdownDocumentModel();
+        model.Update(text);
+        for (var round = 0; round < 500; round++)
+        {
+            var start = rng.Next(text.Length + 1);
+            var length = rng.Next(Math.Min(15, text.Length - start) + 1);
+            var insert = pieces[rng.Next(pieces.Length)];
+            text = text.Remove(start, length).Insert(start, insert.Replace("\r", string.Empty));
+            model.Replace(start, length, insert);
+
+            Assert.Equal(text, model.GetText());
+            Assert.Equal(text.Length, model.Length);
+            var fresh = new MarkdownDocumentModel();
+            fresh.Update(text);
+            Assert.Equal(fresh.LineCount, model.LineCount);
+            for (var i = 0; i < fresh.LineCount; i++)
+            {
+                Assert.Equal(fresh.GetTokens(i), model.GetTokens(i));
+                Assert.Equal(fresh.GetStateAtLineStart(i), model.GetStateAtLineStart(i));
+            }
+        }
+    }
+
+    [Fact]
+    public void Replace_on_an_empty_model_sets_the_text()
+    {
+        var model = new MarkdownDocumentModel();
+        model.Replace(0, 0, "a\nb");
+        Assert.Equal(2, model.LineCount);
+        Assert.Equal("a\nb", model.GetText());
+    }
 }

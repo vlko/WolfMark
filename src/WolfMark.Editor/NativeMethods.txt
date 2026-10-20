@@ -1,0 +1,6 @@
+GetKeyboardLayout
+MapVirtualKeyEx
+ToUnicodeEx
+GetCaretBlinkTime
+GetActiveWindow
+ClientToScreen

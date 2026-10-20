@@ -29,7 +29,9 @@ internal sealed partial class MainWindow : Window
     private readonly Grid _root = new();
     private readonly Grid _titleBar;
     private readonly List<FrameworkElement> _titleBarInteractive = [];
-    private readonly MarkdownEditor _editor = new();
+    private readonly IMarkdownEditor _editor = LaunchOptions.Current.CanvasEditor
+        ? new WolfMark.Editor.Win2D.CanvasMarkdownEditor()
+        : new MarkdownEditor();
     private readonly CalendarPanel _calendar;
     private readonly SearchPalette _search;
     private readonly Action<DateTime?> _setCreated;
@@ -99,7 +101,7 @@ internal sealed partial class MainWindow : Window
         _editor.AlignLeft = true;
         // Same gutter width as history rows: the two dotted lines form one line.
         var editorCell = new Grid();
-        editorCell.Children.Add(_editor);
+        editorCell.Children.Add(_editor.View);
         editorCell.Children.Add(ClaudeBadge());
         var editorPane = Ui.Ui.Columns((Ui.Ui.Px(Metrics.TimeGutter), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, editorCell));
 

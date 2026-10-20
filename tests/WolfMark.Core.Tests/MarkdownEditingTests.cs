@@ -89,6 +89,20 @@ public sealed class UndoHistoryTests
     }
 
     [Fact]
+    public void Known_edits_coalesce_like_snapshots()
+    {
+        var time = new ManualTime();
+        var history = new UndoHistory(time);
+        history.RecordEdit(0, "", "a", 0, 1);
+        history.RecordEdit(1, "", "b", 1, 2);
+        history.RecordEdit(1, "b", "", 2, 1); // backspace
+
+        Assert.Equal("ab", history.Undo()!.Value.ApplyTo("a"));
+        Assert.Equal("", history.Undo()!.Value.ApplyTo("ab"));
+        Assert.False(history.CanUndo);
+    }
+
+    [Fact]
     public void Typing_is_coalesced_and_undone_in_one_step()
     {
         var time = new ManualTime();

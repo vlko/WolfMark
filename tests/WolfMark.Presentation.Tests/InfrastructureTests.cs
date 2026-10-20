@@ -38,6 +38,8 @@ public sealed class LaunchOptionsTests
         Assert.True(LaunchOptions.Parse(["WolfMark", "--trace-editor"]).TraceEditor);
         var both = LaunchOptions.Parse(["WolfMark", "--trace-editor", "--demo", "demo"]);
         Assert.True(both.TraceEditor);
+        Assert.False(both.CanvasEditor);
+        Assert.True(LaunchOptions.Parse(["WolfMark", "--canvas-editor"]).CanvasEditor);
         Assert.Equal(Path.GetFullPath("demo"), both.DemoDirectory);
     }
 }

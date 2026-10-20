@@ -4,9 +4,10 @@ namespace WolfMark.App.Infrastructure;
 /// Command-line switches. <c>--demo &lt;dir&gt;</c> runs on isolated demo data (notes, Claude Code transcripts,
 /// settings and index all under that folder – the user's notes and settings are never touched);
 /// <c>--screenshots &lt;dir&gt;</c> additionally captures the README screenshots there and exits;
-/// <c>--trace-editor</c> times the editor's hot paths into <c>logs/editor-trace.txt</c>.
+/// <c>--trace-editor</c> times the editor's hot paths into <c>logs/editor-trace.txt</c>;
+/// <c>--canvas-editor</c> uses the Win2D editor prototype instead of RichEdit (docs/adr/0007-canvas-editor.md).
 /// </summary>
-internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDirectory, bool TraceEditor = false)
+internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDirectory, bool TraceEditor = false, bool CanvasEditor = false)
 {
     public static LaunchOptions Current { get; } = Parse(Environment.GetCommandLineArgs());
 
@@ -16,6 +17,7 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
     {
         string? demo = null, shots = null;
         var trace = args.Any(a => string.Equals(a, "--trace-editor", StringComparison.OrdinalIgnoreCase));
+        var canvas = args.Any(a => string.Equals(a, "--canvas-editor", StringComparison.OrdinalIgnoreCase));
         for (var i = 0; i < args.Count - 1; i++)
         {
             if (string.Equals(args[i], "--demo", StringComparison.OrdinalIgnoreCase))
@@ -34,6 +36,6 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
             demo = Path.Combine(Path.GetTempPath(), "WolfMarkDemo");
         }
 
-        return new LaunchOptions(demo, shots, trace);
+        return new LaunchOptions(demo, shots, trace, canvas);
     }
 }

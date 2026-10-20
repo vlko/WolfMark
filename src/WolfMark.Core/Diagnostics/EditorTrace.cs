@@ -28,6 +28,12 @@ public enum EditorPhase
     ImageLayout,
     LineNumbers,
     LoadFormatted,
+    /// <summary>Canvas editor: one edit applied (model, layouts of the changed lines, undo).</summary>
+    CanvasEdit,
+    /// <summary>Canvas editor: one draw pass of the invalidated regions (count = lines drawn).</summary>
+    CanvasDraw,
+    /// <summary>Canvas editor: measuring every line (open, mode or width change; count = lines).</summary>
+    CanvasMeasure,
 }
 
 /// <summary>

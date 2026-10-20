@@ -37,6 +37,17 @@ public sealed class UndoHistory(TimeProvider timeProvider, int capacity = 500)
         }
 
         var (start, removed, inserted) = Diff(oldText, newText);
+        RecordEdit(start, removed, inserted, selectionBefore, selectionAfter);
+    }
+
+    /// <summary>Records a known edit: <paramref name="removed"/> at <paramref name="start"/> became <paramref name="inserted"/>.</summary>
+    public void RecordEdit(int start, string removed, string inserted, int selectionBefore, int selectionAfter)
+    {
+        if (removed.Length == 0 && inserted.Length == 0)
+        {
+            return;
+        }
+
         var step = new Step(start, removed, inserted, selectionBefore, selectionAfter);
         var now = timeProvider.GetUtcNow();
         _redo.Clear();

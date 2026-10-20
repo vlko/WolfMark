@@ -28,8 +28,10 @@ public enum MarkdownEditorMode
 /// UI thread, so typing never waits for it. Native RichEdit undo is disabled (formatting would pollute
 /// it); <see cref="UndoHistory"/> tracks text edits instead. See docs/adr/0001-editor.md.
 /// </summary>
-public sealed partial class MarkdownEditor : UserControl
+public sealed partial class MarkdownEditor : UserControl, IMarkdownEditor
 {
+    public FrameworkElement View => this;
+
     private const int LinesPerBatch = 150;
 
     private readonly RichEditBox _box;

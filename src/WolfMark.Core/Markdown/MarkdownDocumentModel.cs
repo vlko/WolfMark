@@ -29,8 +29,15 @@ public sealed class MarkdownDocumentModel
     private readonly List<MarkdownToken> _scratch = [];
     private int[] _lineStarts = [];
     private bool _lineStartsDirty = true;
+    private string? _text;
 
     public int LineCount => _lines.Count;
+
+    /// <summary>Length of the document ('\n' between lines counts as one character).</summary>
+    public int Length => _lines.Count == 0 ? 0 : GetLineStart(_lines.Count - 1) + _lines[^1].Text.Length;
+
+    /// <summary>The whole document, lines joined by '\n'. Built on demand and cached until the next edit.</summary>
+    public string GetText() => _text ??= string.Join('\n', _lines.Select(l => l.Text));
 
     /// <summary>Total number of line tokenisations performed (diagnostics/tests).</summary>
     public long TokenizedLines { get; private set; }
@@ -107,9 +114,6 @@ public sealed class MarkdownDocumentModel
             return new MarkdownUpdate(prefix, 0);
         }
 
-        var diff = new MarkdownUpdate(prefix, 0) { RemovedLines = removed, InsertedLines = inserted };
-
-        _lines.RemoveRange(prefix, removed);
         var insertedLines = new Line[inserted];
         var pos = head;
         for (var k = 0; k < inserted; k++)
@@ -120,8 +124,47 @@ public sealed class MarkdownDocumentModel
             pos = lineEnd + 1;
         }
 
+        return Splice(prefix, removed, insertedLines);
+    }
+
+    /// <summary>
+    /// Replaces <paramref name="length"/> characters at <paramref name="start"/> with <paramref name="insert"/>
+    /// ('\n' separates lines, '\r' is dropped). Only the touched lines are rebuilt – the editor's own edits never
+    /// copy the whole document.
+    /// </summary>
+    public MarkdownUpdate Replace(int start, int length, string insert)
+    {
+        if (_lines.Count == 0)
+        {
+            return Update(insert);
+        }
+
+        start = Math.Clamp(start, 0, Length);
+        length = Math.Clamp(length, 0, Length - start);
+        var firstLine = GetLineAtOffset(start);
+        var lastLine = GetLineAtOffset(start + length);
+        var head = _lines[firstLine].Text[..(start - GetLineStart(firstLine))];
+        var tail = _lines[lastLine].Text[(start + length - GetLineStart(lastLine))..];
+        var merged = string.Concat(head, insert.Replace("\r", string.Empty, StringComparison.Ordinal), tail);
+        var lines = merged.Split('\n');
+        var insertedLines = new Line[lines.Length];
+        for (var k = 0; k < lines.Length; k++)
+        {
+            insertedLines[k] = new Line(lines[k]);
+        }
+
+        return Splice(firstLine, lastLine - firstLine + 1, insertedLines);
+    }
+
+    /// <summary>Replaces <paramref name="removed"/> lines at <paramref name="prefix"/> and retokenizes until the state converges.</summary>
+    private MarkdownUpdate Splice(int prefix, int removed, Line[] insertedLines)
+    {
+        var inserted = insertedLines.Length;
+        var diff = new MarkdownUpdate(prefix, 0) { RemovedLines = removed, InsertedLines = inserted };
+        _lines.RemoveRange(prefix, removed);
         _lines.InsertRange(prefix, insertedLines);
         _lineStartsDirty = true;
+        _text = null;
 
         var state = prefix == 0 ? LineState.DocumentStart : _lines[prefix - 1].StateOut;
         var i = prefix;

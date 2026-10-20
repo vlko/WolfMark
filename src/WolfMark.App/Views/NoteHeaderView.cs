@@ -23,9 +23,9 @@ internal sealed partial class NoteHeaderView
 {
     private readonly MainViewModel _vm;
     private readonly TagBrushes _brushes;
-    private readonly MarkdownEditor _editor;
+    private readonly IMarkdownEditor _editor;
 
-    public NoteHeaderView(MainViewModel vm, TagBrushes brushes, MarkdownEditor editor)
+    public NoteHeaderView(MainViewModel vm, TagBrushes brushes, IMarkdownEditor editor)
     {
         _vm = vm;
         _brushes = brushes;
