@@ -394,6 +394,18 @@ internal sealed partial class MainWindow : Window
     {
         var editorVm = _vm.Editor;
         _editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
+        if (_editor is WolfMark.Editor.Win2D.CanvasMarkdownEditor canvas)
+        {
+            canvas.MenuTexts = new WolfMark.Editor.Win2D.CanvasMenuTexts(
+                Strings.Get(R.Menu_Cut),
+                Strings.Get(R.Menu_Copy),
+                Strings.Get(R.Menu_Paste),
+                Strings.Get(R.Menu_SelectAll),
+                Strings.Get(R.Spell_AddToDictionary),
+                Strings.Get(R.Spell_Ignore),
+                Strings.Get(R.Spell_NoSuggestions));
+        }
+
         _editor.CommandIcon = FormatIcons.CreateForMenu;
         _editor.CommandText = command => command switch
         {

@@ -13,7 +13,7 @@ namespace WolfMark.Editor.Win2D;
 /// Markdown editor drawn with Win2D (docs/adr/0007-canvas-editor.md): one <see cref="MarkdownDocumentModel"/> is
 /// both the text and its tokens, every line has its own DirectWrite layout, and only the lines in view are drawn.
 /// Unlike RichEdit nothing scales with the note: an edit retokenizes and re-lays out the lines it touched.
-/// Prototype – no spell check, IME composition, images, line numbers or accessibility yet.
+/// Prototype – no images, line numbers or accessibility yet.
 /// </summary>
 public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
 {
@@ -133,9 +133,6 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
     public Func<EditorCommand, string>? CommandText { get; set; }
 
     public Func<EditorCommand, IconElement?>? CommandIcon { get; set; }
-
-    /// <summary>Kept for the toolbar; this prototype does not proof.</summary>
-    public bool IsSpellCheckEnabled { get; set; }
 
     public bool IsSpellCheckSuspended => false;
 
@@ -303,6 +300,7 @@ public sealed partial class CanvasMarkdownEditor : UserControl, IMarkdownEditor
 
     private void SetCaret(int offset, bool extend)
     {
+        _typingWord = false; // the caret left the word: its squiggle may show
         _caret = Math.Clamp(offset, 0, _doc.Length);
         if (!extend)
         {

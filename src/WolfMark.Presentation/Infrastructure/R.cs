@@ -145,6 +145,9 @@ internal static class R
     public const string Format_Bullet = nameof(Format_Bullet);
     public const string Format_Numbered = nameof(Format_Numbered);
     public const string Proofing_Toggle = nameof(Proofing_Toggle);
+    public const string Spell_AddToDictionary = nameof(Spell_AddToDictionary);
+    public const string Spell_Ignore = nameof(Spell_Ignore);
+    public const string Spell_NoSuggestions = nameof(Spell_NoSuggestions);
     public const string Proofing_LongNote = nameof(Proofing_LongNote);
     public const string History_Created = nameof(History_Created);
     public const string Copy_Plain = nameof(Copy_Plain);

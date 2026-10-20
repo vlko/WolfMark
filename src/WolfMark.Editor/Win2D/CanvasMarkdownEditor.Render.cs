@@ -102,6 +102,7 @@ public sealed partial class CanvasMarkdownEditor
             }
 
             ds.DrawTextLayout(layout, x, y, _theme.Text);
+            DrawSquiggles(ds, i, layout, presentation, x, y);
             DrawComposition(ds, i, layout, presentation, x, y);
 
             if (i == caretLine && _hasFocus && _caretOn)

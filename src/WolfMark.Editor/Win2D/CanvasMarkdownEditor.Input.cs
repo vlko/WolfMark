@@ -31,6 +31,7 @@ public sealed partial class CanvasMarkdownEditor
         _canvas.PointerMoved += OnPointerMoved;
         _canvas.PointerReleased += OnPointerReleased;
         _canvas.DoubleTapped += OnDoubleTapped;
+        _canvas.RightTapped += OnRightTapped;
         _canvas.GotFocus += (_, _) =>
         {
             _hasFocus = true;
@@ -202,6 +203,7 @@ public sealed partial class CanvasMarkdownEditor
         }
 
         Insert(e.Character.ToString());
+        _typingWord = char.IsLetterOrDigit(e.Character);
         e.Handled = true;
     }
 

@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace WolfMark.Core.Markdown;
 
 /// <summary>
@@ -31,57 +33,90 @@ public sealed class LinePresentation
 
     public static LinePresentation Create(string line, IReadOnlyList<MarkdownToken> tokens, bool hideSyntax)
     {
-        var hidden = new bool[line.Length];
+        var length = line.Length;
+        bool[]? rented = null;
+        var hidden = length <= 512 ? stackalloc bool[length] : (rented = ArrayPool<bool>.Shared.Rent(length)).AsSpan(0, length);
+        hidden.Clear();
+        var anyHidden = false;
         if (hideSyntax)
         {
             foreach (var t in tokens)
             {
                 if (IsHiding(t.Kind))
                 {
-                    for (var i = Math.Max(0, t.Start); i < Math.Min(line.Length, t.End); i++)
-                    {
-                        hidden[i] = true;
-                    }
+                    var start = Math.Clamp(t.Start, 0, length);
+                    var end = Math.Clamp(t.End, start, length);
+                    hidden[start..end].Fill(true);
+                    anyHidden |= end > start;
                 }
             }
         }
 
-        var shownBefore = new int[line.Length + 1];
-        var sourceOfShown = new List<int>(line.Length + 1);
-        var chars = new char[line.Length];
-        var shown = 0;
-        for (var i = 0; i < line.Length; i++)
+        try
         {
-            shownBefore[i] = shown;
-            if (!hidden[i])
+            var shownBefore = new int[length + 1];
+            if (!anyHidden)
             {
-                chars[shown++] = line[i];
-                sourceOfShown.Add(i);
+                // Everything shown: the source itself, one column map for both directions.
+                for (var i = 0; i <= length; i++)
+                {
+                    shownBefore[i] = i;
+                }
+
+                return new LinePresentation(line, tokens as MarkdownToken[] ?? [.. tokens], shownBefore, shownBefore);
+            }
+
+            var shown = 0;
+            for (var i = 0; i < length; i++)
+            {
+                shownBefore[i] = shown;
+                shown += hidden[i] ? 0 : 1;
+            }
+
+            shownBefore[length] = shown;
+            var sourceOfShown = new int[shown + 1];
+            for (int i = 0, d = 0; i < length; i++)
+            {
+                if (!hidden[i])
+                {
+                    sourceOfShown[d++] = i;
+                }
+            }
+
+            sourceOfShown[shown] = length;
+            var text = string.Create(shown, (line, sourceOfShown), static (span, state) =>
+            {
+                for (var d = 0; d < span.Length; d++)
+                {
+                    span[d] = state.line[state.sourceOfShown[d]];
+                }
+            });
+
+            var shownTokens = new List<MarkdownToken>(tokens.Count);
+            foreach (var t in tokens)
+            {
+                if (IsHiding(t.Kind))
+                {
+                    continue;
+                }
+
+                var start = shownBefore[Math.Clamp(t.Start, 0, length)];
+                var end = shownBefore[Math.Clamp(t.End, 0, length)];
+                if (end > start)
+                {
+                    shownTokens.Add(new MarkdownToken(start, end - start, t.Kind));
+                }
+            }
+
+            return new LinePresentation(text, [.. shownTokens], sourceOfShown, shownBefore);
+        }
+        finally
+        {
+            if (rented is not null)
+            {
+                ArrayPool<bool>.Shared.Return(rented);
             }
         }
-
-        shownBefore[line.Length] = shown;
-        sourceOfShown.Add(line.Length);
-
-        var shownTokens = new List<MarkdownToken>(tokens.Count);
-        foreach (var t in tokens)
-        {
-            if (hideSyntax && IsHiding(t.Kind))
-            {
-                continue;
-            }
-
-            var start = shownBefore[Math.Clamp(t.Start, 0, line.Length)];
-            var end = shownBefore[Math.Clamp(t.End, 0, line.Length)];
-            if (end > start)
-            {
-                shownTokens.Add(new MarkdownToken(start, end - start, t.Kind));
-            }
-        }
-
-        // Every column shown keeps the source as is: one array instead of a mapping per column.
-        var text = shown == line.Length ? line : new string(chars, 0, shown);
-        return new LinePresentation(text, [.. shownTokens], [.. sourceOfShown], shownBefore);
     }
 
     /// <summary>Source column of a caret at <paramref name="shownColumn"/> (see the class remarks).</summary>

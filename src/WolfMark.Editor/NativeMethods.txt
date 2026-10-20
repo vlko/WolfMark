@@ -4,3 +4,13 @@ ToUnicodeEx
 GetCaretBlinkTime
 GetActiveWindow
 ClientToScreen
+ISpellCheckerFactory
+SpellCheckerFactory
+ISpellChecker
+IEnumSpellingError
+ISpellingError
+IEnumString
+CoCreateInstance
+CoTaskMemFree
+CoInitializeEx
+CoUninitialize

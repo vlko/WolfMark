@@ -180,7 +180,7 @@ public sealed partial class CanvasMarkdownEditor
         for (var k = 0; k < lines.Count; k++)
         {
             texts[k] = _doc.GetLineText(lines[k]);
-            tokens[k] = [.. _doc.GetTokens(lines[k])];
+            tokens[k] = _doc.GetTokenArray(lines[k]); // never changed after creation: safe to read off the UI thread
         }
 
         var theme = _theme;

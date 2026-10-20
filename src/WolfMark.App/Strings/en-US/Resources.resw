@@ -438,6 +438,15 @@
   <data name="Proofing_Toggle" xml:space="preserve">
     <value>Spell check</value>
   </data>
+  <data name="Spell_AddToDictionary" xml:space="preserve">
+    <value>Add to dictionary</value>
+  </data>
+  <data name="Spell_Ignore" xml:space="preserve">
+    <value>Ignore</value>
+  </data>
+  <data name="Spell_NoSuggestions" xml:space="preserve">
+    <value>No suggestions</value>
+  </data>
   <data name="Proofing_LongNote" xml:space="preserve">
     <value>Spell check is off for this note: it is too long (over 50,000 characters)</value>
   </data>

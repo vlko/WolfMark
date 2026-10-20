@@ -37,7 +37,23 @@ public sealed class MarkdownDocumentModel
     public int Length => _lines.Count == 0 ? 0 : GetLineStart(_lines.Count - 1) + _lines[^1].Text.Length;
 
     /// <summary>The whole document, lines joined by '\n'. Built on demand and cached until the next edit.</summary>
-    public string GetText() => _text ??= string.Join('\n', _lines.Select(l => l.Text));
+    public string GetText() => _text ??= string.Create(Length, _lines, static (span, lines) =>
+    {
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (i > 0)
+            {
+                span[0] = '\n';
+                span = span[1..];
+            }
+
+            lines[i].Text.CopyTo(span);
+            span = span[lines[i].Text.Length..];
+        }
+    });
+
+    /// <summary>The tokens of a line; the array is never changed afterwards (a retokenized line gets a new one), so it may be read from another thread.</summary>
+    public MarkdownToken[] GetTokenArray(int line) => _lines[line].Tokens;
 
     /// <summary>Total number of line tokenisations performed (diagnostics/tests).</summary>
     public long TokenizedLines { get; private set; }
@@ -143,14 +159,27 @@ public sealed class MarkdownDocumentModel
         length = Math.Clamp(length, 0, Length - start);
         var firstLine = GetLineAtOffset(start);
         var lastLine = GetLineAtOffset(start + length);
-        var head = _lines[firstLine].Text[..(start - GetLineStart(firstLine))];
-        var tail = _lines[lastLine].Text[(start + length - GetLineStart(lastLine))..];
-        var merged = string.Concat(head, insert.Replace("\r", string.Empty, StringComparison.Ordinal), tail);
-        var lines = merged.Split('\n');
-        var insertedLines = new Line[lines.Length];
-        for (var k = 0; k < lines.Length; k++)
+        var head = _lines[firstLine].Text.AsSpan(0, start - GetLineStart(firstLine));
+        var tail = _lines[lastLine].Text.AsSpan(start + length - GetLineStart(lastLine));
+        if (insert.Contains('\r'))
         {
-            insertedLines[k] = new Line(lines[k]);
+            insert = insert.Replace("\r", string.Empty, StringComparison.Ordinal);
+        }
+
+        // New lines straight from the spans: head + first inserted segment, the middle segments, last segment + tail.
+        var text = insert.AsSpan();
+        var insertedLines = new Line[text.Count('\n') + 1];
+        for (var k = 0; k < insertedLines.Length; k++)
+        {
+            var nl = text.IndexOf('\n');
+            var segment = nl < 0 ? text : text[..nl];
+            var first = k == 0;
+            var last = k == insertedLines.Length - 1;
+            insertedLines[k] = new Line(first && last ? string.Concat(head, segment, tail)
+                : first ? string.Concat(head, segment)
+                : last ? string.Concat(segment, tail)
+                : segment.ToString());
+            text = nl < 0 ? [] : text[(nl + 1)..];
         }
 
         return Splice(firstLine, lastLine - firstLine + 1, insertedLines);
