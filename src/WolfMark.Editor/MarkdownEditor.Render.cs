@@ -85,6 +85,19 @@ public sealed partial class MarkdownEditor
                 break;
             }
 
+            if (ShownTable(i) is { } table)
+            {
+                // A table outside the caret: its grid at the first line, the other lines take no room.
+                if (i == table.FirstLine)
+                {
+                    DrawTable(ds, table, top, selStart, selEnd);
+                    DrawTableNumbers(ds, table, (float)(top + TableGap));
+                    count++;
+                }
+
+                continue;
+            }
+
             var layout = EnsureLayout(i);
             var presentation = _lines[i].Presentation!;
             var x = (float)PadLeft;
@@ -170,6 +183,11 @@ public sealed partial class MarkdownEditor
             return BlockCaretRect(line, after: offset > _doc.GetLineStart(line));
         }
 
+        if (ShownTable(line) is { } table)
+        {
+            return new Rect(PadLeft, LineTop(table.FirstLine) + TableGap, 1.5, _emptyLineHeight); // not the caret's own table
+        }
+
         var layout = EnsureLayout(line);
         var presentation = _lines[line].Presentation!;
         var shown = presentation.ToShown(offset - _doc.GetLineStart(line));
@@ -182,6 +200,11 @@ public sealed partial class MarkdownEditor
     private int OffsetAt(Point point)
     {
         var line = LineAtY(point.Y);
+        if (ShownTable(line) is { } table)
+        {
+            return TableOffsetAt(table, point);
+        }
+
         if (IsBlock(line))
         {
             // Left half of the picture: before it; right half: after it.

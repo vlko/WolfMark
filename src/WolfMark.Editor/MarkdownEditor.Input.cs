@@ -265,16 +265,16 @@ public sealed partial class MarkdownEditor
                 Redo();
                 break;
             case VirtualKey.B when ctrl && !shift:
-                Execute(EditorCommand.Bold);
+                RunCommand(EditorCommand.Bold);
                 break;
             case VirtualKey.I when ctrl && !shift:
-                Execute(EditorCommand.Italic);
+                RunCommand(EditorCommand.Italic);
                 break;
             case VirtualKey.E when ctrl && !shift:
                 Mode = _mode == MarkdownEditorMode.Raw ? MarkdownEditorMode.Formatted : MarkdownEditorMode.Raw;
                 break;
             case VirtualKey.K when ctrl && !shift && HasSelection && !_readOnly:
-                Execute(EditorCommand.Link); // without a selection Ctrl+K bubbles up to open search
+                RunCommand(EditorCommand.Link); // without a selection Ctrl+K bubbles up to open search
                 break;
             case VirtualKey.L when ctrl && shift && !_readOnly:
                 Edit(MarkdownEditing.ToggleTask(_doc.GetText(), _caret));
@@ -606,6 +606,8 @@ public sealed partial class MarkdownEditor
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         _followCaret = false;
+        _keyDownStamp = 0; // an edit by click (task box, drop) is no key's latency; a stamp of an earlier arrow key stays out
+
         _canvas.Focus(FocusState.Pointer);
         var point = e.GetCurrentPoint(_canvas);
         if (!point.Properties.IsLeftButtonPressed)
@@ -641,7 +643,7 @@ public sealed partial class MarkdownEditor
         }
 
         var line = LineAtY(point.Y);
-        if (IsBlock(line))
+        if (IsBlock(line) || ShownTable(line) is not null)
         {
             return null;
         }

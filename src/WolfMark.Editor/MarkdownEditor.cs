@@ -203,6 +203,12 @@ public sealed partial class MarkdownEditor : UserControl
     /// <summary>Applies an editing command at the current selection (toolbar buttons call this).</summary>
     public void Execute(EditorCommand command)
     {
+        _keyDownStamp = 0; // toolbar or menu: no key's latency (shortcuts go to RunCommand and keep it)
+        RunCommand(command);
+    }
+
+    private void RunCommand(EditorCommand command)
+    {
         if (command is EditorCommand.CopyPlainText or EditorCommand.CopyHtml)
         {
             _ = CopyAsync(command == EditorCommand.CopyHtml ? CopyKind.Html : CopyKind.PlainText, cut: false);
@@ -358,6 +364,7 @@ public sealed partial class MarkdownEditor : UserControl
     /// <summary>Caret moved or text changed: redraw, keep the caret in view, update the toolbar state.</summary>
     private void AfterChange()
     {
+        SyncActiveTable();
         RestartBlink();
         UpdateNumberDigits();
         UpdateCanvasSize();

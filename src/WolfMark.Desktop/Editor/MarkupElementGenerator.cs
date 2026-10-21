@@ -39,7 +39,7 @@ internal sealed class MarkupElementGenerator(MarkdownTextEditor owner) : VisualL
 
             if (segment.ImagePath is { } path && owner.PreviewOf(path) is { } preview)
             {
-                return new InlineObjectElement(segment.Length, PreviewImage(path, preview));
+                return new InlineObjectElement(segment.Length, TableElementGenerator.OnBaseline(PreviewImage(path, preview)));
             }
 
             return segment.ImagePath is null ? new InlineObjectElement(segment.Length, new Border { Width = 0, Height = 0 }) : null;

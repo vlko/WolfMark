@@ -13,8 +13,6 @@ namespace WolfMark.Desktop.Editor;
 /// </summary>
 internal sealed class LineNumberMargin(MarkdownTextEditor owner) : AbstractMargin
 {
-    private const string WrapGlyph = "↪";
-
     // Clear strip between the band and the text: the marker chips before a line's first character sit there.
     private const double ChipGap = 12;
 
@@ -69,19 +67,90 @@ internal sealed class LineNumberMargin(MarkdownTextEditor owner) : AbstractMargi
         foreach (var visualLine in view.VisualLines)
         {
             var number = visualLine.FirstDocumentLine.LineNumber;
+            if (visualLine.LastDocumentLine.LineNumber > number && owner.GridOf(number - 1) is { } grid && visualLine.TextLines.Count > 0)
+            {
+                DrawTableNumbers(context, visualLine, grid, view.VerticalOffset, right, muted);
+                continue;
+            }
+
             var first = true;
             foreach (var row in visualLine.TextLines)
             {
                 var top = visualLine.GetTextLineVisualYPosition(row, VisualYPosition.TextTop) - view.VerticalOffset;
                 // A picture row is much taller than text: its number sits where the first text row would.
                 var baseline = row.Height > rowHeight * 2.2 ? top + (rowHeight * 0.78) : top + row.Baseline;
-                var label = first ? number.ToString(CultureInfo.InvariantCulture) : WrapGlyph;
-                var size = first ? NumberSize : NumberSize * 0.85;
-                var brush = first && number == caretLine ? active : muted;
-                var text = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface, size, brush);
+                if (!first)
+                {
+                    DrawWrapMark(context, right, baseline, NumberSize * 0.85, muted);
+                    continue;
+                }
+
+                var brush = number == caretLine ? active : muted;
+                var text = new FormattedText(number.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface, NumberSize, brush);
                 context.DrawText(text, new Point(right - text.Width, baseline - text.Baseline));
                 first = false;
             }
+        }
+    }
+
+    /// <summary>
+    /// ↪ on a wrapped row, drawn as a shape: as text the glyph came from a colour emoji font (a blue ↪️ box) where the
+    /// monospaced font lacks it; the Windows editor draws it in the muted text colour.
+    /// </summary>
+    private static void DrawWrapMark(DrawingContext context, double right, double baseline, double size, IBrush brush)
+    {
+        var s = size / 10;
+        var left = right - (9 * s);
+        var top = baseline - (8 * s);
+        var geometry = new StreamGeometry();
+        using (var g = geometry.Open())
+        {
+            // A hook curling up on the left, the shaft to the right, the arrow head.
+            g.BeginFigure(new Point(left + (3 * s), top + s), false);
+            g.ArcTo(new Point(left + (3 * s), top + (6 * s)), new Size(2.5 * s, 2.5 * s), 0, false, SweepDirection.CounterClockwise);
+            g.LineTo(new Point(left + (9 * s), top + (6 * s)));
+            g.EndFigure(false);
+            g.BeginFigure(new Point(left + (6.5 * s), top + (3.5 * s)), false);
+            g.LineTo(new Point(left + (9 * s), top + (6 * s)));
+            g.LineTo(new Point(left + (6.5 * s), top + (8.5 * s)));
+            g.EndFigure(false);
+        }
+
+        context.DrawGeometry(null, new Pen(brush, Math.Max(1, s), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round), geometry);
+    }
+
+    /// <summary>A table shown as a grid: the first line's number by the header row, the last line's by the last row, dots between.</summary>
+    private void DrawTableNumbers(DrawingContext context, VisualLine visualLine, Avalonia.Controls.Grid grid, double offset, double right, IBrush brush)
+    {
+        var theme = owner.MarkdownTheme;
+        var rows = grid.RowDefinitions;
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        var top = visualLine.GetTextLineVisualYPosition(visualLine.TextLines[0], VisualYPosition.LineTop) - offset + TableElementGenerator.GridInset;
+        var cellBaseline = new FormattedText("0", CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(theme.Font), theme.FontSize, brush).Baseline;
+        void Number(int number, double baseline)
+        {
+            var text = new FormattedText(number.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface, NumberSize, brush);
+            context.DrawText(text, new Point(right - text.Width, baseline - text.Baseline));
+        }
+
+        var first = top + TableElementGenerator.PadY + cellBaseline;
+        Number(visualLine.FirstDocumentLine.LineNumber, first);
+        if (rows.Count < 2)
+        {
+            return; // a header alone: one row, one number
+        }
+
+        var lastTop = top + rows.Take(rows.Count - 1).Sum(r => r.ActualHeight);
+        var last = lastTop + TableElementGenerator.PadY + cellBaseline;
+        Number(visualLine.LastDocumentLine.LineNumber, last);
+        var x = right - (NumberSize * 0.31);
+        for (var y = first + 6; y < last - NumberSize - 1; y += 5)
+        {
+            context.DrawEllipse(brush, null, new Point(x, y), 1, 1);
         }
     }
 }

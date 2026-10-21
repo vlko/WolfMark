@@ -128,6 +128,7 @@ files.
   similarity. With text selected in the editor, picking a result inserts a link to it.
 - **Editor**: formatted mode hides Markdown markers outside the current line, checkboxes are clickable; raw mode
   keeps the markers visible but muted. Highlighting runs incrementally in the background and never blocks typing.
+  Tables (GFM pipe tables) show as a grid until the caret goes in, then as their Markdown source.
   Copy as Markdown, plain text or HTML. Optional line numbers (an image counts as one line). Font size with
   `Ctrl` `+` / `Ctrl` `−` (or `Ctrl`+wheel); colour emoji. **Full view** (`F11`) hides the tags, calendar, history and
   times so the note fills the window.

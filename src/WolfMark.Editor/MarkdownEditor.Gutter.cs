@@ -92,6 +92,51 @@ public sealed partial class MarkdownEditor
         ds.FillRectangle(left, (float)region.Top, (float)Gutter, (float)region.Height, WithAlpha(_theme.Text, 12));
     }
 
+    /// <summary>Left edge and width the numbers are right-aligned in (number layouts follow a changed width).</summary>
+    private (float Left, float Width) NumberColumn()
+    {
+        EnsureGutterFormats();
+        var width = (float)Gutter - 10;
+        if (Math.Abs(width - _numberLayoutWidth) > 0.01f)
+        {
+            ClearNumberLayouts(); // right-aligned in the gutter: a wider gutter needs new layouts
+            _numberLayoutWidth = width;
+        }
+
+        return ((float)(PadLeft - Gutter - 4), width);
+    }
+
+    /// <summary>
+    /// A shown table spans several lines: the first line's number by the header row, the last line's by the last
+    /// row, dots between them.
+    /// </summary>
+    private void DrawTableNumbers(CanvasDrawingSession ds, MarkdownTable table, float gridTop)
+    {
+        if (!_showLineNumbers)
+        {
+            return;
+        }
+
+        var (left, width) = NumberColumn();
+        var grid = GridOf(table);
+        float Baseline(int row) =>
+            gridTop + (float)grid.RowY[row] + CellPadY + (grid.Cells[row][0].LineMetrics is { Length: > 0 } m ? m[0].Baseline : 0);
+        var first = Baseline(0);
+        ds.DrawTextLayout(NumberLayout((table.FirstLine + 1).ToString(CultureInfo.InvariantCulture), width), left, first - _numberBaseline, _theme.Muted);
+        if (table.RowCount < 2)
+        {
+            return; // a header alone: one row, one number
+        }
+
+        var last = Baseline(table.RowCount - 1);
+        ds.DrawTextLayout(NumberLayout((table.LastLine + 1).ToString(CultureInfo.InvariantCulture), width), left, last - _numberBaseline, _theme.Muted);
+        var x = left + width - (NumberSize * 0.31f); // under the last digit
+        for (var y = first + 6; y < last - NumberSize - 1; y += 5)
+        {
+            ds.FillCircle(x, y, 1f, _theme.Muted);
+        }
+    }
+
     /// <summary>The line's number on its first row (baselines aligned) and ↪ on the rows it wraps onto.</summary>
     private void DrawLineNumber(CanvasDrawingSession ds, int line, CanvasTextLayout layout, float top, bool active)
     {
@@ -100,17 +145,10 @@ public sealed partial class MarkdownEditor
             return;
         }
 
-        EnsureGutterFormats();
-        var width = (float)Gutter - 10;
-        var left = (float)(PadLeft - Gutter - 4);
+        var (left, width) = NumberColumn();
         var color = active ? _theme.Text : _theme.Muted;
         var rowTop = 0f;
         var first = true;
-        if (Math.Abs(width - _numberLayoutWidth) > 0.01f)
-        {
-            ClearNumberLayouts(); // right-aligned in the gutter: a wider gutter needs new layouts
-            _numberLayoutWidth = width;
-        }
 
         foreach (var row in layout.LineMetrics)
         {

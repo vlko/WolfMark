@@ -68,7 +68,7 @@ public sealed partial class MarkdownEditor
     private Picture? PictureOf(int line, out bool only, bool load = false)
     {
         only = false;
-        if (_mode != MarkdownEditorMode.Formatted || ImageOf(line) is not { Path: { } path } image)
+        if (_mode != MarkdownEditorMode.Formatted || ImageOf(line) is not { Path: { } path } image || ShownTable(line) is not null)
         {
             return null;
         }
@@ -147,6 +147,11 @@ public sealed partial class MarkdownEditor
     /// <summary>A line's height on screen: its text, plus the picture below it (or, for a block, only the picture).</summary>
     private double LineHeight(int line)
     {
+        if (TableLineHeight(line) is { } grid)
+        {
+            return grid;
+        }
+
         var view = _lines[line];
         var text = view.Height < 0 ? _emptyLineHeight : view.Height;
         if (PictureOf(line, out var only) is not { } picture)

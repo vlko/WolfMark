@@ -55,6 +55,7 @@ public sealed partial class MarkdownEditor
     private void ResetLines()
     {
         ClearLayouts();
+        InvalidateTables();
         _lines.Clear();
         for (var i = 0; i < _doc.LineCount; i++)
         {
@@ -70,11 +71,14 @@ public sealed partial class MarkdownEditor
         {
             line.Drop();
         }
+
+        ClearGrids();
     }
 
     /// <summary>Keeps <see cref="_lines"/> in step with the model after an edit and lays out the retokenized lines.</summary>
     private void SpliceLines(MarkdownUpdate update)
     {
+        InvalidateTables();
         for (var i = update.FirstLine; i < update.FirstLine + update.RemovedLines; i++)
         {
             _lines[i].Drop();
@@ -131,6 +135,7 @@ public sealed partial class MarkdownEditor
         var generation = ++_measureGeneration;
         var caretLine = _doc.GetLineAtOffset(_caret);
         var viewLine = anchor?.Line ?? caretLine;
+        SetGridWindow(caretLine, viewLine);
         var pending = new List<int>();
         for (var i = 0; i < _lines.Count; i++)
         {
@@ -314,6 +319,7 @@ public sealed partial class MarkdownEditor
         var presentation = LinePresentation.Create(_doc.GetLineText(line), _doc.GetTokens(line), _mode == MarkdownEditorMode.Formatted);
         var layout = new CanvasTextLayout(CanvasDevice.GetSharedDevice(), presentation.Text, _format, _layoutWidth, 0);
         ApplyStyles(layout, presentation, _theme);
+        DimTableSyntax(line, layout, presentation);
         view.Presentation = presentation;
         view.Layout = layout;
         return layout;
@@ -436,6 +442,7 @@ public sealed partial class MarkdownEditor
         _tops[_lines.Count] = y;
         _totalHeight = y;
         _topsDirty = false;
+        QueueGridBuild();
     }
 
     /// <summary>Top of a line in canvas coordinates.</summary>

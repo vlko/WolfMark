@@ -7,7 +7,8 @@ namespace WolfMark.Core.Markdown;
 /// Converts markdown (whole notes or a selection) to HTML or plain text for "copy as …" (SPEC §4.4).
 /// Built on <see cref="MarkdownLineLexer"/> – same rules as the highlighting, no extra dependency, AOT-safe.
 /// Covers what the editor styles: headings, paragraphs, lists (flat), tasks, quotes, fenced code, rules,
-/// bold/italic/strike/code, links, wiki links, autolinks, images. Front matter is dropped.
+/// bold/italic/strike/code, links, wiki links, autolinks, images, tables (HTML table; tab-separated as text).
+/// Front matter is dropped.
 /// </summary>
 public static class MarkdownConvert
 {
@@ -66,8 +67,20 @@ public static class MarkdownConvert
             }
         }
 
-        foreach (var line in lines)
+        var tables = FindTables(lines);
+        var nextTable = 0;
+        for (var index = 0; index < lines.Length; index++)
         {
+            var line = lines[index];
+            if (nextTable < tables.Count && tables[nextTable].FirstLine == index)
+            {
+                Close();
+                var table = tables[nextTable++];
+                AppendTable(sb, lines, table, html);
+                index = table.LastLine;
+                continue;
+            }
+
             tokens.Clear();
             var stateIn = state;
             state = MarkdownLineLexer.Tokenize(line, stateIn, tokens);
@@ -207,6 +220,91 @@ public static class MarkdownConvert
 
         Close();
         return html ? sb.ToString().TrimEnd('\n') + "\n" : sb.ToString().TrimEnd('\n');
+    }
+
+    /// <summary>The document's tables; lines in code blocks and front matter hold none.</summary>
+    private static List<MarkdownTable> FindTables(string[] lines)
+    {
+        var code = new bool[lines.Length];
+        var tokens = new List<MarkdownToken>();
+        var state = LineState.DocumentStart;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            tokens.Clear();
+            var stateIn = state;
+            state = MarkdownLineLexer.Tokenize(lines[i], stateIn, tokens);
+            code[i] = stateIn.Kind is LineStateKind.FencedCode or LineStateKind.FrontMatter
+                || tokens.Any(t => t.Kind is MarkdownTokenKind.CodeFence or MarkdownTokenKind.CodeBlock or MarkdownTokenKind.FrontMatter);
+        }
+
+        return MarkdownTable.Find(lines.Length, i => lines[i], i => code[i]);
+    }
+
+    /// <summary>A table as an HTML table (header in thead, alignment as text-align), or as tab-separated rows.</summary>
+    private static void AppendTable(StringBuilder sb, string[] lines, MarkdownTable table, bool html)
+    {
+        var tokens = new List<MarkdownToken>();
+        if (html)
+        {
+            sb.Append("<table>\n");
+        }
+
+        for (var r = 0; r < table.RowCount; r++)
+        {
+            var line = lines[table.LineOfRow(r)];
+            tokens.Clear();
+            MarkdownLineLexer.Tokenize(line, LineState.Normal, tokens);
+            var cells = MarkdownTable.Cells(line);
+            if (html)
+            {
+                sb.Append(r == 0 ? "<thead><tr>" : r == 1 ? "<tbody><tr>" : "<tr>");
+            }
+
+            for (var c = 0; c < table.ColumnCount; c++)
+            {
+                var (start, length) = c < cells.Length ? cells[c] : (line.Length, 0);
+                List<MarkdownToken> cellTokens = [.. MarkdownTable.CellTokens(tokens, (start, length))];
+
+                var cell = line.Substring(start, length).Replace("\\|", "|", StringComparison.Ordinal);
+                if (html)
+                {
+                    var tag = r == 0 ? "th" : "td";
+                    var align = table.Aligns[c] switch
+                    {
+                        TableAlign.Left => " style=\"text-align:left\"",
+                        TableAlign.Center => " style=\"text-align:center\"",
+                        TableAlign.Right => " style=\"text-align:right\"",
+                        _ => string.Empty,
+                    };
+                    sb.Append('<').Append(tag).Append(align).Append('>');
+                    AppendInline(sb, cell, cell.Length == length ? cellTokens : [], html);
+                    sb.Append("</").Append(tag).Append('>');
+                }
+                else
+                {
+                    if (c > 0)
+                    {
+                        sb.Append('\t');
+                    }
+
+                    AppendInline(sb, cell, cell.Length == length ? cellTokens : [], html);
+                }
+            }
+
+            if (html)
+            {
+                sb.Append(r == 0 ? "</tr></thead>\n" : "</tr>\n");
+            }
+            else
+            {
+                sb.Append('\n');
+            }
+        }
+
+        if (html)
+        {
+            sb.Append(table.RowCount > 1 ? "</tbody></table>\n" : "</table>\n");
+        }
     }
 
     /// <summary>Writes the line's inline content: delimiters dropped, spans as tags (HTML) or plain text.</summary>

@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
+using AvaloniaEdit.Rendering;
 using WolfMark.App.Infrastructure;
 using WolfMark.Core.Markdown;
 using WolfMark.Core.Settings;
@@ -57,6 +58,9 @@ internal sealed class MarkdownTextEditor : UserControl
     private readonly LineNumberMargin _lineNumbers;
     private readonly MarkerChips _chips;
     private int _caretLine;
+    private List<MarkdownTable> _tables = [];
+    private int _activeTable = -1; // first line (0-based) of the table holding the caret
+    private readonly Dictionary<int, CollapsedLineSection> _tableFolds = []; // by table's first line: lines under shown grids
     private IReadOnlySet<FormatCommand> _activeFormats = new HashSet<FormatCommand>();
 
     public MarkdownTextEditor()
@@ -77,6 +81,7 @@ internal sealed class MarkdownTextEditor : UserControl
         _editor.TextArea.TextView.ScrollOffsetChanged += (_, _) => UpdateOverflow();
         _editor.TextArea.TextView.VisualLinesChanged += (_, _) => UpdateOverflow();
         _editor.TextArea.TextView.LineTransformers.Add(new MarkdownColorizer(this));
+        _editor.TextArea.TextView.ElementGenerators.Add(new TableElementGenerator(this)); // before the markup: a grid hides it all
         _editor.TextArea.TextView.ElementGenerators.Add(new MarkupElementGenerator(this));
         _editor.Document.Changed += (_, _) => _segments.Clear();
         _editor.TextChanged += (_, _) => OnTextChanged();
@@ -143,6 +148,7 @@ internal sealed class MarkdownTextEditor : UserControl
             if (_mode != value)
             {
                 _mode = value;
+                UpdateTableFolds();
                 Redraw();
             }
         }
@@ -187,6 +193,8 @@ internal sealed class MarkdownTextEditor : UserControl
         try
         {
             _lines = [];
+            _tables = [];
+            UpdateTableFolds();
             _segments.Clear();
             _editor.Document.Text = text;
             _editor.Document.UndoStack.ClearAll();
@@ -255,7 +263,7 @@ internal sealed class MarkdownTextEditor : UserControl
 
     internal List<MarkupSegment> SegmentsOf(DocumentLine line)
     {
-        if (_mode != EditorMode.Formatted)
+        if (_mode != EditorMode.Formatted || ShownTableAt(line.LineNumber) is not null)
         {
             return [];
         }
@@ -269,6 +277,50 @@ internal sealed class MarkdownTextEditor : UserControl
         }
 
         return segments;
+    }
+
+    /// <summary>The table holding a line (0-based), from the newest tokens.</summary>
+    internal MarkdownTable? TableAt(int index) => _tables.FirstOrDefault(t => t.Contains(index));
+
+    /// <summary>The table shown as a grid over a line (1-based): <see cref="GridTableAt"/> with its lines collapsed.</summary>
+    internal MarkdownTable? ShownTableAt(int lineNumber) =>
+        GridTableAt(lineNumber) is { } table && _tableFolds.TryGetValue(table.FirstLine, out var fold) && fold.IsCollapsed
+        && fold.Start?.LineNumber == table.FirstLine + 2 && fold.End?.LineNumber == table.LastLine + 1 ? table : null; // the fold may have moved with an edit
+
+    /// <summary>The table to show as a grid over a line (1-based): formatted mode, caret elsewhere, tokens current.</summary>
+    private MarkdownTable? GridTableAt(int lineNumber)
+    {
+        if (_mode != EditorMode.Formatted || TableAt(lineNumber - 1) is not { } table || table.Contains(_editor.TextArea.Caret.Line - 1))
+        {
+            return null;
+        }
+
+        var doc = _editor.Document;
+        for (var i = table.FirstLine; i <= table.LastLine; i++)
+        {
+            if (i >= doc.LineCount || TokensOf(doc.GetLineByNumber(i + 1)) is null)
+            {
+                return null; // typed since the last lexing: the table may have changed
+            }
+        }
+
+        return table;
+    }
+
+    private readonly Dictionary<int, Grid> _shownGrids = []; // by table's first line: the grid last built for it
+
+    /// <summary>The generator built a table's grid (the line numbers place the last number by its last row).</summary>
+    internal void RememberGrid(int firstLine, Grid grid) => _shownGrids[firstLine] = grid;
+
+    /// <summary>The grid shown for the table starting at a line (0-based), if it is shown.</summary>
+    internal Grid? GridOf(int firstLine) =>
+        ShownTableAt(firstLine + 1) is { } t && t.FirstLine == firstLine && _shownGrids.TryGetValue(firstLine, out var grid) ? grid : null;
+
+    /// <summary>A click on a grid cell: the caret into the table's source there.</summary>
+    internal void PlaceCaret(int offset)
+    {
+        _editor.CaretOffset = Math.Clamp(offset, 0, _editor.Document.TextLength);
+        _editor.Focus();
     }
 
     /// <summary>The preview of an image file, or null while it loads (the link shows as text meanwhile).</summary>
@@ -339,6 +391,10 @@ internal sealed class MarkdownTextEditor : UserControl
     private void OnTokens(LineTokens[] lines, int first, int last)
     {
         _lines = lines;
+        _tables = MarkdownTable.Find(lines.Length, i => lines[i].Text, i => lines[i].Tokens.Any(t =>
+            t.Kind is MarkdownTokenKind.CodeFence or MarkdownTokenKind.CodeBlock or MarkdownTokenKind.FrontMatter));
+        _activeTable = ActiveTable();
+        UpdateTableFolds();
         Redraw();
         Reveal();
         OnCaretMoved();
@@ -355,7 +411,37 @@ internal sealed class MarkdownTextEditor : UserControl
 
         _chips.InvalidateVisual();
         UpdateActiveFormats();
+        if (ActiveTable() is var active && active != _activeTable)
+        {
+            _activeTable = active; // into or out of a table: grid ↔ source
+            UpdateTableFolds();
+            Redraw();
+        }
     }
+
+    /// <summary>
+    /// A grid element spans its table's lines; AvaloniaEdit requires the lines it skips (all but the first) to be
+    /// collapsed, as a fold does. Re-made whenever the tables, the caret's table or the mode change.
+    /// </summary>
+    private void UpdateTableFolds()
+    {
+        foreach (var fold in _tableFolds.Values)
+        {
+            fold.Uncollapse();
+        }
+
+        _tableFolds.Clear();
+        var doc = _editor.Document;
+        foreach (var table in _tables)
+        {
+            if (table.LastLine < doc.LineCount && GridTableAt(table.FirstLine + 1) is not null)
+            {
+                _tableFolds[table.FirstLine] = _editor.TextArea.TextView.CollapseLines(doc.GetLineByNumber(table.FirstLine + 2), doc.GetLineByNumber(table.LastLine + 1));
+            }
+        }
+    }
+
+    private int ActiveTable() => _mode == EditorMode.Formatted && TableAt(_editor.TextArea.Caret.Line - 1) is { } t ? t.FirstLine : -1;
 
     /// <summary>Heading level, task and the inline formats around the caret, from the line's tokens.</summary>
     private void UpdateActiveFormats()

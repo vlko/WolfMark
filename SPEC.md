@@ -178,7 +178,7 @@ Pravidlá:
 
 Dva režimy nad **jedným textovým modelom**:
 1. **Raw** – čistý markdown so zvýraznením syntaxe (nadpisy väčšie/tučné, `**bold**`, `*italic*`, `` `code` ``, odkazy, zoznamy, úlohy `- [ ]`, citácie, bloky kódu). Značky zostávajú viditeľné, ale stlmené.
-2. **Formátovaný (live preview)** – štýl Typora/Obsidian: značky sa skryjú mimo riadku s kurzorom, nadpisy, zoznamy, checkboxy (klikateľné), obrázky inline, tabuľky renderované.
+2. **Formátovaný (live preview)** – štýl Typora/Obsidian: značky sa skryjú mimo riadku s kurzorom, nadpisy, zoznamy, checkboxy (klikateľné), obrázky inline, tabuľky renderované (GFM; mriežka, kým kurzor nie je v tabuľke – s kurzorom vnútri jej Markdown zdroj).
 
 Prepínanie: `Ctrl+E` alebo tlačidlo; pozícia kurzora a scroll sa zachová.
 

@@ -100,8 +100,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M4-03 – Raw režim so zvýraznením.**
   *Stav:* Vlastný Win2D editor (ADR 0007); overené na Windows (kláves → snímka p50 2,5 ms na 5 000 riadkoch).
   *AK:* Písanie bez viditeľného oneskorenia; zvýraznenie dobehne asynchrónne.
-- 🟨 **M4-04 – Formátovaný (live preview) režim.** Skrývanie značiek mimo aktívneho riadku, klikateľné checkboxy, inline obrázky, tabuľky.
-  *Stav:* Skrývanie značiek (na riadku s kurzorom ako čipy), checkbox klikom, obrázky ako blok, prepnutie `Ctrl+E` drží pohľad – overené na Windows. **Chýbajú tabuľky.**
+- ✅ **M4-04 – Formátovaný (live preview) režim.** Skrývanie značiek mimo aktívneho riadku, klikateľné checkboxy, inline obrázky, tabuľky.
+  *Stav:* Skrývanie značiek (na riadku s kurzorom ako čipy), checkbox klikom, obrázky ako blok, prepnutie `Ctrl+E` drží pohľad. Tabuľky (GFM, `MarkdownTable`): mimo kurzora mriežka (hlavička, zarovnanie stĺpcov, zalomenie buniek, čísla prvého a posledného riadku s bodkami), s kurzorom vnútri Markdown zdroj so stlmenými `|`; klik na bunku dá kurzor do jej zdroja; kopírovanie ako HTML tabuľka / text oddelený tabulátormi; vzdialené mriežky sa stavajú, keď je UI voľné. Overené na Windows aj Avalonia (2026-10-21, `tools/gen-table-note.py`).
   *AK:* Prepnutie `Ctrl+E` zachová kurzor a scroll; text sa nemení (round-trip bez strát).
 - 🟨 **M4-05 – Autosave a stav ukladania.** Debounce, uloženie pri strate fokusu/zatvorení, indikátor stavu.
   *Stav:* Debounce 800 ms, flush pri strate fokusu/deaktivácii/zatvorení, indikátor stavu. Test „zabitie procesu“ nespravený.

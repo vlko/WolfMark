@@ -93,6 +93,29 @@ internal sealed class MarkdownColorizer(MarkdownTextEditor owner) : DocumentColo
                 ChangeLinePart(start + token.Start, start + token.End, style);
             }
         }
+
+        DimTableSyntax(line, theme);
+    }
+
+    /// <summary>A table's source (raw mode, or the caret inside): pipes and the delimiter row dimmed.</summary>
+    private void DimTableSyntax(DocumentLine line, EditorTheme theme)
+    {
+        if (owner.TableAt(line.LineNumber - 1) is not { } table || line.Length == 0)
+        {
+            return;
+        }
+
+        void Dim(VisualLineElement e) => e.TextRunProperties.SetForegroundBrush(Brush(theme.Muted));
+        if (line.LineNumber - 1 == table.FirstLine + 1)
+        {
+            ChangeLinePart(line.Offset, line.EndOffset, Dim);
+            return;
+        }
+
+        foreach (var pipe in MarkdownTable.Pipes(CurrentContext.Document.GetText(line)))
+        {
+            ChangeLinePart(line.Offset + pipe, line.Offset + pipe + 1, Dim);
+        }
     }
 
     private static readonly Dictionary<Color, IBrush> Brushes = [];

@@ -48,6 +48,20 @@ public sealed class MarkdownConvertTests
         Assert.Equal("Heading b\n\n- item i\n☐ task\n  2. nested\nq l\ncode", MarkdownConvert.ToPlainText(md));
     }
 
+    [Fact]
+    public void Converts_a_table_to_html()
+    {
+        const string md = "text\n| A | **B** |\n|---|--:|\n| 1 | `2` |\n";
+        Assert.Equal(
+            "<p>text</p>\n<table>\n<thead><tr><th>A</th><th style=\"text-align:right\"><strong>B</strong></th></tr></thead>\n"
+            + "<tbody><tr><td>1</td><td style=\"text-align:right\"><code>2</code></td></tr>\n</tbody></table>\n",
+            MarkdownConvert.ToHtml(md));
+    }
+
+    [Fact]
+    public void Converts_a_table_to_tab_separated_text() =>
+        Assert.Equal("A\tB\n1\t2", MarkdownConvert.ToPlainText("| A | B |\n|---|---|\n| 1 | 2 |"));
+
     [Theory]
     [InlineData("a **bold** b", 4, 8, "**bold**")]
     [InlineData("## Head", 3, 7, "## Head")]
