@@ -29,4 +29,24 @@ internal static class AltGrKeys
         var count = PInvoke.ToUnicodeEx((uint)key, scan, state, new PWSTR(buffer), 8, 4, layout);
         return count > 0 && !char.IsControl(buffer[0]);
     }
+
+    /// <summary>
+    /// The character the key types without Ctrl – for shortcuts named by their character: "Ctrl +" is the "1" key on
+    /// the Slovak layout and Shift+"=" on the US one.
+    /// </summary>
+    public static unsafe char CharOf(VirtualKey key, bool shift)
+    {
+        var state = stackalloc byte[256];
+        new Span<byte>(state, 256).Clear();
+        if (shift)
+        {
+            state[0x10] = state[0xA0] = 0x80;
+        }
+
+        var layout = PInvoke.GetKeyboardLayout(0);
+        var scan = PInvoke.MapVirtualKeyEx((uint)key, MAP_VIRTUAL_KEY_TYPE.MAPVK_VK_TO_VSC, layout);
+        var buffer = stackalloc char[8];
+        var count = PInvoke.ToUnicodeEx((uint)key, scan, state, new PWSTR(buffer), 8, 4, layout);
+        return count > 0 ? buffer[0] : '\0';
+    }
 }

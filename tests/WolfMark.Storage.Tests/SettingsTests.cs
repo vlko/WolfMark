@@ -26,6 +26,19 @@ public sealed class SettingsTests
         Assert.Equal(Path.Combine("/docs", "WolfMark"), root);
     }
 
+    [Theory]
+    [InlineData(15, 1, 16)]
+    [InlineData(15, -1, 14)]
+    [InlineData(14.5, 1, 15)] // a size typed in Settings rounds to a whole step
+    [InlineData(28, 1, 28)]
+    [InlineData(10, -1, 10)]
+    [InlineData(12, 5, 17)] // a fast wheel spin: steps summed
+    [InlineData(26, 5, 28)]
+    public void Zoom_steps_whole_sizes_within_limits(double size, int steps, double expected)
+    {
+        Assert.Equal(expected, LocalSettings.ZoomFontSize(size, steps));
+    }
+
     [Fact]
     public async Task Settings_round_trip()
     {

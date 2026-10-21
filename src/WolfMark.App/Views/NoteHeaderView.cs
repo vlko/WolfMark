@@ -148,6 +148,7 @@ internal sealed partial class NoteHeaderView
 
         var add = Ui.Ui.TagButton(Strings.Get(R.Toolbar_NewNoteShort), () => _ = _vm.NewNoteAsync(), Palette.Accent, new SolidColorBrush(Microsoft.UI.Colors.White), Glyphs.Add);
         ToolTipService.SetToolTip(add, Strings.Get(R.Toolbar_NewNote));
+        var fullView = Ui.Ui.IconButton(Glyphs.Expand, Strings.Get(R.FullView_Enter), () => _vm.IsFullView = true, 13);
 
         // Three groups that wrap as a whole on narrow windows (ToolbarPanel): first the mode group drops to
         // a second row, then the formatting group – never a hidden button.
@@ -155,8 +156,16 @@ internal sealed partial class NoteHeaderView
         state.Width = 170;
         state.VerticalAlignment = VerticalAlignment.Center;
         var left = Ui.Ui.HStack(12, tagButton, state);
-        var mode = Ui.Ui.HStack(12, proofing, segments, add);
+        var mode = Ui.Ui.HStack(12, proofing, segments, fullView, add);
         mode.VerticalAlignment = VerticalAlignment.Center;
+
+        // Full view keeps only the formatting; the full view bar under the heading has the rest.
+        left.Bind(_vm, nameof(MainViewModel.IsFullView), () =>
+        {
+            var shown = _vm.IsFullView ? Visibility.Collapsed : Visibility.Visible;
+            left.Visibility = shown;
+            mode.Visibility = shown;
+        });
 
         var toolbar = new ToolbarPanel();
         toolbar.Children.Add(left);

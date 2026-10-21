@@ -30,6 +30,8 @@ internal sealed class MainWindow : Window
     private bool _exitRequested;
     private readonly RowDefinition _historyRow;
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly TextBlock _fullViewTimes = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
+    private readonly DispatcherTimer _zoomSave = new() { Interval = TimeSpan.FromSeconds(1) };
     private bool _closing;
 
     public MainWindow(MainViewModel vm)
@@ -44,6 +46,7 @@ internal sealed class MainWindow : Window
         _historyRow = new RowDefinition(Math.Max(120, _host.Settings.Current.HistoryPaneHeight), GridUnitType.Pixel);
         var main = new Grid { Margin = new Thickness(24, 4, 8, 0) };
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // day heading
+        main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // full view bar
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // calendar
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // note bar
         main.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star) { MinHeight = 120 });
@@ -63,16 +66,22 @@ internal sealed class MainWindow : Window
         };
         splitter.DragCompleted += (_, _) => _host.Settings.Current.HistoryPaneHeight = _historyRow.ActualHeight;
         var editorCell = new Grid();
-        editorCell.Children.Add(EditorPane());
+        var editorPane = EditorPane();
+        editorCell.Children.Add(editorPane);
         editorCell.Children.Add(ClaudeBadge());
+        var fullViewBar = FullViewBar();
+        var history = new HistoryView(vm);
         Add(main, heading, 0);
-        Add(main, calendar, 1);
-        Add(main, noteBar, 2);
-        Add(main, editorCell, 3);
-        Add(main, splitter, 4);
-        Add(main, new HistoryView(vm), 5);
+        Add(main, fullViewBar, 1);
+        Add(main, calendar, 2);
+        Add(main, noteBar, 3);
+        Add(main, editorCell, 4);
+        Add(main, splitter, 5);
+        Add(main, history, 6);
 
-        var content = Ui.Columns((Ui.Star, main), (Ui.Auto, new TagRail(vm) { Margin = new Thickness(0, 8, 0, 0) }));
+        var rail = new TagRail(vm) { Margin = new Thickness(0, 8, 0, 0) };
+        var content = Ui.Columns((Ui.Star, main), (Ui.Auto, rail));
+        WireFullView(fullViewBar, editorPane, [calendar, splitter, history, rail]);
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto") };
         var notices = new Notices(vm);
         var status = new StatusBar(vm);
@@ -142,7 +151,7 @@ internal sealed class MainWindow : Window
     }
 
     /// <summary>Created time above the dotted line, the editor right of it (as in history rows).</summary>
-    private Control EditorPane()
+    private Grid EditorPane()
     {
         var created = Typo.LeadTime(out var setCreated, 32, Palette.InkSecondary);
         created.VerticalAlignment = VerticalAlignment.Top;
@@ -165,15 +174,18 @@ internal sealed class MainWindow : Window
         {
             var editor = _vm.Editor;
             setCreated(editor.CreatedAt);
+            var c = CultureInfo.CurrentCulture;
+            var created = Strings.Format(R.FullView_Created, editor.CreatedAt.ToString("t", c));
             if (editor.ModifiedAt is { } m)
             {
-                var c = CultureInfo.CurrentCulture;
                 var when = DateOnly.FromDateTime(m) == DateOnly.FromDateTime(editor.CreatedAt) ? m.ToString("t", c) : m.ToString("d", c) + " " + m.ToString("t", c);
                 modified.Text = Strings.Format(R.Editor_Modified, when).ToUpper(c);
+                _fullViewTimes.Text = (created + " · " + Strings.Format(R.Editor_Modified, when)).ToUpper(c);
             }
             else
             {
                 modified.Text = string.Empty;
+                _fullViewTimes.Text = created.ToUpper(c);
             }
         }
 
@@ -191,6 +203,80 @@ internal sealed class MainWindow : Window
         Palette.Changed += (_, _) => UpdateEditorTheme();
 
         return Ui.Columns((Ui.Px(Metrics.TimeGutter), gutter), (Ui.Px(1), new DottedLine()), (Ui.Star, _editor));
+    }
+
+    /// <summary>Under the day heading in full view: the note's times (the gutter is hidden) and the way back.</summary>
+    private Border FullViewBar()
+    {
+        var title = Ui.HStack(6, Icons.Create(Icons.Expand, 12, Palette.InkSecondary), Typo.Caps(Strings.Get(R.FullView_Title).ToUpper(CultureInfo.CurrentCulture), 12, Palette.InkSecondary));
+        title.VerticalAlignment = VerticalAlignment.Center;
+        _fullViewTimes.VerticalAlignment = VerticalAlignment.Center;
+        _fullViewTimes.TextTrimming = TextTrimming.CharacterEllipsis;
+        var close = Ui.IconButton(Icons.Create(Icons.Close, 14, Palette.InkTertiary), Strings.Get(R.FullView_Exit), () => _vm.IsFullView = false);
+        var row = Ui.Columns((Ui.Auto, title), (Ui.Star, _fullViewTimes), (Ui.Auto, close));
+        row.ColumnSpacing = 16;
+        return new Border
+        {
+            Child = row,
+            Background = Palette.SubtleFill,
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(10, 0, 0, 0),
+            Margin = new Thickness(0, 0, 0, 10),
+            IsVisible = false,
+        };
+    }
+
+    /// <summary>Full view (F11): the tag rail, calendar, history and time gutter make room for the note.</summary>
+    private void WireFullView(Border bar, Grid editorPane, Control[] hidden)
+    {
+        var gutterWidth = editorPane.ColumnDefinitions[0].Width;
+        var lineWidth = editorPane.ColumnDefinitions[1].Width;
+        var historyHeight = _historyRow.Height;
+        Ui.Bind(_vm, nameof(MainViewModel.IsFullView), () =>
+        {
+            var full = _vm.IsFullView;
+            if (full == bar.IsVisible)
+            {
+                return; // the first call, before any change
+            }
+
+            bar.IsVisible = full;
+            foreach (var control in hidden)
+            {
+                control.IsVisible = !full;
+            }
+
+            foreach (var control in editorPane.Children.Take(2))
+            {
+                control.IsVisible = !full; // created/edited times and the dotted line
+            }
+
+            if (full)
+            {
+                historyHeight = _historyRow.Height; // the splitter may have moved it
+            }
+
+            _historyRow.Height = full ? new GridLength(0) : historyHeight;
+            editorPane.ColumnDefinitions[0].Width = full ? new GridLength(0) : gutterWidth;
+            editorPane.ColumnDefinitions[1].Width = full ? new GridLength(0) : lineWidth;
+            _editor.FocusEditor();
+        });
+    }
+
+    /// <summary>Ctrl + / Ctrl − / Ctrl 0 in the editor: the font size setting, saved once the zooming stops.</summary>
+    private void ZoomEditor(int step)
+    {
+        var s = _host.Settings.Current;
+        var size = step == 0 ? LocalSettings.EditorFontSizeDefault : LocalSettings.ZoomFontSize(s.EditorFontSize, step);
+        if (size == s.EditorFontSize)
+        {
+            return;
+        }
+
+        s.EditorFontSize = size;
+        UpdateEditorTheme();
+        _zoomSave.Stop();
+        _zoomSave.Start();
     }
 
     /// <summary>Markdown colours for the current light/dark palette; fonts and size from the settings.</summary>
@@ -237,6 +323,12 @@ internal sealed class MainWindow : Window
             _editor.FocusEditor();
         };
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
+        _editor.FontZoomRequested += (_, step) => ZoomEditor(step);
+        _zoomSave.Tick += (_, _) =>
+        {
+            _zoomSave.Stop();
+            _ = _host.SaveSettingsAsync();
+        };
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();
     }
 
@@ -393,6 +485,16 @@ internal sealed class MainWindow : Window
                 (Key.Escape, false, false, false) when _vm.IsSearchOpen => () =>
                 {
                     _vm.IsSearchOpen = false;
+                    return Task.CompletedTask;
+                },
+                (Key.Escape, false, false, false) when _vm.IsFullView => () =>
+                {
+                    _vm.IsFullView = false;
+                    return Task.CompletedTask;
+                },
+                (Key.F11, false, false, false) => () =>
+                {
+                    _vm.IsFullView = !_vm.IsFullView;
                     return Task.CompletedTask;
                 },
                 _ => null,

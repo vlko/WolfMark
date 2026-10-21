@@ -2,7 +2,6 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using WolfMark.Core.Markdown;
 
@@ -45,7 +44,10 @@ internal sealed class MarkerChips : Control
         }
 
         var line = doc.GetLineByNumber(number);
-        if (owner.TokensOf(line) is not { } tokens)
+
+        // Only a line the view has already built: building one here (TextView.GetVisualPosition does) adds its
+        // inline objects (image previews) to the tree during the render pass, which Avalonia rejects.
+        if (owner.TokensOf(line) is not { } tokens || textView.GetVisualLine(number) is not { } visualLine)
         {
             return;
         }
@@ -59,8 +61,8 @@ internal sealed class MarkerChips : Control
                 return;
             }
 
-            var location = doc.GetLocation(line.Offset + column);
-            var inView = textView.GetVisualPosition(new AvaloniaEdit.TextViewPosition(location), VisualYPosition.TextTop) - textView.ScrollOffset;
+            var visualColumn = visualLine.GetVisualColumn(column);
+            var inView = visualLine.GetVisualPosition(visualColumn, VisualYPosition.TextTop) - textView.ScrollOffset;
             if (textView.TranslatePoint(inView, this) is not { } position)
             {
                 return;

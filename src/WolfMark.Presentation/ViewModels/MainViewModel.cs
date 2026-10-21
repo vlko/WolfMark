@@ -120,6 +120,13 @@ internal sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsSearchOpen { get; set; }
 
+    /// <summary>
+    /// The note fills the window: day heading, formatting and the editor only – no tag rail, calendar, history or
+    /// time gutter. Not remembered: a new start shows the whole app.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsFullView { get; set; }
+
     public AppHost Host => _host;
 
     /// <summary>Opens the last note immediately (no index needed), then loads the rest.</summary>

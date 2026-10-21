@@ -34,6 +34,8 @@ internal sealed partial class MainWindow : Window
     private readonly SearchPalette _search;
     private readonly Action<DateTime?> _setCreated;
     private readonly TextBlock _modified = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
+    private readonly TextBlock _fullViewTimes = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
+    private readonly Border _fullViewBar;
     private readonly Button _continues;
     private readonly RowDefinition _historyRow;
     private bool _closing;
@@ -46,6 +48,7 @@ internal sealed partial class MainWindow : Window
 
     internal void ScrollEditorToStart() => _editor.ScrollToStart();
     private bool _settingsOpen;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _zoomSave;
     private TrayIcon? _tray;
 
     public MainWindow(MainViewModel vm, TagBrushes brushes)
@@ -94,6 +97,7 @@ internal sealed partial class MainWindow : Window
         };
         _continues.StyleButton(Palette.Transparent, Palette.Accent);
         _continues.Click += (_, _) => _editor.ScrollToEnd();
+        _fullViewBar = BuildFullViewBar();
         var gutter = Ui.Ui.Rows((Ui.Ui.Auto, created), (Ui.Ui.Star, null), (Ui.Ui.Auto, Ui.Ui.VStack(2, _continues, _modified)));
         gutter.Padding = new Thickness(0, 0, Metrics.TimeGutterGap, 26);
         _editor.AlignLeft = true;
@@ -105,6 +109,7 @@ internal sealed partial class MainWindow : Window
 
         var main = new Grid { Padding = new Thickness(24, 4, 8, 0) };
         main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // day heading
+        main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // full view bar
         main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // calendar panel
         main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // note panel (tag, formatting)
         main.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 120 });
@@ -113,15 +118,18 @@ internal sealed partial class MainWindow : Window
         header.Heading.Margin = new Thickness(0, 0, 0, 10);
         _calendar.Margin = new Thickness(0, 0, 0, 12);
         header.NotePanel.Margin = new Thickness(0, 0, 0, 10);
+        _fullViewBar.Margin = new Thickness(0, 0, 0, 10);
         Add(main, header.Heading, 0);
-        Add(main, _calendar, 1);
-        Add(main, header.NotePanel, 2);
-        Add(main, editorPane, 3);
-        Add(main, splitter, 4);
-        Add(main, history, 5);
+        Add(main, _fullViewBar, 1);
+        Add(main, _calendar, 2);
+        Add(main, header.NotePanel, 3);
+        Add(main, editorPane, 4);
+        Add(main, splitter, 5);
+        Add(main, history, 6);
 
         var rail = new TagRail(vm, brushes) { Margin = new Thickness(0, 8, 0, 0) };
         var content = Ui.Ui.Columns((Ui.Ui.Star, main), (Ui.Ui.Auto, rail));
+        WireFullView(editorPane, gutter, splitter, history, rail);
 
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(48) });
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -382,8 +390,33 @@ internal sealed partial class MainWindow : Window
             FontFamily = s.EditorMonospace ? monoFont : s.EditorFontFamily,
             MonoFontFamily = monoFont,
             FontSize = s.EditorFontSize,
+            ColorFonts = s.EditorColorEmoji,
         };
         _editor.ShowLineNumbers = s.EditorLineNumbers;
+    }
+
+    /// <summary>Ctrl + / Ctrl − / Ctrl 0 (null steps) in the editor: the font size setting, saved once the zooming stops.</summary>
+    private void ZoomEditor(int? steps)
+    {
+        var s = _host.Settings.Current;
+        var size = steps is { } n ? LocalSettings.ZoomFontSize(s.EditorFontSize, n) : LocalSettings.EditorFontSizeDefault;
+        if (size == s.EditorFontSize)
+        {
+            return;
+        }
+
+        s.EditorFontSize = size;
+        UpdateEditorTheme();
+        if (_zoomSave is null)
+        {
+            _zoomSave = DispatcherQueue.CreateTimer();
+            _zoomSave.Interval = TimeSpan.FromSeconds(1);
+            _zoomSave.IsRepeating = false;
+            _zoomSave.Tick += (_, _) => _ = _host.SaveSettingsAsync();
+        }
+
+        _zoomSave.Stop();
+        _zoomSave.Start();
     }
 
     // ---------------------------------------------------------------- wiring
@@ -459,6 +492,8 @@ internal sealed partial class MainWindow : Window
                     break;
             }
         };
+        _editor.DrawFailed += (_, ex) => LogDrawFailed(_host.Loggers.CreateLogger(nameof(MarkdownEditor)), ex);
+        _editor.FontZoomRequested += (_, zoom) => ZoomEditor(zoom.Reset ? null : zoom.Steps);
         _editor.OverflowChanged += (_, more) => _continues.Visibility = more ? Visibility.Visible : Visibility.Collapsed;
         UpdateGutter();
 
@@ -505,19 +540,75 @@ internal sealed partial class MainWindow : Window
     private void UpdateGutter()
     {
         var editor = _vm.Editor;
+        var c = System.Globalization.CultureInfo.CurrentCulture;
         _setCreated(editor.CreatedAt);
+        var created = Strings.Format(R.FullView_Created, editor.CreatedAt.ToString("t", c));
         if (editor.ModifiedAt is { } modified)
         {
-            var c = System.Globalization.CultureInfo.CurrentCulture;
             var when = DateOnly.FromDateTime(modified) == DateOnly.FromDateTime(editor.CreatedAt)
                 ? modified.ToString("t", c)
                 : modified.ToString("d", c) + " " + modified.ToString("t", c);
             _modified.Text = Strings.Format(R.Editor_Modified, when).ToUpper(c);
+            _fullViewTimes.Text = (created + " · " + Strings.Format(R.Editor_Modified, when)).ToUpper(c);
         }
         else
         {
             _modified.Text = string.Empty;
+            _fullViewTimes.Text = created.ToUpper(c);
         }
+    }
+
+    /// <summary>Under the day heading in full view: the note's times (the gutter is hidden) and the way back.</summary>
+    private Border BuildFullViewBar()
+    {
+        var title = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Expand, 11, Palette.InkSecondary), Typo.Caps(Strings.Get(R.FullView_Title), 12, Palette.InkSecondary));
+        title.VerticalAlignment = VerticalAlignment.Center;
+        _fullViewTimes.VerticalAlignment = VerticalAlignment.Center;
+        _fullViewTimes.TextTrimming = TextTrimming.CharacterEllipsis;
+        var close = Ui.Ui.IconButton(Glyphs.Close, Strings.Get(R.FullView_Exit), () => _vm.IsFullView = false, 11);
+        var row = Ui.Ui.Columns((Ui.Ui.Auto, title), (Ui.Ui.Star, _fullViewTimes), (Ui.Ui.Auto, close));
+        row.ColumnSpacing = 16;
+        return new Border
+        {
+            Child = row,
+            Background = Palette.SubtleFill,
+            CornerRadius = Radius.Control,
+            Padding = new Thickness(10, 0, 0, 0),
+            Visibility = Visibility.Collapsed,
+        };
+    }
+
+    /// <summary>Full view (F11): the tag rail, calendar, history and time gutter make room for the note.</summary>
+    private void WireFullView(Grid editorPane, FrameworkElement gutter, FrameworkElement splitter, FrameworkElement history, FrameworkElement rail)
+    {
+        var gutterWidth = editorPane.ColumnDefinitions[0].Width;
+        var lineWidth = editorPane.ColumnDefinitions[1].Width;
+        var historyHeight = _historyRow.Height;
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(MainViewModel.IsFullView))
+            {
+                return;
+            }
+
+            var full = _vm.IsFullView;
+            var hidden = full ? Visibility.Collapsed : Visibility.Visible;
+            _fullViewBar.Visibility = full ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var element in (ReadOnlySpan<FrameworkElement>)[_calendar, gutter, splitter, history, rail])
+            {
+                element.Visibility = hidden;
+            }
+
+            if (full)
+            {
+                historyHeight = _historyRow.Height; // the splitter may have moved it
+            }
+
+            _historyRow.Height = full ? new GridLength(0) : historyHeight;
+            editorPane.ColumnDefinitions[0].Width = full ? new GridLength(0) : gutterWidth;
+            editorPane.ColumnDefinitions[1].Width = full ? new GridLength(0) : lineWidth;
+            _editor.FocusEditor();
+        };
     }
 
     private void WireOverlays()
@@ -555,7 +646,18 @@ internal sealed partial class MainWindow : Window
         Accelerator(VirtualKey.E, VirtualKeyModifiers.Control, () =>
             _vm.Editor.Mode = _vm.Editor.Mode == EditorMode.Raw ? EditorMode.Formatted : EditorMode.Raw);
         Accelerator((VirtualKey)188, VirtualKeyModifiers.Control, () => _ = OpenSettingsAsync()); // Ctrl+,
-        Accelerator(VirtualKey.Escape, VirtualKeyModifiers.None, () => _vm.IsSearchOpen = false);
+        Accelerator(VirtualKey.Escape, VirtualKeyModifiers.None, () =>
+        {
+            if (_vm.IsSearchOpen)
+            {
+                _vm.IsSearchOpen = false;
+            }
+            else
+            {
+                _vm.IsFullView = false;
+            }
+        });
+        Accelerator(VirtualKey.F11, VirtualKeyModifiers.None, () => _vm.IsFullView = !_vm.IsFullView);
         Accelerator(VirtualKey.Left, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu, () => _ = _vm.MoveCalendarAsync(-1));
         Accelerator(VirtualKey.Right, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu, () => _ = _vm.MoveCalendarAsync(1));
 
@@ -652,6 +754,9 @@ internal sealed partial class MainWindow : Window
 
     [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Opening settings failed")]
     private static partial void LogSettingsFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
+
+    [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Editor drawing failed")]
+    private static partial void LogDrawFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
 
     private void RestorePlacement()
     {

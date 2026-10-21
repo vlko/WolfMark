@@ -75,6 +75,7 @@ public sealed partial class MarkdownEditor : UserControl
             }
         };
         _canvas.AddHandler(PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => _followCaret = false), handledEventsToo: true);
+        _canvas.PointerWheelChanged += OnZoomWheel;
         Content = _scroll;
         IsTabStop = false;
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.IBeam);
@@ -93,6 +94,12 @@ public sealed partial class MarkdownEditor : UserControl
     public event EventHandler<MarkdownEditorMode>? ModeChanged;
 
     public event EventHandler<bool>? OverflowChanged;
+
+    /// <summary>Ctrl + / Ctrl − / Ctrl+wheel (steps summed per dispatch), Ctrl 0 (reset to the default size).</summary>
+    public event EventHandler<FontZoom>? FontZoomRequested;
+
+    /// <summary>Drawing failed (a bug); the editor carries on, the host logs it.</summary>
+    public event EventHandler<Exception>? DrawFailed;
 
     public event EventHandler<IReadOnlySet<EditorCommand>>? ActiveFormatsChanged;
 

@@ -27,3 +27,6 @@ public enum EditorCommand
     CopyPlainText,
     CopyHtml,
 }
+
+/// <summary>A font size change asked for in the editor: back to the default size, or whole steps up (+) or down (−).</summary>
+public readonly record struct FontZoom(bool Reset, int Steps);

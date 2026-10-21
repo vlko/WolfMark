@@ -146,7 +146,8 @@ internal static class SettingsDialog
         monospace.Toggled += (_, _) => font.IsEnabled = !monospace.IsOn;
         var monoFont = new MonoFontPicker(s.EditorMonoFontFamily);
         var lineNumbers = new ToggleSwitch { IsOn = s.EditorLineNumbers, Header = Strings.Get(R.Settings_LineNumbers) };
-        var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = 10, Maximum = 28, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
+        var colorEmoji = new ToggleSwitch { IsOn = s.EditorColorEmoji, Header = Strings.Get(R.Settings_ColorEmoji) };
+        var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = LocalSettings.EditorFontSizeMin, Maximum = LocalSettings.EditorFontSizeMax, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
 
         // Claude Code
@@ -224,6 +225,7 @@ internal static class SettingsDialog
             closeToTray,
             Section(Strings.Get(R.Settings_Editor)),
             lineNumbers,
+            colorEmoji,
             monospace,
             Field(Strings.Get(R.Settings_MonoFont), monoFont.Element),
             Field(Strings.Get(R.Settings_FontFamily), font),
@@ -278,6 +280,7 @@ internal static class SettingsDialog
         s.EditorMonospace = monospace.IsOn;
         s.EditorMonoFontFamily = monoFont.Selected;
         s.EditorLineNumbers = lineNumbers.IsOn;
+        s.EditorColorEmoji = colorEmoji.IsOn;
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
         s.CloseToTray = closeToTray.IsOn;

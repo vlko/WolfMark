@@ -47,7 +47,17 @@ public sealed class LocalSettings
     /// <summary>A number before each line of the note.</summary>
     public bool EditorLineNumbers { get; set; } = true;
 
-    public double EditorFontSize { get; set; } = 15;
+    public const double EditorFontSizeDefault = 15, EditorFontSizeMin = 10, EditorFontSizeMax = 28;
+
+    /// <summary>Base text size; also changed with Ctrl + / Ctrl − / Ctrl 0 in the editor.</summary>
+    public double EditorFontSize { get; set; } = EditorFontSizeDefault;
+
+    /// <summary>The font size <paramref name="steps"/> whole sizes away (+ larger, − smaller), within the limits.</summary>
+    public static double ZoomFontSize(double size, int steps) =>
+        Math.Clamp(Math.Round(size) + steps, EditorFontSizeMin, EditorFontSizeMax);
+
+    /// <summary>Emoji drawn in colour (Windows editor) instead of in the text colour.</summary>
+    public bool EditorColorEmoji { get; set; } = true;
 
     public EditorMode DefaultEditorMode { get; set; } = EditorMode.Formatted;
 

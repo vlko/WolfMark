@@ -11,6 +11,8 @@ namespace WolfMark.Editor;
 /// <summary>Drawing: only the lines inside the invalidated regions, from the cached layouts.</summary>
 public sealed partial class MarkdownEditor
 {
+    private string? _lastDrawFailure;
+
     private void OnRegionsInvalidated(CanvasVirtualControl sender, CanvasRegionsInvalidatedEventArgs args)
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -28,10 +30,26 @@ public sealed partial class MarkdownEditor
             {
                 // E_INVALIDARG: the canvas shrank between the invalidation and this callback; a new pass follows.
             }
+            catch (Exception ex)
+            {
+                // Win2D calls this from native code: an exception would become an HRESULT and WinUI ends the
+                // process without a trace (0xc000027b). Reported instead; the next relayout or edit draws again.
+                ReportDrawFailure(ex);
+            }
         }
 
         TrimLayouts();
         EditorTrace.Current?.RecordSince(EditorPhase.Draw, started, drawn);
+    }
+
+    private void ReportDrawFailure(Exception ex)
+    {
+        var key = ex.GetType().FullName + ex.StackTrace;
+        if (key != _lastDrawFailure)
+        {
+            _lastDrawFailure = key; // the same failure again on every frame would flood the log
+            DrawFailed?.Invoke(this, ex);
+        }
     }
 
     /// <summary>
@@ -121,6 +139,7 @@ public sealed partial class MarkdownEditor
                 }
             }
 
+            layout.Options = _theme.ColorFonts ? CanvasDrawTextOptions.EnableColorFont : CanvasDrawTextOptions.Default;
             ds.DrawTextLayout(layout, x, y, _theme.Text);
             DrawSquiggles(ds, i, layout, presentation, x, y);
             DrawLineNumber(ds, i, layout, y, i == caretLine);

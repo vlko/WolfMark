@@ -103,6 +103,7 @@ internal static class R
     public const string MonoFont_Filter = nameof(MonoFont_Filter);
     public const string MonoFont_Loading = nameof(MonoFont_Loading);
     public const string Settings_FontSize = nameof(Settings_FontSize);
+    public const string Settings_ColorEmoji = nameof(Settings_ColorEmoji);
     public const string Settings_DefaultMode = nameof(Settings_DefaultMode);
     public const string Settings_ClaudeCode = nameof(Settings_ClaudeCode);
     public const string Settings_ClaudeEnabled = nameof(Settings_ClaudeEnabled);
@@ -125,6 +126,10 @@ internal static class R
     public const string Rail_All = nameof(Rail_All);
     public const string Rail_Show = nameof(Rail_Show);
     public const string Editor_Modified = nameof(Editor_Modified);
+    public const string FullView_Enter = nameof(FullView_Enter);
+    public const string FullView_Exit = nameof(FullView_Exit);
+    public const string FullView_Title = nameof(FullView_Title);
+    public const string FullView_Created = nameof(FullView_Created);
     public const string Editor_Continues = nameof(Editor_Continues);
     public const string Toolbar_NewNoteShort = nameof(Toolbar_NewNoteShort);
     public const string Menu_Cut = nameof(Menu_Cut);

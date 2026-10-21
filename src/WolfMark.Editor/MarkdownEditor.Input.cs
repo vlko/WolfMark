@@ -21,6 +21,10 @@ public sealed partial class MarkdownEditor
     private bool _dragging;
     private long _keyDownStamp;
     private bool _frameArmed;
+    private int _zoomWheel; // Ctrl+wheel delta not yet turned into a font size step
+    private int _zoomSteps; // zoom steps waiting for RequestZoom's dispatch
+    private bool _zoomReset;
+    private bool _zoomQueued;
 
     private void InitInput()
     {
@@ -74,7 +78,15 @@ public sealed partial class MarkdownEditor
     private void InvalidateCaret()
     {
         var r = CaretRect(_caret);
-        _canvas.Invalidate(new Rect(r.X - 2, r.Y - 1, r.Width + 4, r.Height + 2));
+        var region = new Rect(r.X - 2, r.Y - 1, r.Width + 4, r.Height + 2);
+
+        // Only within the surface: after a relayout (zoom, a new note) the caret can be laid out below the canvas
+        // before it has grown – Invalidate rejects a region outside it (E_INVALIDARG).
+        region.Intersect(new Rect(0, 0, _canvas.ActualWidth, _canvas.ActualHeight));
+        if (!region.IsEmpty && region.Width > 0 && region.Height > 0)
+        {
+            _canvas.Invalidate(region);
+        }
     }
 
     private static bool IsDown(VirtualKey key) =>
@@ -95,6 +107,83 @@ public sealed partial class MarkdownEditor
         }
     }
 
+    /// <summary>The font size step of a Ctrl shortcut: +1 for "+" (or "="), −1 for "-", 0 for "0"; null otherwise.</summary>
+    private static int? ZoomStep(VirtualKey key, bool shift)
+    {
+        switch (key)
+        {
+            case VirtualKey.Add:
+                return 1;
+            case VirtualKey.Subtract:
+                return -1;
+            case VirtualKey.Number0 or VirtualKey.NumberPad0:
+                return 0;
+        }
+
+        return AltGrKeys.CharOf(key, shift) switch
+        {
+            '+' or '=' => 1,
+            '-' => -1,
+            _ => null,
+        };
+    }
+
+    private void OnZoomWheel(object sender, PointerRoutedEventArgs e)
+    {
+        if (!IsDown(VirtualKey.Control))
+        {
+            return;
+        }
+
+        // Ctrl+wheel zooms instead of scrolling; a touchpad sends small deltas, a step is a mouse notch (120).
+        e.Handled = true;
+        _zoomWheel += e.GetCurrentPoint(_canvas).Properties.MouseWheelDelta;
+        while (Math.Abs(_zoomWheel) >= 120)
+        {
+            var step = Math.Sign(_zoomWheel);
+            _zoomWheel -= step * 120;
+            RequestZoom(step);
+        }
+    }
+
+    /// <summary>
+    /// Zoom steps are summed and applied once the input is through: a fast wheel spin is one relayout, not one per
+    /// notch inside the input and layout callbacks. Step 0 (Ctrl 0) resets the sum to "the default size".
+    /// </summary>
+    private void RequestZoom(int step)
+    {
+        if (step == 0)
+        {
+            _zoomReset = true;
+            _zoomSteps = 0;
+        }
+        else
+        {
+            _zoomSteps += step;
+        }
+
+        if (_zoomQueued)
+        {
+            return;
+        }
+
+        _zoomQueued = _dispatcher.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            _zoomQueued = false;
+            var (reset, steps) = (_zoomReset, _zoomSteps);
+            (_zoomReset, _zoomSteps) = (false, 0);
+            if (reset)
+            {
+                FontZoomRequested?.Invoke(this, new FontZoom(Reset: true, 0));
+            }
+
+            if (steps != 0)
+            {
+                FontZoomRequested?.Invoke(this, new FontZoom(Reset: false, steps));
+            }
+        });
+    }
+
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
         _followCaret = false;
@@ -110,6 +199,13 @@ public sealed partial class MarkdownEditor
         if (ctrl && alt && AltGrKeys.IsTyping(e.Key, shift))
         {
             return; // AltGr (= Ctrl+Alt) makes a character on this layout: CharacterReceived types it
+        }
+
+        if (ctrl && !alt && ZoomStep(e.Key, shift) is { } step)
+        {
+            e.Handled = true;
+            RequestZoom(step);
+            return;
         }
 
         var handled = true;

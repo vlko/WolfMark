@@ -127,9 +127,13 @@ internal sealed class NoteBar : UserControl
         // Three groups that wrap as a whole on narrow windows (ToolbarPanel): first the mode group drops to a
         // second row, then the formatting group – never a hidden button.
         state.Width = 170;
+        var fullView = Ui.IconButton(Icons.Create(Icons.Expand, 14, Palette.InkTertiary), Strings.Get(R.FullView_Enter), () => vm.IsFullView = true);
         var left = Ui.HStack(12, tagButton, state);
-        var mode = Ui.HStack(12, Ui.HStack(4, raw, formatted), add);
+        var mode = Ui.HStack(12, Ui.HStack(4, raw, formatted), fullView, add);
         mode.VerticalAlignment = VerticalAlignment.Center;
+
+        // Full view keeps only the formatting; the full view bar under the heading has the rest.
+        Ui.Bind(vm, nameof(MainViewModel.IsFullView), () => left.IsVisible = mode.IsVisible = !vm.IsFullView);
         format.VerticalAlignment = VerticalAlignment.Center;
         var toolbar = new ToolbarPanel();
         toolbar.Children.Add(left);

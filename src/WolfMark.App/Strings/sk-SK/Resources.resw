@@ -310,7 +310,10 @@
     <value>Načítavam nainštalované písma…</value>
   </data>
   <data name="Settings_FontSize" xml:space="preserve">
-    <value>Veľkosť písma</value>
+    <value>Veľkosť písma (Ctrl + / Ctrl −)</value>
+  </data>
+  <data name="Settings_ColorEmoji" xml:space="preserve">
+    <value>Farebné emotikony</value>
   </data>
   <data name="Settings_DefaultMode" xml:space="preserve">
     <value>Predvolený režim</value>
@@ -377,6 +380,18 @@
   </data>
   <data name="Editor_Modified" xml:space="preserve">
     <value>upravené {0}</value>
+  </data>
+  <data name="FullView_Enter" xml:space="preserve">
+    <value>Celé okno (F11)</value>
+  </data>
+  <data name="FullView_Exit" xml:space="preserve">
+    <value>Ukončiť celé okno (F11, Esc)</value>
+  </data>
+  <data name="FullView_Title" xml:space="preserve">
+    <value>Celé okno</value>
+  </data>
+  <data name="FullView_Created" xml:space="preserve">
+    <value>vytvorené {0}</value>
   </data>
   <data name="Editor_Continues" xml:space="preserve">
     <value>pokračuje</value>

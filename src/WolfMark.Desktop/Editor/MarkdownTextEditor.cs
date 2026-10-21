@@ -51,6 +51,7 @@ internal sealed class MarkdownTextEditor : UserControl
     private EditorTheme _theme = EditorTheme.Light(_ => Colors.Gray);
     private EditorMode _mode = EditorMode.Formatted;
     private string _text = string.Empty;
+    private double _zoomWheel; // Ctrl+wheel delta not yet turned into a font size step
     private int _applying;
     private bool _ownLinePending;
     private readonly LineNumberMargin _lineNumbers;
@@ -81,6 +82,7 @@ internal sealed class MarkdownTextEditor : UserControl
         _editor.TextChanged += (_, _) => OnTextChanged();
         _editor.LostFocus += (_, _) => EditorLostFocus?.Invoke(this, EventArgs.Empty);
         _editor.TextArea.AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        _editor.AddHandler(PointerWheelChangedEvent, OnZoomWheel, RoutingStrategies.Tunnel);
         _editor.TextArea.AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
         DragDrop.SetAllowDrop(_editor, true);
         DragDrop.AddDragOverHandler(_editor, OnDragOver);
@@ -97,6 +99,9 @@ internal sealed class MarkdownTextEditor : UserControl
     public event EventHandler<string>? TextEdited;
 
     public event EventHandler? EditorLostFocus;
+
+    /// <summary>Ctrl + / Ctrl − / Ctrl+wheel: +1 or −1 step of the font size; 0 for Ctrl 0 (the default size).</summary>
+    public event EventHandler<int>? FontZoomRequested;
 
     /// <summary>Ctrl+E – the view model owns the mode.</summary>
     public event EventHandler? ModeToggleRequested;
@@ -542,10 +547,50 @@ internal sealed class MarkdownTextEditor : UserControl
 
     // ------------------------------------------------------------------ keys and pointer
 
+    /// <summary>The font size step of a Ctrl shortcut, by the character on the layout: "+" (or "=") +1, "-" −1, "0" 0.</summary>
+    private static int? ZoomStep(KeyEventArgs e) => e.Key switch
+    {
+        Key.Add => 1,
+        Key.Subtract => -1,
+        Key.D0 or Key.NumPad0 => 0,
+        _ => e.KeySymbol switch
+        {
+            "+" or "=" => 1,
+            "-" => -1,
+            null => e.Key switch { Key.OemPlus => 1, Key.OemMinus => -1, _ => null },
+            _ => null,
+        },
+    };
+
+    private void OnZoomWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) && !e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            return;
+        }
+
+        // Ctrl+wheel zooms instead of scrolling; a touchpad sends fractions of a notch.
+        e.Handled = true;
+        _zoomWheel += e.Delta.Y;
+        while (Math.Abs(_zoomWheel) >= 1)
+        {
+            var step = Math.Sign(_zoomWheel);
+            _zoomWheel -= step;
+            FontZoomRequested?.Invoke(this, step);
+        }
+    }
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        if (ctrl && !e.KeyModifiers.HasFlag(KeyModifiers.Alt) && ZoomStep(e) is { } zoom)
+        {
+            e.Handled = true;
+            FontZoomRequested?.Invoke(this, zoom);
+            return;
+        }
+
         var start = _editor.SelectionStart;
         var length = _editor.SelectionLength;
         var text = _text;

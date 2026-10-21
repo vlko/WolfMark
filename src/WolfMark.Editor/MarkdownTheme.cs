@@ -41,6 +41,9 @@ public sealed class MarkdownTheme
     /// <summary>Base size in device-independent pixels.</summary>
     public double FontSize { get; init; } = 15;
 
+    /// <summary>Colour glyphs (emoji) drawn in their own colours instead of the text colour.</summary>
+    public bool ColorFonts { get; init; }
+
     public static MarkdownTheme Light(Func<string, Color> tagColor) => new()
     {
         Text = Color.FromArgb(255, 0x23, 0x22, 0x20),

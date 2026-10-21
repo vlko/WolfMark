@@ -310,7 +310,10 @@
     <value>Loading installed fonts…</value>
   </data>
   <data name="Settings_FontSize" xml:space="preserve">
-    <value>Font size</value>
+    <value>Font size (Ctrl + / Ctrl −)</value>
+  </data>
+  <data name="Settings_ColorEmoji" xml:space="preserve">
+    <value>Colour emoji</value>
   </data>
   <data name="Settings_DefaultMode" xml:space="preserve">
     <value>Default mode</value>
@@ -377,6 +380,18 @@
   </data>
   <data name="Editor_Modified" xml:space="preserve">
     <value>edited {0}</value>
+  </data>
+  <data name="FullView_Enter" xml:space="preserve">
+    <value>Full view (F11)</value>
+  </data>
+  <data name="FullView_Exit" xml:space="preserve">
+    <value>Leave full view (F11, Esc)</value>
+  </data>
+  <data name="FullView_Title" xml:space="preserve">
+    <value>Full view</value>
+  </data>
+  <data name="FullView_Created" xml:space="preserve">
+    <value>created {0}</value>
   </data>
   <data name="Editor_Continues" xml:space="preserve">
     <value>continues</value>

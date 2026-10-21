@@ -69,7 +69,7 @@ internal sealed partial class ToolbarPanel : Panel
                 var size = child.DesiredSize;
                 var x = row[k] == 0 ? 0 : right - size.Width;
                 child.Arrange(new Rect(x, y + ((rowHeight - size.Height) / 2), size.Width, size.Height));
-                right = x - Spacing;
+                right = size.Width > 0 ? x - Spacing : x; // a collapsed group leaves no gap
             }
 
             y += rowHeight + RowSpacing;
@@ -81,11 +81,13 @@ internal sealed partial class ToolbarPanel : Panel
     private double RowWidth(double[] widths, int start, int count)
     {
         var sum = 0.0;
+        var shown = 0;
         for (var i = start; i < start + count; i++)
         {
             sum += widths[i];
+            shown += widths[i] > 0 ? 1 : 0;
         }
 
-        return sum + (Spacing * (count - 1));
+        return sum + (Spacing * Math.Max(0, shown - 1));
     }
 }
