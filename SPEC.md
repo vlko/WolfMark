@@ -192,6 +192,7 @@ Správanie:
 - Ukladanie prebieha na pozadí; indikátor stavu (uložené / ukladá sa / chyba).
 - Undo/redo v rámci sedenia.
 - Klávesové skratky: `Ctrl+B/I/K` (bold/italic/link), `Ctrl+Shift+L` checkbox, `Tab/Shift+Tab` odsadenie zoznamu, automatické pokračovanie zoznamu na Enter.
+- Veľkosť písma: `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0` a `Ctrl`+koliesko (podľa znaku na rozložení klávesnice, 10–28, uloží sa do nastavení).
 - **Vloženie obrázka** (`Ctrl+V` zo schránky) → uloží do `assets/` daného dňa a vloží relatívny odkaz.
 - Spell check cez Windows Spell Checking API (jazyk sk/en, ADR 0007).
 - Pri externej zmene otvoreného súboru: ak editor nemá neuložené zmeny → potichu načítať; ak má → ponúknuť porovnanie/zlúčenie.
@@ -221,13 +222,14 @@ Správanie:
 - **Kalendárová lišta:** dni aktuálneho týždňa, pri každom dni počet záznamov a farebné prúžky tagov. Klik na deň → filtruje históriu na daný deň a otvorí jeho poslednú poznámku. Šípky/scroll posúvajú týždne.
 - **Plný kalendár:** prepnutie z lišty (tlačidlo alebo `Ctrl+Shift+C`) – rozbalí sa ako overlay alebo nahradí editor (viď 5.2).
 - **História:** virtualizovaný `ItemsRepeater`/`ListView`, nekonečný scroll (stránkovanie z indexu), farebný pruh tagu, dátum, čas, titulok, náhľad. Filtrovanie podľa tagu (klik na tag) a dňa. Klik → otvorí v editore.
+- **Celé okno** (`F11` alebo tlačidlo pred `+`): ostane dátum, pod ním riadok s časom vytvorenia a úpravy a `×`, z hlavičky len formátovanie a editor; tagy, kalendár, história a časy vľavo zmiznú. `F11`/`Esc`/`×` vráti rozloženie, režim sa nepamätá.
 - **Vyhľadávanie** (`Ctrl+K`, command-palette štýl): hybridné hľadanie, výsledky so zvýraznením, filter `#tag`, `@2026-10`.
 
 ### 4.6 Nastavenia
 
 - Koreňový adresár poznámok (+ presun/prepnutie).
 - Téma: systém / svetlá / tmavá; backdrop Mica / Acrylic / žiadny.
-- Font editora a veľkosť, šírka textu (max. šírka riadku pre čitateľnosť).
+- Font editora a veľkosť, šírka textu (max. šírka riadku pre čitateľnosť), farebné emotikony.
 - Predvolený režim editora (raw/formát).
 - Farby tagov, premenovanie tagu (hromadné premenovanie súborov), zlúčenie tagov.
 - Claude Code sync: zapnúť/vypnúť, cesta k `~/.claude`, filter projektov, interval.

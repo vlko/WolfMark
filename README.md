@@ -128,7 +128,9 @@ files.
   similarity. With text selected in the editor, picking a result inserts a link to it.
 - **Editor**: formatted mode hides Markdown markers outside the current line, checkboxes are clickable; raw mode
   keeps the markers visible but muted. Highlighting runs incrementally in the background and never blocks typing.
-  Copy as Markdown, plain text or HTML. Optional line numbers (an image counts as one line).
+  Copy as Markdown, plain text or HTML. Optional line numbers (an image counts as one line). Font size with
+  `Ctrl` `+` / `Ctrl` `−` (or `Ctrl`+wheel); colour emoji. **Full view** (`F11`) hides the tags, calendar, history and
+  times so the note fills the window.
 - **Images**: paste a screenshot or drop image files onto a note – they are copied into that day's `assets\`
   folder and linked relatively, so they travel with the notes. In formatted mode an image line shows the picture (up
   to five lines high) and behaves as one block: the caret sits before or after it, text typed there goes to its own
@@ -159,6 +161,8 @@ files.
 | `Ctrl+Shift+C` | Full calendar (arrows, `Enter`, `Esc`) |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next week |
 | `Ctrl+E` | Raw ↔ formatted mode |
+| `F11` | Full view: only the day, the formatting buttons and the note (`F11` / `Esc` to leave) |
+| `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+wheel | Editor font size larger / smaller / default |
 | `Ctrl+B` / `Ctrl+I` / `Ctrl+Shift+L` | Bold / italic / task |
 | `Tab` / `Shift+Tab`, `Enter` | Indent list, continue list |
 | `Ctrl+,` | Settings |
