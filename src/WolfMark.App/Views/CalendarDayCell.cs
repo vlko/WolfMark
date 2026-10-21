@@ -22,13 +22,12 @@ internal readonly record struct DayCellState(
 
 /// <summary>
 /// Flat, square day cell (ADR 0004, reference <c>expected_calendar.png</c>): tag colours as diagonal
-/// bands, heavy numerals, note-count dots, hatched past days (band only), two-tone dashed frame for today.
+/// bands, heavy numerals, note-count dots, hatched past days (week band and month grid), two-tone dashed frame for today.
 /// Focusable and announced by Narrator (M6-05).
 /// </summary>
 internal sealed partial class CalendarDayCell : ContentControl
 {
     private readonly TagBrushes _brushes;
-    private readonly bool _hatchPast;
     private readonly Border _fill = new();
     private readonly Border _hatch = new() { Background = Palette.PastHatch, IsHitTestVisible = false };
     private readonly Rectangle _frame = new() { StrokeThickness = 3, Stroke = Palette.TodayFrame, IsHitTestVisible = false };
@@ -41,10 +40,9 @@ internal sealed partial class CalendarDayCell : ContentControl
     private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom };
     private DayCellState _state;
 
-    public CalendarDayCell(TagBrushes brushes, double height, double numberSize, bool hatchPast)
+    public CalendarDayCell(TagBrushes brushes, double height, double numberSize)
     {
         _brushes = brushes;
-        _hatchPast = hatchPast;
         _number.FontSize = numberSize;
         _number.Margin = new Thickness(0, 0, 0, height * 0.12);
         _dots.Margin = new Thickness(0, 0, 0, height * 0.12);
@@ -86,20 +84,18 @@ internal sealed partial class CalendarDayCell : ContentControl
         _number.Text = state.Date.Day.ToString(CultureInfo.CurrentCulture);
 
         _fill.Background = _brushes.DayFill(day.Tags, Palette.EmptyCell);
-        _hatch.Visibility = _hatchPast && state.IsPast ? Visibility.Visible : Visibility.Collapsed;
+        _hatch.Visibility = state.IsPast ? Visibility.Visible : Visibility.Collapsed;
         _frame.Visibility = _frameDash.Visibility = state.IsToday ? Visibility.Visible : Visibility.Collapsed;
         _selection.Visibility = state.IsSelected && !state.IsToday ? Visibility.Visible : Visibility.Collapsed;
 
-        var hatched = _hatchPast && state.IsPast;
+        var hatched = state.IsPast;
         Brush ink;
         if (day.HasNotes)
         {
-            var color = _brushes.ColorOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag);
-            // On hatched (lightened) past days a dark shade of the tag colour reads well and keeps the
-            // colour identity (reference expected_calendar.png); full fills use black/white.
-            ink = new SolidColorBrush(hatched
-                ? Palette.Blend(Palette.ToColor(color), Microsoft.UI.Colors.Black, Palette.IsDark ? 0.15 : 0.5)
-                : Palette.ForegroundOn(color));
+            // Hatched past days: a dark (light theme) or light (dark theme) shade of the first tag (Palette.PastInk);
+            // full fills black/white by the tag's calendar tint. Days without notes: grey (past), light grey (future).
+            var tag = _brushes.ColorOf(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag);
+            ink = new SolidColorBrush(hatched ? Palette.PastInk(tag) : Palette.ForegroundOnTint(tag));
         }
         else
         {

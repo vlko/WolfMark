@@ -130,7 +130,7 @@ internal sealed class CalendarPanel : UserControl
         for (var i = 0; i < 7; i++)
         {
             cells.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-            var cell = new DayCell(_vm, height: 64, numberSize: 30, hatchPast: true);
+            var cell = new DayCell(_vm, height: 64, numberSize: 30);
             var index = i;
             cell.Clicked = () => _ = _vm.SelectDayAsync(_vm.Week.Days[index].Date);
             Grid.SetColumn(cell, i);
@@ -239,7 +239,7 @@ internal sealed class CalendarPanel : UserControl
             for (var i = 0; i < 7; i++)
             {
                 var d = week.Days[i];
-                var cell = new DayCell(_vm, height: 58, numberSize: 22, hatchPast: false) { Margin = new Thickness(0, 0, 0, 5) };
+                var cell = new DayCell(_vm, height: 58, numberSize: 22) { Margin = new Thickness(0, 0, 0, 5) };
                 cell.Update(d.Date, d.Day, d.IsToday, d.IsPast, d.Date == _vm.SelectedDay, d.InMonth, d.IsDimmed, d.AutomationName);
                 var date = d.Date;
                 cell.Clicked = () => _ = _vm.SelectDayAsync(date);
@@ -320,12 +320,11 @@ internal sealed class CalendarPanel : UserControl
 
     /// <summary>
     /// Flat, square day cell (the Windows CalendarDayCell): tag colours as diagonal bands, heavy numerals,
-    /// note-count dots, hatched past days (band only), two-tone dashed frame for today.
+    /// note-count dots, hatched past days, two-tone dashed frame for today.
     /// </summary>
     private sealed class DayCell : Border
     {
         private readonly MainViewModel _vm;
-        private readonly bool _hatchPast;
         private readonly Border _fill = new();
         private readonly Border _hatch = new() { Background = Palette.PastHatch, IsHitTestVisible = false };
         private readonly Rectangle _frame = new() { StrokeThickness = 3, Stroke = Palette.TodayFrame, IsHitTestVisible = false };
@@ -334,10 +333,9 @@ internal sealed class CalendarPanel : UserControl
         private readonly TextBlock _number = new() { FontFamily = Typo.DayNumber, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom };
 
-        public DayCell(MainViewModel vm, double height, double numberSize, bool hatchPast)
+        public DayCell(MainViewModel vm, double height, double numberSize)
         {
             _vm = vm;
-            _hatchPast = hatchPast;
             _number.FontSize = numberSize;
             _number.Margin = new Thickness(0, 0, 0, height * 0.12);
             _dots.Margin = new Thickness(0, 0, 0, height * 0.12);
@@ -368,7 +366,7 @@ internal sealed class CalendarPanel : UserControl
             IsHitTestVisible = inMonth;
             _number.Text = date.Day.ToString(CultureInfo.CurrentCulture);
             _fill.Background = DayFill(day.Tags);
-            var hatched = _hatchPast && past;
+            var hatched = past;
             _hatch.IsVisible = hatched;
             _frame.IsVisible = _frameDash.IsVisible = today;
             _selection.IsVisible = selected && !today;
@@ -376,11 +374,9 @@ internal sealed class CalendarPanel : UserControl
             IBrush ink;
             if (day.HasNotes)
             {
-                var color = _vm.Host.Tags.GetColor(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag);
-                // On hatched (lightened) past days a dark shade of the tag colour keeps its identity.
-                ink = new SolidColorBrush(hatched
-                    ? Palette.Blend(Palette.ToColor(color), Colors.Black, Palette.IsDark ? 0.15 : 0.5)
-                    : Palette.ForegroundOn(color));
+                // Hatched past days: a shade of the first tag (Palette.PastInk, as on Windows); full fills black/white by the tint.
+                var tag = _vm.Host.Tags.GetColor(day.Tags[0].Tag.Length == 0 ? null : day.Tags[0].Tag);
+                ink = new SolidColorBrush(hatched ? Palette.PastInk(tag) : Palette.ForegroundOnTint(tag));
             }
             else
             {
@@ -405,7 +401,8 @@ internal sealed class CalendarPanel : UserControl
                 return Palette.EmptyCell;
             }
 
-            Color ColorOf(TagCount t) => Palette.ToColor(_vm.Host.Tags.GetColor(t.Tag.Length == 0 ? null : t.Tag));
+            // Softer than the tag colour elsewhere (Palette.CalendarTint), as on Windows.
+            Color ColorOf(TagCount t) => Palette.CalendarTint(_vm.Host.Tags.GetColor(t.Tag.Length == 0 ? null : t.Tag));
             if (tags.Count == 1)
             {
                 return new SolidColorBrush(ColorOf(tags[0]));

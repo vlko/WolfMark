@@ -50,9 +50,10 @@ internal sealed class TagBrushes(TagStore store)
             return empty;
         }
 
+        // Softer than the tag colour elsewhere (Palette.CalendarTint): a week of full colours was loud.
         if (tags.Count == 1)
         {
-            return BrushOf(tags[0].Tag.Length == 0 ? null : tags[0].Tag);
+            return new SolidColorBrush(Palette.CalendarTint(store.GetColor(tags[0].Tag.Length == 0 ? null : tags[0].Tag)));
         }
 
         var total = (double)tags.Sum(t => t.Count);
@@ -60,7 +61,7 @@ internal sealed class TagBrushes(TagStore store)
         var offset = 0.0;
         foreach (var t in tags.Take(4))
         {
-            var color = Palette.ToColor(store.GetColor(t.Tag.Length == 0 ? null : t.Tag));
+            var color = Palette.CalendarTint(store.GetColor(t.Tag.Length == 0 ? null : t.Tag));
             var next = offset + (t.Count / total);
             brush.GradientStops.Add(new GradientStop { Color = color, Offset = offset });
             brush.GradientStops.Add(new GradientStop { Color = color, Offset = next });

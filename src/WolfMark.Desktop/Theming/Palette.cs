@@ -51,8 +51,9 @@ internal static class Palette
     /// <summary>Diagonal stripes laid over past days of the week band.</summary>
     public static LinearGradientBrush PastHatch { get; } = new()
     {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
-        EndPoint = new RelativePoint(5, 5, RelativeUnit.Absolute),
+        // Stripes "\" every 4 px, across the tag bands (the Windows Palette.PastHatch).
+        StartPoint = new RelativePoint(0, 4, RelativeUnit.Absolute),
+        EndPoint = new RelativePoint(4, 0, RelativeUnit.Absolute),
         SpreadMethod = GradientSpreadMethod.Repeat,
         GradientStops =
         {
@@ -120,8 +121,31 @@ internal static class Palette
 
     public static Color ToColor(TagColor c) => Color.FromRgb(c.R, c.G, c.B);
 
+    /// <summary>Dark ink on a light background (light tag colours).</summary>
+    public static Color DarkInk => Color.FromRgb(0x1F, 0x1F, 0x1E);
+
+    /// <summary>
+    /// The number of a hatched past day with notes: its first tag's full colour, 60 % darker in the light theme and
+    /// 80 % lighter in the dark one – readable on the softened, hatched bands (also the small numbers of the month
+    /// grid, also over another tag's band) and still the tag's colour; a lighter shade vanished in the band.
+    /// </summary>
+    public static Color PastInk(TagColor c) => IsDark ? Blend(ToColor(c), Colors.White, 0.8) : Blend(ToColor(c), Colors.Black, 0.6);
+
+    /// <summary>
+    /// A tag colour as the calendar shows it, softer than in the rail and legend: 40 % of the way to the empty cell in
+    /// the light theme, 25 % in the dark one (more turned the colours muddy there).
+    /// </summary>
+    public static Color CalendarTint(TagColor c) => Blend(ToColor(c), EmptyCell.Color, IsDark ? 0.25 : 0.4);
+
+    /// <summary>Black or white text on a tag's calendar tint.</summary>
+    public static Color ForegroundOnTint(TagColor c)
+    {
+        var tint = CalendarTint(c);
+        return ForegroundOn(new TagColor(tint.R, tint.G, tint.B));
+    }
+
     public static Color ForegroundOn(TagColor c) =>
-        c.PrefersDarkForeground ? Color.FromRgb(0x1F, 0x1F, 0x1E) : Color.FromRgb(0xFF, 0xFF, 0xFF);
+        c.PrefersDarkForeground ? DarkInk : Color.FromRgb(0xFF, 0xFF, 0xFF);
 
     public static Color Blend(Color a, Color b, double t) => Color.FromRgb(
         (byte)(a.R + ((b.R - a.R) * t)),
