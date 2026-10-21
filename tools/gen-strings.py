@@ -128,6 +128,8 @@ S = {
  "Editor_Modified": ("edited {0}", "upravené {0}"),
  "FullView_Enter": ("Full view (F11)", "Celé okno (F11)"),
  "FullView_Exit": ("Leave full view (F11, Esc)", "Ukončiť celé okno (F11, Esc)"),
+ "FullView_EnterMac": ("Full view (⌃⌘F)", "Celé okno (⌃⌘F)"),
+ "FullView_ExitMac": ("Leave full view (⌃⌘F, Esc)", "Ukončiť celé okno (⌃⌘F, Esc)"),
  "FullView_Title": ("Full view", "Celé okno"),
  "FullView_Created": ("created {0}", "vytvorené {0}"),
  "Editor_Continues": ("continues", "pokračuje"),

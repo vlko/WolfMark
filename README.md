@@ -161,7 +161,7 @@ files.
 | `Ctrl+Shift+C` | Full calendar (arrows, `Enter`, `Esc`) |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next week |
 | `Ctrl+E` | Raw ↔ formatted mode |
-| `F11` | Full view: only the day, the formatting buttons and the note (`F11` / `Esc` to leave) |
+| `F11` (macOS `Ctrl+Cmd+F`) | Full view: only the day, the formatting buttons and the note (again or `Esc` to leave) |
 | `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+wheel | Editor font size larger / smaller / default |
 | `Ctrl+B` / `Ctrl+I` / `Ctrl+Shift+L` | Bold / italic / task |
 | `Tab` / `Shift+Tab`, `Enter` | Indent list, continue list |

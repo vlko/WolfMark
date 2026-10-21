@@ -128,6 +128,8 @@ internal static class R
     public const string Editor_Modified = nameof(Editor_Modified);
     public const string FullView_Enter = nameof(FullView_Enter);
     public const string FullView_Exit = nameof(FullView_Exit);
+    public const string FullView_EnterMac = nameof(FullView_EnterMac);
+    public const string FullView_ExitMac = nameof(FullView_ExitMac);
     public const string FullView_Title = nameof(FullView_Title);
     public const string FullView_Created = nameof(FullView_Created);
     public const string Editor_Continues = nameof(Editor_Continues);

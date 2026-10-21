@@ -212,7 +212,7 @@ internal sealed class MainWindow : Window
         title.VerticalAlignment = VerticalAlignment.Center;
         _fullViewTimes.VerticalAlignment = VerticalAlignment.Center;
         _fullViewTimes.TextTrimming = TextTrimming.CharacterEllipsis;
-        var close = Ui.IconButton(Icons.Create(Icons.Close, 14, Palette.InkTertiary), Strings.Get(R.FullView_Exit), () => _vm.IsFullView = false);
+        var close = Ui.IconButton(Icons.Create(Icons.Close, 14, Palette.InkTertiary), Strings.Get(OperatingSystem.IsMacOS() ? R.FullView_ExitMac : R.FullView_Exit), () => _vm.IsFullView = false);
         var row = Ui.Columns((Ui.Auto, title), (Ui.Star, _fullViewTimes), (Ui.Auto, close));
         row.ColumnSpacing = 16;
         return new Border
@@ -492,7 +492,7 @@ internal sealed class MainWindow : Window
                     _vm.IsFullView = false;
                     return Task.CompletedTask;
                 },
-                (Key.F11, false, false, false) => () =>
+                (Key.F11, false, false, false) or (Key.F, true, false, false) when e.Key == Key.F11 || IsMacFullViewChord(e) => () =>
                 {
                     _vm.IsFullView = !_vm.IsFullView;
                     return Task.CompletedTask;
@@ -505,6 +505,10 @@ internal sealed class MainWindow : Window
                 await action();
             }
         };
+
+    /// <summary>Ctrl+Cmd+F – the macOS full screen chord (F11 is the system's Show Desktop there).</summary>
+    private static bool IsMacFullViewChord(KeyEventArgs e) =>
+        OperatingSystem.IsMacOS() && e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.KeyModifiers.HasFlag(KeyModifiers.Meta);
 
     private bool _settingsOpen;
 

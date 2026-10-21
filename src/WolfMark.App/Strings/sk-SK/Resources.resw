@@ -387,6 +387,12 @@
   <data name="FullView_Exit" xml:space="preserve">
     <value>Ukončiť celé okno (F11, Esc)</value>
   </data>
+  <data name="FullView_EnterMac" xml:space="preserve">
+    <value>Celé okno (⌃⌘F)</value>
+  </data>
+  <data name="FullView_ExitMac" xml:space="preserve">
+    <value>Ukončiť celé okno (⌃⌘F, Esc)</value>
+  </data>
   <data name="FullView_Title" xml:space="preserve">
     <value>Celé okno</value>
   </data>

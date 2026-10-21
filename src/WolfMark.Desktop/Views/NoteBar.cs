@@ -127,7 +127,7 @@ internal sealed class NoteBar : UserControl
         // Three groups that wrap as a whole on narrow windows (ToolbarPanel): first the mode group drops to a
         // second row, then the formatting group – never a hidden button.
         state.Width = 170;
-        var fullView = Ui.IconButton(Icons.Create(Icons.Expand, 14, Palette.InkTertiary), Strings.Get(R.FullView_Enter), () => vm.IsFullView = true);
+        var fullView = Ui.IconButton(Icons.Create(Icons.Expand, 14, Palette.InkTertiary), Strings.Get(OperatingSystem.IsMacOS() ? R.FullView_EnterMac : R.FullView_Enter), () => vm.IsFullView = true);
         var left = Ui.HStack(12, tagButton, state);
         var mode = Ui.HStack(12, Ui.HStack(4, raw, formatted), fullView, add);
         mode.VerticalAlignment = VerticalAlignment.Center;

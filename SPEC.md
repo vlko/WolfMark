@@ -222,7 +222,7 @@ Správanie:
 - **Kalendárová lišta:** dni aktuálneho týždňa, pri každom dni počet záznamov a farebné prúžky tagov. Klik na deň → filtruje históriu na daný deň a otvorí jeho poslednú poznámku. Šípky/scroll posúvajú týždne.
 - **Plný kalendár:** prepnutie z lišty (tlačidlo alebo `Ctrl+Shift+C`) – rozbalí sa ako overlay alebo nahradí editor (viď 5.2).
 - **História:** virtualizovaný `ItemsRepeater`/`ListView`, nekonečný scroll (stránkovanie z indexu), farebný pruh tagu, dátum, čas, titulok, náhľad. Filtrovanie podľa tagu (klik na tag) a dňa. Klik → otvorí v editore.
-- **Celé okno** (`F11` alebo tlačidlo pred `+`): ostane dátum, pod ním riadok s časom vytvorenia a úpravy a `×`, z hlavičky len formátovanie a editor; tagy, kalendár, história a časy vľavo zmiznú. `F11`/`Esc`/`×` vráti rozloženie, režim sa nepamätá.
+- **Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, alebo tlačidlo pred `+`): ostane dátum, pod ním riadok s časom vytvorenia a úpravy a `×`, z hlavičky len formátovanie a editor; tagy, kalendár, história a časy vľavo zmiznú. `F11`/`Esc`/`×` vráti rozloženie, režim sa nepamätá.
 - **Vyhľadávanie** (`Ctrl+K`, command-palette štýl): hybridné hľadanie, výsledky so zvýraznením, filter `#tag`, `@2026-10`.
 
 ### 4.6 Nastavenia

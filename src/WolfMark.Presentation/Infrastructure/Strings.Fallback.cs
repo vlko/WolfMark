@@ -129,6 +129,8 @@ internal static partial class Strings
         [R.Editor_Modified] = "edited {0}",
         [R.FullView_Enter] = "Full view (F11)",
         [R.FullView_Exit] = "Leave full view (F11, Esc)",
+        [R.FullView_EnterMac] = "Full view (⌃⌘F)",
+        [R.FullView_ExitMac] = "Leave full view (⌃⌘F, Esc)",
         [R.FullView_Title] = "Full view",
         [R.FullView_Created] = "created {0}",
         [R.Editor_Continues] = "continues",

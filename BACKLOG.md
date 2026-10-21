@@ -97,36 +97,42 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M4-02 – Inkrementálny markdown lexer.** Riadkový lexer so stavom (bloky kódu, front matter), výstup = rozsahy tokenov.
   *Stav:* Test: úprava riadku = 1 retokenizovaný riadok.
   *AK:* Úprava jedného riadku prepočíta len dotknuté riadky (test); benchmark < 1 ms na riadok.
-- 🟨 **M4-03 – Raw režim so zvýraznením.**
-  *Stav:* Implementované, neoverené na Windows.
+- ✅ **M4-03 – Raw režim so zvýraznením.**
+  *Stav:* Vlastný Win2D editor (ADR 0007); overené na Windows (kláves → snímka p50 2,5 ms na 5 000 riadkoch).
   *AK:* Písanie bez viditeľného oneskorenia; zvýraznenie dobehne asynchrónne.
 - 🟨 **M4-04 – Formátovaný (live preview) režim.** Skrývanie značiek mimo aktívneho riadku, klikateľné checkboxy, inline obrázky, tabuľky.
-  *Stav:* Skrývanie značiek mimo aktívneho riadku, klikateľné checkboxy; inline obrázky a tabuľky nie.
+  *Stav:* Skrývanie značiek (na riadku s kurzorom ako čipy), checkbox klikom, obrázky ako blok, prepnutie `Ctrl+E` drží pohľad – overené na Windows. **Chýbajú tabuľky.**
   *AK:* Prepnutie `Ctrl+E` zachová kurzor a scroll; text sa nemení (round-trip bez strát).
 - 🟨 **M4-05 – Autosave a stav ukladania.** Debounce, uloženie pri strate fokusu/zatvorení, indikátor stavu.
-  *Stav:* Debounce 800 ms, flush pri strate fokusu/deaktivácii/zatvorení, indikátor stavu.
+  *Stav:* Debounce 800 ms, flush pri strate fokusu/deaktivácii/zatvorení, indikátor stavu. Test „zabitie procesu“ nespravený.
   *AK:* Zabitie procesu po 1 s nečinnosti nestratí text.
 - ✅ **M4-06 – Editovacie skratky.** Bold/italic/link, checkbox, odsadenie, pokračovanie zoznamu.
-  *Stav:* Logika v `MarkdownEditing` + testy; napojenie v editore neoverené na Windows.
-- 🟨 **M4-07 – Vkladanie obrázkov** do `assets/` dňa.
-  *Stav:* Vloženie zo schránky (bitmapa aj súbory), drag & drop súborov, náhľad pod riadkom (SpaceAfter + overlay), Ctrl+klik otvorí súbor; len relatívne cesty v koreni poznámok. Overiť na Windows.
+  *Stav:* Logika v `MarkdownEditing` + testy; v editore overené na Windows, kontextové menu s typom riadku a formátmi.
+- ✅ **M4-07 – Vkladanie obrázkov** do `assets/` dňa.
+  *Stav:* Schránka (bitmapa aj súbory), drag & drop (alt text = názov súboru s príponou), náhľad; riadok len s obrázkom je blok (kurzor pred/za, šípky ho preskočia, text vedľa ide na nový riadok), dvojklik otvorí originál, hover nápoveda; len relatívne cesty v koreni poznámok. Overené na Windows.
 - 🟨 **M4-08 – Externé zmeny otvoreného súboru** (tichý reload / porovnanie pri konflikte).
   *Stav:* Tichý reload / InfoBar „Načítať z disku | Ponechať moje“; diff/merge UI nie.
 - 🟨 **M4-09 – Hlavné okno v1.** Hlavička poznámky (výber tagu s farbou, čas, prepínač režimu, `+`), `Ctrl+N`, otvorenie poslednej poznámky pri štarte, vytvorenie súboru až po prvom znaku.
-  *Stav:* Súbor vzniká až prvým znakom; posledná poznámka sa otvára bez indexu. Štart < 300 ms nezmeraný.
+  *Stav:* Hotové; okno sa ukáže hneď, posledná poznámka sa načíta potom (~0,1 s). Štart < 300 ms nezmeraný.
   *AK:* Od spustenia po písanie < 300 ms (AOT, SSD).
+- ✅ **M4-10 – Veľkosť písma a farebné emotikony.** `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+koliesko (podľa znaku na rozložení), uloží sa do nastavení; farebné emotikony v Nastaveniach (Windows).
+  *Stav:* Windows aj Avalonia (v0.3.2). Rýchly zoom kolieskom padal (natívny pád WinUI); obídené – zoom sa sčíta na jeden relayout, chyby kreslenia sa logujú („Editor drawing failed“). Skutočná príčina neznáma, čaká na záznam v logu.
+- ✅ **M4-11 – Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, tlačidlo pred `+`): len dátum, riadok s časmi a `×`, formátovanie a editor.
+  *Stav:* Windows overené; Avalonia skompilované, na Macu neoverené.
+- ⬜ **M4-12 – Prístupnosť editora** (UI Automation text pattern pre čítačky obrazovky) – nový Win2D editor ju zatiaľ nemá (známe obmedzenie v0.3.1).
 
 ## M5 – História záznamov 🟢
 
-- 🟨 **M5-01 – Virtualizovaný zoznam** pod editorom s posuvným oddeľovačom, farebný pruh tagu, dátum, čas, titulok, náhľad; stránkovanie z indexu.
+- ✅ **M5-01 – Virtualizovaný zoznam** pod editorom s posuvným oddeľovačom, farebný pruh tagu, dátum, čas, titulok, náhľad; stránkovanie z indexu.
+  *Stav:* Overené na Windows (2026-10-21): 10 000 poznámok z `tools/gen-history.py`, scroll kolieskom, posuvníkom aj s filtrom tagu bez zaseknutia UI (`--trace-editor`: žiadny UiStall ≥ 20 ms počas scrollu; štyri len pri štarte).
   *AK:* Plynulý scroll cez 10 000 položiek.
-- 🟨 **M5-02 – Filtre** podľa tagu a dňa; živá aktualizácia pri nových/zmenených poznámkach.
-- 🟨 **M5-03 – Vyhľadávanie `Ctrl+K`** (command paleta nad `SearchAsync`), filtre `#tag`, `@YYYY-MM`.
+- ✅ **M5-02 – Filtre** podľa tagu a dňa; živá aktualizácia pri nových/zmenených poznámkach.
+- ✅ **M5-03 – Vyhľadávanie `Ctrl+K`** (command paleta nad `SearchAsync`), filtre `#tag`, `@YYYY-MM`.
 - 🟨 **M5-04 – Kontextové akcie:** zmena tagu, otvoriť v Prieskumníkovi, zmazať, kopírovať odkaz.
 
 ## M6 – Kalendár v UI 🟢
 
-- 🟨 **M6-01 – Kompaktná týždenná lišta** pod title barom: dni s počtom záznamov a farebnými prúžkami tagov, navigácia týždňov, dnešok zvýraznený.
+- ✅ **M6-01 – Kompaktná týždenná lišta** pod title barom: dni s počtom záznamov a farebnými prúžkami tagov, navigácia týždňov, dnešok zvýraznený.
   *Stav:* Týždenný pás podľa ADR 0004 (hranaté bunky, šrafované minulé dni, rám dneška, štítok).
 - 🟨 **M6-02 – Plný kalendár (ročný pohľad)** podľa SPEC §5.2: mriežka mesiacov s číslami týždňov, bunky vyplnené farbami tagov, dnešok, legenda tagov s filtrovaním.
   *AK:* Plynulý scroll celým rokom; klik na deň otvorí deň.
@@ -164,7 +170,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   Shell_NotifyIcon + subclass okna), menu Zobraziť / Nastavenia… / Ukončiť.
 - ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
-  *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor, Claude Code, rebuild indexu.
+  *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu, skratka rýchleho zápisu (M8-01).
 - ⬜ **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).
   *Stav:* Zmena farby a štítkov tagu je hotová; hromadné premenovanie/zlúčenie nie.
 - 🟨 **M8-06 – Lokalizácia** sk/en.

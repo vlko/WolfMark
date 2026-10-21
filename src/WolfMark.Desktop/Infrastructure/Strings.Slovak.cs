@@ -131,6 +131,8 @@ internal static partial class DesktopStrings
         [R.Editor_Modified] = "upravené {0}",
         [R.FullView_Enter] = "Celé okno (F11)",
         [R.FullView_Exit] = "Ukončiť celé okno (F11, Esc)",
+        [R.FullView_EnterMac] = "Celé okno (⌃⌘F)",
+        [R.FullView_ExitMac] = "Ukončiť celé okno (⌃⌘F, Esc)",
         [R.FullView_Title] = "Celé okno",
         [R.FullView_Created] = "vytvorené {0}",
         [R.Editor_Continues] = "pokračuje",
