@@ -36,9 +36,10 @@
 Kalendár nie je vyskakovacie okno. `CalendarPanel` je súčasťou hlavného okna: zbalený je to týždenný
 pás v hranatých zátvorkách (minulé dni šrafované, štítok pod pásom), rozbalený (Ctrl+Shift+C, stav sa
 pamätá) mesačná mriežka s bublinami dní, čísiel týždňov a štítkami medzi týždňami. Šípky posúvajú
-týždeň resp. mesiac. Minulé dni sú šrafované v páse aj v mriežke (šrafy `\` každé 4 px, proti hraniciam pásov
-tagov); farby tagov sú v kalendári stlmené k farbe prázdnej bunky (svetlá téma o 40 %, tmavá o 25 %).
-Číslo minulého dňa so záznamom má plnú farbu prvého tagu o 60 % tmavšiu (svetlá téma) resp. o 80 %
+týždeň resp. mesiac. Minulé dni sú šrafované len v týždennom páse (šrafy `\` každé 4 px, proti hraniciam pásov
+tagov) a farby tagov sú v ňom stlmené k farbe prázdnej bunky (svetlá téma o 40 %, tmavá o 25 %);
+mesačná mriežka má plné farby bez šrafov (`full_calendar.png`).
+Číslo šrafovaného minulého dňa so záznamom má plnú farbu prvého tagu o 60 % tmavšiu (svetlá téma) resp. o 80 %
 svetlejšiu (tmavá) – jemný odtieň tagu na šrafovaní nebolo vidieť; minulý deň bez záznamu má sivé
 číslo, budúci svetlosivé.
 

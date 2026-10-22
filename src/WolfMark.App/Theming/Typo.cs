@@ -162,6 +162,7 @@ internal static class Glyphs
     public const string Code = "";
     public const string Bold = "";
     public const string Italic = "";
+    public const string Strikethrough = "";
     public const string Today = "";
     public const string Cloud = "";
     public const string Edit = "";

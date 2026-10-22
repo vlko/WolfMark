@@ -43,17 +43,19 @@ internal sealed class TagBrushes(TagStore store)
     /// Fill for a day: one colour, or diagonal bands proportional to the note count per tag
     /// (SPEC §5.2). Untagged notes use the neutral colour.
     /// </summary>
-    public Brush DayFill(IReadOnlyList<TagCount> tags, Brush empty)
+    /// <param name="soft">The week band's softer colours (<see cref="Palette.CalendarTint"/>); the month grid shows the full ones.</param>
+    public Brush DayFill(IReadOnlyList<TagCount> tags, Brush empty, bool soft)
     {
         if (tags.Count == 0)
         {
             return empty;
         }
 
-        // Softer than the tag colour elsewhere (Palette.CalendarTint): a week of full colours was loud.
+        // The week band is softer than the tag colour elsewhere (Palette.CalendarTint): a week of full colours was loud.
+        Color ColorOf(string tag) => soft ? Palette.CalendarTint(store.GetColor(tag.Length == 0 ? null : tag)) : Palette.ToColor(store.GetColor(tag.Length == 0 ? null : tag));
         if (tags.Count == 1)
         {
-            return new SolidColorBrush(Palette.CalendarTint(store.GetColor(tags[0].Tag.Length == 0 ? null : tags[0].Tag)));
+            return soft ? new SolidColorBrush(ColorOf(tags[0].Tag)) : BrushOf(tags[0].Tag.Length == 0 ? null : tags[0].Tag);
         }
 
         var total = (double)tags.Sum(t => t.Count);
@@ -61,7 +63,7 @@ internal sealed class TagBrushes(TagStore store)
         var offset = 0.0;
         foreach (var t in tags.Take(4))
         {
-            var color = Palette.CalendarTint(store.GetColor(t.Tag.Length == 0 ? null : t.Tag));
+            var color = ColorOf(t.Tag);
             var next = offset + (t.Count / total);
             brush.GradientStops.Add(new GradientStop { Color = color, Offset = offset });
             brush.GradientStops.Add(new GradientStop { Color = color, Offset = next });

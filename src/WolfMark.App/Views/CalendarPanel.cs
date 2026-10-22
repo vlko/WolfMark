@@ -139,7 +139,7 @@ internal sealed partial class CalendarPanel : UserControl
         for (var i = 0; i < 7; i++)
         {
             cells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var cell = new CalendarDayCell(_brushes, height: 64, numberSize: 30);
+            var cell = new CalendarDayCell(_brushes, height: 64, numberSize: 30, weekBand: true);
             var index = i;
             cell.Tapped += (_, e) =>
             {
@@ -299,7 +299,7 @@ internal sealed partial class CalendarPanel : UserControl
             for (var i = 0; i < 7; i++)
             {
                 var vmCell = week.Days[i];
-                var cell = new CalendarDayCell(_brushes, height: 46, numberSize: 19);
+                var cell = new CalendarDayCell(_brushes, height: 46, numberSize: 19, weekBand: false);
                 cell.Update(State(vmCell));
                 System.ComponentModel.PropertyChangedEventHandler handler = (_, _) => cell.Update(State(vmCell));
                 vmCell.PropertyChanged += handler;

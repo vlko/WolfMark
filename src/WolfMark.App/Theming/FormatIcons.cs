@@ -25,10 +25,11 @@ internal static class FormatIcons
         EditorCommand.Paragraph => Text("¶", textSize + 1, textNudge),
         EditorCommand.Quote => Text("“", textSize + 5, textNudge + 3),
         EditorCommand.NumberedList => Text("1.", textSize, textNudge),
-        EditorCommand.Strikethrough => Text("S\u0336", textSize + 1, textNudge),
         EditorCommand.BulletList => Glyph("\uE8FD", glyphSize),
         EditorCommand.Bold => Glyph(Glyphs.Bold, glyphSize),
         EditorCommand.Italic => Glyph(Glyphs.Italic, glyphSize),
+        // The icon font's glyph, like B and I: "S" + U+0336 is not in Barlow and the stroke came from a fallback font, beside the S.
+        EditorCommand.Strikethrough => Glyph(Glyphs.Strikethrough, glyphSize),
         EditorCommand.Code => Glyph(Glyphs.Code, glyphSize),
         EditorCommand.Link => Glyph(Glyphs.Link, glyphSize),
         EditorCommand.Task => Glyph(Glyphs.CheckboxComposite, glyphSize),

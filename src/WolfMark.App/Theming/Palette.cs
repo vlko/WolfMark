@@ -181,7 +181,7 @@ internal static class Palette
     public static Color PastInk(TagColor c) => IsDark ? Blend(ToColor(c), Microsoft.UI.Colors.White, 0.8) : Blend(ToColor(c), Microsoft.UI.Colors.Black, 0.6);
 
     /// <summary>
-    /// A tag colour as the calendar shows it, softer than in the rail and legend: 40 % of the way to the empty cell in
+    /// A tag colour as the week band shows it, softer than in the month grid, rail and legend: 40 % of the way to the empty cell in
     /// the light theme, 25 % in the dark one (more turned the colours muddy there).
     /// </summary>
     public static Color CalendarTint(TagColor c) => Blend(ToColor(c), EmptyCell.Color, IsDark ? 0.25 : 0.4);
