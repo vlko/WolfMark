@@ -645,6 +645,12 @@
   <data name="Settings_Files" xml:space="preserve">
     <value>Markdown súbory</value>
   </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>Všeobecné</value>
+  </data>
+  <data name="Settings_IndexDiagnostics" xml:space="preserve">
+    <value>Index a diagnostika</value>
+  </data>
   <data name="Settings_FileAssociation" xml:space="preserve">
     <value>Otvárať .md súbory vo WolfMark</value>
   </data>

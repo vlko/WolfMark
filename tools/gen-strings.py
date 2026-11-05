@@ -214,6 +214,8 @@ S = {
  "ExtFile_DeletedTitle": ("The file was deleted or moved", "Súbor bol zmazaný alebo presunutý"),
  "ExtFile_DeletedMessage": ("Save writes it again to the same place.", "Uložením sa zapíše znova na to isté miesto."),
  "Settings_Files": ("Markdown files", "Markdown súbory"),
+ "Settings_General": ("General", "Všeobecné"),
+ "Settings_IndexDiagnostics": ("Index & diagnostics", "Index a diagnostika"),
  "Settings_FileAssociation": ("Open .md files in WolfMark", "Otvárať .md súbory vo WolfMark"),
  "Settings_FileAssociationHint": ("Windows asks you to confirm: choose WolfMark for .md in Default apps.", "Windows chce voľbu potvrdiť: v Predvolených aplikáciách vyber pre .md WolfMark."),
  "Settings_FileAssociationHintDesktop": ("WolfMark becomes the default app for Markdown files.", "WolfMark sa stane predvolenou aplikáciou pre Markdown súbory."),

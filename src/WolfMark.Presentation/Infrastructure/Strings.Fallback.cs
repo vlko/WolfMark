@@ -215,6 +215,8 @@ internal static partial class Strings
         [R.ExtFile_DeletedTitle] = "The file was deleted or moved",
         [R.ExtFile_DeletedMessage] = "Save writes it again to the same place.",
         [R.Settings_Files] = "Markdown files",
+        [R.Settings_General] = "General",
+        [R.Settings_IndexDiagnostics] = "Index & diagnostics",
         [R.Settings_FileAssociation] = "Open .md files in WolfMark",
         [R.Settings_FileAssociationHint] = "Windows asks you to confirm: choose WolfMark for .md in Default apps.",
         [R.Settings_FileAssociationHintDesktop] = "WolfMark becomes the default app for Markdown files.",

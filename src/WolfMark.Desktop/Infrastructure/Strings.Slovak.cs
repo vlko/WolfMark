@@ -217,6 +217,8 @@ internal static partial class DesktopStrings
         [R.ExtFile_DeletedTitle] = "Súbor bol zmazaný alebo presunutý",
         [R.ExtFile_DeletedMessage] = "Uložením sa zapíše znova na to isté miesto.",
         [R.Settings_Files] = "Markdown súbory",
+        [R.Settings_General] = "Všeobecné",
+        [R.Settings_IndexDiagnostics] = "Index a diagnostika",
         [R.Settings_FileAssociation] = "Otvárať .md súbory vo WolfMark",
         [R.Settings_FileAssociationHint] = "Windows chce voľbu potvrdiť: v Predvolených aplikáciách vyber pre .md WolfMark.",
         [R.Settings_FileAssociationHintDesktop] = "WolfMark sa stane predvolenou aplikáciou pre Markdown súbory.",

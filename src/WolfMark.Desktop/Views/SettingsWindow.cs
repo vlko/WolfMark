@@ -31,8 +31,8 @@ internal sealed class SettingsWindow : Window
         var host = vm.Host;
         var s = host.Settings.Current;
         Title = Strings.Get(R.Settings_Title);
-        Width = 620;
-        Height = 760;
+        Width = 820;
+        Height = 640;
         Background = Palette.WindowTint;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
@@ -195,45 +195,91 @@ internal sealed class SettingsWindow : Window
             Close();
         };
 
-        var form = Ui.VStack(
-            10,
-            Section(Strings.Get(R.Settings_Notes)),
-            rootText,
-            Ui.HStack(8, browse),
-            movePanel,
-            Section(Strings.Get(R.Settings_Appearance)),
-            Field(Strings.Get(R.Settings_Theme), theme),
-            Field(Strings.Get(R.Settings_Language), language),
-            closeToTray,
-            Section(Strings.Get(R.Settings_Files)),
-            fileAssociation,
-            associationHint,
-            Section(Strings.Get(R.Settings_Editor)),
-            lineNumbers,
-            monospace,
-            Field(Strings.Get(R.Settings_MonoFont), monoFont),
-            Field(Strings.Get(R.Settings_FontFamily), font),
-            Field(Strings.Get(R.Settings_FontSize), fontSize),
-            Field(Strings.Get(R.Settings_DefaultMode), mode),
-            Section(Strings.Get(R.Settings_ClaudeCode)),
-            ccEnabled,
-            Field(Strings.Get(R.Settings_ClaudePath), ccPath),
-            ccRedact,
-            ccSyncNow,
-            Section(Strings.Get(R.Settings_Index)),
-            rebuild);
-        form.Margin = new Thickness(24, 16, 24, 16);
+        var pages = new (string Icon, string Title, StackPanel Page)[]
+        {
+            (Icons.Settings, Strings.Get(R.Settings_General), Ui.VStack(
+                10,
+                Section(Strings.Get(R.Settings_Notes)),
+                rootText,
+                Ui.HStack(8, browse),
+                movePanel,
+                Field(Strings.Get(R.Settings_Language), language),
+                closeToTray,
+                Section(Strings.Get(R.Settings_Files)),
+                fileAssociation,
+                associationHint)),
+            (Icons.Appearance, Strings.Get(R.Settings_Appearance), Ui.VStack(
+                10,
+                Field(Strings.Get(R.Settings_Theme), theme))),
+            (Icons.Pencil, Strings.Get(R.Settings_Editor), Ui.VStack(
+                10,
+                lineNumbers,
+                monospace,
+                Field(Strings.Get(R.Settings_MonoFont), monoFont),
+                Field(Strings.Get(R.Settings_FontFamily), font),
+                Field(Strings.Get(R.Settings_FontSize), fontSize),
+                Field(Strings.Get(R.Settings_DefaultMode), mode))),
+            (Icons.Code, Strings.Get(R.Settings_ClaudeCode), Ui.VStack(
+                10,
+                ccEnabled,
+                Field(Strings.Get(R.Settings_ClaudePath), ccPath),
+                ccRedact,
+                ccSyncNow)),
+            (Icons.Sync, Strings.Get(R.Settings_Index), Ui.VStack(
+                10,
+                rebuild)),
+        };
         var buttons = Ui.HStack(8, restartRow, cancel, save);
         buttons.HorizontalAlignment = HorizontalAlignment.Right;
         buttons.Margin = new Thickness(24, 10);
         var root = new DockPanel();
         DockPanel.SetDock(buttons, Dock.Bottom);
         root.Children.Add(buttons);
-        root.Children.Add(new ScrollViewer { Content = form });
+        root.Children.Add(Categories(pages));
         Content = root;
     }
 
     private Task SaveAsync() => _vm.Host.SaveSettingsAsync();
+
+    /// <summary>The category last shown – the window opens on it again while the app runs.</summary>
+    private static int _lastCategory;
+
+    /// <summary>Categories in a column on the left (as the Windows app), the chosen one's page on the right.</summary>
+    private static Grid Categories((string Icon, string Title, StackPanel Page)[] pages)
+    {
+        var host = new ScrollViewer { Padding = new Thickness(20, 16, 24, 16) };
+        var items = new List<(Button Button, Border Bar)>();
+        void Show(int index)
+        {
+            _lastCategory = index;
+            host.Content = pages[index].Page;
+            host.Offset = default;
+            for (var k = 0; k < items.Count; k++)
+            {
+                items[k].Button.Background = k == index ? Palette.SubtleFill : Palette.Transparent;
+                items[k].Bar.Background = k == index ? Palette.Accent : Palette.Transparent;
+            }
+        }
+
+        var nav = new StackPanel { Spacing = 2, Margin = new Thickness(12, 16, 8, 16) };
+        for (var k = 0; k < pages.Length; k++)
+        {
+            var index = k;
+            var label = Ui.HStack(10, Icons.Create(pages[k].Icon, 16, Palette.InkSecondary), Typo.Body(pages[k].Title, 14));
+            var button = Ui.FlatButton(label, Palette.Transparent);
+            button.HorizontalAlignment = HorizontalAlignment.Stretch;
+            button.HorizontalContentAlignment = HorizontalAlignment.Left;
+            button.Padding = new Thickness(10, 7);
+            button.Click += (_, _) => Show(index);
+            var bar = new Border { Width = 3, Margin = new Thickness(0, 6) };
+            items.Add((button, bar));
+            nav.Children.Add(Ui.Columns((Ui.Px(3), bar), (Ui.Star, button)));
+        }
+
+        var layout = Ui.Columns((Ui.Px(210), nav), (Ui.Px(1), new Border { Width = 1, Background = Palette.Divider }), (Ui.Star, host));
+        Show(Math.Clamp(_lastCategory, 0, pages.Length - 1));
+        return layout;
+    }
 
     private static ComboBox Combo(string[] items, int selected) => new() { ItemsSource = items, SelectedIndex = selected, MinWidth = 220 };
 

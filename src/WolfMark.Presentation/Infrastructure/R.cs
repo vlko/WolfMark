@@ -214,6 +214,8 @@ internal static class R
     public const string ExtFile_DeletedTitle = nameof(ExtFile_DeletedTitle);
     public const string ExtFile_DeletedMessage = nameof(ExtFile_DeletedMessage);
     public const string Settings_Files = nameof(Settings_Files);
+    public const string Settings_General = nameof(Settings_General);
+    public const string Settings_IndexDiagnostics = nameof(Settings_IndexDiagnostics);
     public const string Settings_FileAssociation = nameof(Settings_FileAssociation);
     public const string Settings_FileAssociationHint = nameof(Settings_FileAssociationHint);
     public const string Settings_FileAssociationHintDesktop = nameof(Settings_FileAssociationHintDesktop);

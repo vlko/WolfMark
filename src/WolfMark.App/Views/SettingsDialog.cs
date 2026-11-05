@@ -210,62 +210,73 @@ internal static class SettingsDialog
             Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
         });
 
-        var content = Ui.Ui.VStack(
-            10,
-            restartBar,
-            Section(Strings.Get(R.Settings_Notes)),
-            Ui.Ui.HStack(12, browse, rootText),
-            movePanel,
-            Section(Strings.Get(R.Settings_Appearance)),
-            Field(Strings.Get(R.Settings_Theme), theme),
-            Field(Strings.Get(R.Settings_AppIcon), new ScrollViewer
-            {
-                Content = iconRow,
-                HorizontalScrollMode = ScrollMode.Enabled,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollMode = ScrollMode.Disabled,
-            }),
-            Field(Strings.Get(R.Settings_Language), language),
-            Section(Strings.Get(R.Settings_System)),
-            startWithWindows,
-            closeToTray,
-            Section(Strings.Get(R.Settings_Files)),
-            fileAssociation,
-            associationHint,
-            defaultApps,
-            Section(Strings.Get(R.Settings_Editor)),
-            lineNumbers,
-            colorEmoji,
-            monospace,
-            Field(Strings.Get(R.Settings_MonoFont), monoFont.Element),
-            Field(Strings.Get(R.Settings_FontFamily), font),
-            Field(Strings.Get(R.Settings_FontSize), fontSize),
-            Field(Strings.Get(R.Settings_DefaultMode), mode),
-            Section(Strings.Get(R.Settings_ClaudeCode)),
-            ccEnabled,
-            ccPath,
-            ccExcluded,
-            Ui.Ui.HStack(16, ccRedact, ccWatch),
-            Ui.Ui.HStack(12, ccInterval, ccSyncNow),
-            Section(Strings.Get(R.Settings_Index)),
-            semantic,
-            rebuild,
-            paths,
-            Section(Strings.Get(R.Settings_Diagnostics)),
-            diagnosticText,
-            copyDiagnostics,
-            Field(Strings.Get(R.Settings_WindowRendering), rendering),
-            testNotice);
+        var iconPicker = new ScrollViewer
+        {
+            Content = iconRow,
+            HorizontalScrollMode = ScrollMode.Enabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollMode = ScrollMode.Disabled,
+        };
+        var pages = new (string Glyph, string Title, StackPanel Page)[]
+        {
+            (Glyphs.Settings, Strings.Get(R.Settings_General), Ui.Ui.VStack(
+                10,
+                Section(Strings.Get(R.Settings_Notes)),
+                Ui.Ui.HStack(12, browse, rootText),
+                movePanel,
+                Field(Strings.Get(R.Settings_Language), language),
+                Section(Strings.Get(R.Settings_System)),
+                startWithWindows,
+                closeToTray,
+                Section(Strings.Get(R.Settings_Files)),
+                fileAssociation,
+                associationHint,
+                defaultApps)),
+            (Glyphs.Appearance, Strings.Get(R.Settings_Appearance), Ui.Ui.VStack(
+                10,
+                Field(Strings.Get(R.Settings_Theme), theme),
+                Field(Strings.Get(R.Settings_AppIcon), iconPicker),
+                Field(Strings.Get(R.Settings_WindowRendering), rendering))),
+            (Glyphs.Edit, Strings.Get(R.Settings_Editor), Ui.Ui.VStack(
+                10,
+                lineNumbers,
+                colorEmoji,
+                monospace,
+                Field(Strings.Get(R.Settings_MonoFont), monoFont.Element),
+                Field(Strings.Get(R.Settings_FontFamily), font),
+                Field(Strings.Get(R.Settings_FontSize), fontSize),
+                Field(Strings.Get(R.Settings_DefaultMode), mode))),
+            (Glyphs.Code, Strings.Get(R.Settings_ClaudeCode), Ui.Ui.VStack(
+                10,
+                ccEnabled,
+                ccPath,
+                ccExcluded,
+                Ui.Ui.HStack(16, ccRedact, ccWatch),
+                Ui.Ui.HStack(12, ccInterval, ccSyncNow))),
+            (Glyphs.Sync, Strings.Get(R.Settings_IndexDiagnostics), Ui.Ui.VStack(
+                10,
+                Section(Strings.Get(R.Settings_Index)),
+                semantic,
+                rebuild,
+                paths,
+                Section(Strings.Get(R.Settings_Diagnostics)),
+                diagnosticText,
+                copyDiagnostics,
+                testNotice)),
+        };
 
         var dialog = new ContentDialog
         {
             XamlRoot = root,
             Title = $"{Strings.Get(R.Settings_Title)} · {DiagnosticInfo.ShortVersion}",
-            Content = new ScrollViewer { Content = content, MaxHeight = 620, Padding = new Thickness(0, 0, 16, 0) },
+            Content = Categories(pages, restartBar),
             PrimaryButtonText = "OK",
             CloseButtonText = Strings.Get(R.Common_Cancel),
             DefaultButton = ContentDialogButton.Primary,
         };
+        // The default dialog is at most 548 px wide – too narrow for the category list beside the page.
+        dialog.Resources["ContentDialogMaxWidth"] = 900.0;
+        dialog.Resources["ContentDialogMaxHeight"] = 900.0;
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
@@ -352,6 +363,61 @@ internal static class SettingsDialog
         {
             await ShowRestartAsync(root, vm);
         }
+    }
+
+    /// <summary>The category last shown – the dialog opens on it again while the app runs.</summary>
+    private static int _lastCategory;
+
+    /// <summary>
+    /// Categories in a column on the left (as Windows Settings), the chosen one's page on the right. A fixed size,
+    /// so the dialog does not jump when switching; the restart notice stays above every page.
+    /// </summary>
+    private static Grid Categories((string Glyph, string Title, StackPanel Page)[] pages, InfoBar restartBar)
+    {
+        var host = new ScrollViewer { Padding = new Thickness(20, 0, 16, 0) };
+        var items = new List<(Border Fill, Microsoft.UI.Xaml.Shapes.Rectangle Bar)>();
+        void Show(int index)
+        {
+            _lastCategory = index;
+            host.Content = pages[index].Page;
+            host.ChangeView(null, 0, null, disableAnimation: true);
+            for (var k = 0; k < items.Count; k++)
+            {
+                // The fill is on a frame around the button: a button's resources must not change after styling.
+                items[k].Fill.Background = k == index ? Palette.SubtleFill : Palette.Transparent;
+                items[k].Bar.Fill = k == index ? Palette.Accent : Palette.Transparent;
+            }
+        }
+
+        var nav = new StackPanel { Spacing = 2 };
+        for (var k = 0; k < pages.Length; k++)
+        {
+            var index = k;
+            var label = Ui.Ui.HStack(10, Typo.Icon(pages[k].Glyph, 14, Palette.InkSecondary), Typo.Body(pages[k].Title, 14));
+            var button = new Button
+            {
+                Content = label,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(10, 7, 10, 7),
+                CornerRadius = Radius.None,
+            };
+            button.StyleButton(Palette.Transparent, Palette.Ink);
+            button.Click += (_, _) => Show(index);
+            var bar = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = 3, Margin = new Thickness(0, 6, 0, 6) };
+            var fill = new Border { Child = Ui.Ui.Columns((Ui.Ui.Px(3), bar), (Ui.Ui.Star, button)), CornerRadius = Radius.Control };
+            items.Add((fill, bar));
+            nav.Children.Add(fill);
+        }
+
+        var divider = new Border { Width = 1, Background = Palette.Divider };
+        var page = Ui.Ui.Rows((Ui.Ui.Auto, restartBar), (Ui.Ui.Star, host));
+        restartBar.Margin = new Thickness(20, 0, 16, 8);
+        var layout = Ui.Ui.Columns((Ui.Ui.Px(200), nav), (Ui.Ui.Px(1), divider), (Ui.Ui.Star, page));
+        layout.Width = 780;
+        layout.Height = 540;
+        Show(Math.Clamp(_lastCategory, 0, pages.Length - 1));
+        return layout;
     }
 
     private static async Task ShowRestartAsync(XamlRoot root, MainViewModel vm)

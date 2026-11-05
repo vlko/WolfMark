@@ -645,6 +645,12 @@
   <data name="Settings_Files" xml:space="preserve">
     <value>Markdown files</value>
   </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_IndexDiagnostics" xml:space="preserve">
+    <value>Index &amp; diagnostics</value>
+  </data>
   <data name="Settings_FileAssociation" xml:space="preserve">
     <value>Open .md files in WolfMark</value>
   </data>
