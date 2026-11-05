@@ -582,4 +582,79 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Exit</value>
   </data>
+  <data name="History_External" xml:space="preserve">
+    <value>external</value>
+  </data>
+  <data name="Menu_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Menu_OpenFolder" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="Menu_RemoveFromHistory" xml:space="preserve">
+    <value>Remove from history</value>
+  </data>
+  <data name="ExtFile_Created" xml:space="preserve">
+    <value>Created {0}</value>
+  </data>
+  <data name="ExtFile_Modified" xml:space="preserve">
+    <value>Modified {0}</value>
+  </data>
+  <data name="ExtFile_Words" xml:space="preserve">
+    <value>{0} words</value>
+  </data>
+  <data name="ExtFile_OpenFailed" xml:space="preserve">
+    <value>{0} could not be opened</value>
+  </data>
+  <data name="ExtFile_SaveFailed" xml:space="preserve">
+    <value>{0} could not be saved</value>
+  </data>
+  <data name="ExtFile_Missing" xml:space="preserve">
+    <value>The file {0} does not exist</value>
+  </data>
+  <data name="ExtFile_Save" xml:space="preserve">
+    <value>Save (Ctrl+S)</value>
+  </data>
+  <data name="ExtFile_SaveMac" xml:space="preserve">
+    <value>Save (⌘S)</value>
+  </data>
+  <data name="ExtFile_Badge" xml:space="preserve">
+    <value>External file · not saved on its own</value>
+  </data>
+  <data name="ExtFile_CopyMessage" xml:space="preserve">
+    <value>This file is outside your notes folder. A copy in today's notes behaves like every note: it saves on its own, has a tag and shows in the calendar. The original file stays as it is.</value>
+  </data>
+  <data name="ExtFile_CopyButton" xml:space="preserve">
+    <value>Copy to my notes</value>
+  </data>
+  <data name="ExtFile_CloseTitle" xml:space="preserve">
+    <value>Save changes to {0}?</value>
+  </data>
+  <data name="ExtFile_DontSave" xml:space="preserve">
+    <value>Don't save</value>
+  </data>
+  <data name="ExtFile_DeletedTitle" xml:space="preserve">
+    <value>The file was deleted or moved</value>
+  </data>
+  <data name="ExtFile_DeletedMessage" xml:space="preserve">
+    <value>Save writes it again to the same place.</value>
+  </data>
+  <data name="Settings_Files" xml:space="preserve">
+    <value>Markdown files</value>
+  </data>
+  <data name="Settings_FileAssociation" xml:space="preserve">
+    <value>Open .md files in WolfMark</value>
+  </data>
+  <data name="Settings_FileAssociationHint" xml:space="preserve">
+    <value>Windows asks you to confirm: choose WolfMark for .md in Default apps.</value>
+  </data>
+  <data name="Settings_FileAssociationHintDesktop" xml:space="preserve">
+    <value>WolfMark becomes the default app for Markdown files.</value>
+  </data>
+  <data name="Settings_FileAssociationDefault" xml:space="preserve">
+    <value>Default apps…</value>
+  </data>
+  <data name="Settings_FileAssociationFailed" xml:space="preserve">
+    <value>The .md file association could not be changed: {0}</value>
+  </data>
 </root>

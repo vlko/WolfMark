@@ -126,7 +126,7 @@ internal sealed partial class NoteHeaderView
             stateIcon.Foreground = editor.SaveState == SaveState.Error ? new SolidColorBrush(Microsoft.UI.Colors.IndianRed) : Palette.InkTertiary;
         });
 
-        var format = BuildFormatToggles();
+        var format = BuildFormatToggles(_editor);
         format.Bind(editor, nameof(NoteEditorViewModel.IsReadOnly), () =>
         {
             format.Opacity = editor.IsReadOnly ? 0.3 : 1;
@@ -176,9 +176,9 @@ internal sealed partial class NoteHeaderView
 
     /// <summary>
     /// Format toggles: pressed when the format is active at the caret (instead of revealing the markdown
-    /// delimiters inline); pressing an active one removes the format.
+    /// delimiters inline); pressing an active one removes the format. Also in the external file window.
     /// </summary>
-    private StackPanel BuildFormatToggles()
+    internal static StackPanel BuildFormatToggles(MarkdownEditor editor)
     {
         var toggles = new List<(EditorCommand Command, ToggleButton Button)>();
         ToggleButton Toggle(EditorCommand command, UIElement content, string tooltip)
@@ -196,7 +196,7 @@ internal sealed partial class NoteHeaderView
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, tooltip);
             button.Click += (_, _) =>
             {
-                _editor.Execute(command);
+                editor.Execute(command);
                 Sync();
             };
             toggles.Add((command, button));
@@ -228,11 +228,11 @@ internal sealed partial class NoteHeaderView
         {
             foreach (var (command, button) in toggles)
             {
-                button.IsChecked = _editor.ActiveFormats.Contains(command);
+                button.IsChecked = editor.ActiveFormats.Contains(command);
             }
         }
 
-        _editor.ActiveFormatsChanged += (_, _) => Sync();
+        editor.ActiveFormatsChanged += (_, _) => Sync();
         Sync();
         return panel;
     }
@@ -285,7 +285,7 @@ internal sealed partial class NoteHeaderView
         return button;
     }
 
-    private static ToggleButton SegmentButton(string text) => new ToggleButton
+    internal static ToggleButton SegmentButton(string text) => new ToggleButton
     {
         Content = Typo.Caps(text, 13, Palette.Ink),
         // Fixed width: RAW and FORMÁT are the same size in either state, nothing shifts when switching.

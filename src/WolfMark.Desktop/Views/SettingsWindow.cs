@@ -6,6 +6,7 @@ using Avalonia.Platform.Storage;
 using WolfMark.App.Infrastructure;
 using WolfMark.App.ViewModels;
 using WolfMark.Core.Settings;
+using WolfMark.Desktop.Infrastructure;
 using WolfMark.Desktop.Theming;
 using WolfMark.Storage;
 using WolfMark.Storage.Trash;
@@ -14,7 +15,8 @@ namespace WolfMark.Desktop.Views;
 
 /// <summary>
 /// Settings that apply off Windows (the twin of src/WolfMark.App/Views/SettingsDialog.cs, without the Windows-only
-/// parts: start with Windows, window rendering, app icon). Changes that need a restart offer one.
+/// parts: start with Windows, window rendering, app icon; the .md association is done the macOS/Linux way).
+/// Changes that need a restart offer one.
 /// </summary>
 internal sealed class SettingsWindow : Window
 {
@@ -99,6 +101,23 @@ internal sealed class SettingsWindow : Window
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Math.Max(0, Array.IndexOf(languages, s.Language)));
         var closeToTray = new ToggleSwitch { IsChecked = s.CloseToTray, Content = Strings.Get(R.Settings_CloseToTray) };
 
+        // .md files: the system's default handler is the truth – read off the UI thread (xdg-mime runs a process).
+        bool? associationWas = null;
+        var fileAssociation = new ToggleSwitch { Content = Strings.Get(R.Settings_FileAssociation), IsEnabled = false };
+        var associationHint = Typo.Body(Strings.Get(R.Settings_FileAssociationHintDesktop), 12.5, Palette.InkTertiary);
+        associationHint.TextWrapping = TextWrapping.Wrap;
+        if (DefaultHandler.IsSupported)
+        {
+            _ = Task.Run(() => DefaultHandler.IsEnabled).ContinueWith(
+                t =>
+                {
+                    associationWas = t.IsCompletedSuccessfully && t.Result;
+                    fileAssociation.IsChecked = associationWas;
+                    fileAssociation.IsEnabled = true;
+                },
+                TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
         var lineNumbers = new ToggleSwitch { IsChecked = s.EditorLineNumbers, Content = Strings.Get(R.Settings_LineNumbers) };
         var monospace = new ToggleSwitch { IsChecked = s.EditorMonospace, Content = Strings.Get(R.Settings_Monospace) };
         var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260 };
@@ -152,6 +171,19 @@ internal sealed class SettingsWindow : Window
             cc.Enabled = ccEnabled.IsChecked == true;
             cc.ClaudeDirectory = string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim();
             cc.RedactSecrets = ccRedact.IsChecked == true;
+            if (associationWas is { } was && (fileAssociation.IsChecked == true) != was)
+            {
+                var on = fileAssociation.IsChecked == true;
+                try
+                {
+                    await Task.Run(() => DefaultHandler.Set(on));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _vm.ErrorNotice = Strings.Format(R.Settings_FileAssociationFailed, ex.Message);
+                }
+            }
+
             await SaveAsync();
             _applyAppearance();
             if (_restartNeeded)
@@ -173,6 +205,9 @@ internal sealed class SettingsWindow : Window
             Field(Strings.Get(R.Settings_Theme), theme),
             Field(Strings.Get(R.Settings_Language), language),
             closeToTray,
+            Section(Strings.Get(R.Settings_Files)),
+            fileAssociation,
+            associationHint,
             Section(Strings.Get(R.Settings_Editor)),
             lineNumbers,
             monospace,

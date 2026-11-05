@@ -38,6 +38,7 @@ internal sealed partial class MainWindow : Window
     private readonly Border _fullViewBar;
     private readonly Button _continues;
     private readonly RowDefinition _historyRow;
+    private readonly Dictionary<string, ExternalNoteWindow> _externalWindows = new(StringComparer.OrdinalIgnoreCase);
     private bool _closing;
     private bool _exitRequested;
 
@@ -148,6 +149,7 @@ internal sealed partial class MainWindow : Window
 
         WireEditor();
         WireOverlays();
+        _vm.ExternalFileRequested += (_, path) => _ = OpenExternalAsync(path);
         WireAccelerators();
         WireLifecycle();
         ApplyTray();
@@ -215,6 +217,11 @@ internal sealed partial class MainWindow : Window
             return;
         }
 
+        if (!await CloseExternalWindowsAsync())
+        {
+            return;
+        }
+
         _exitRequested = true;
         _closing = true;
         try
@@ -235,6 +242,38 @@ internal sealed partial class MainWindow : Window
         _tray?.Dispose();
         _tray = null;
         await _host.DisposeAsync();
+    }
+
+    /// <summary>A file from outside the notes tree in its own window (or the window it already has).</summary>
+    private async Task OpenExternalAsync(string fullPath)
+    {
+        if (_externalWindows.TryGetValue(fullPath, out var open))
+        {
+            open.BringToFront();
+            return;
+        }
+
+        BringToFront();
+        var window = new ExternalNoteWindow(this, _vm, new ExternalDocumentViewModel(_host, fullPath, _vm.TouchExternalFile));
+        window.ApplyTheme(_root.ActualTheme);
+        _externalWindows[fullPath] = window;
+        window.Closed += (_, _) => _externalWindows.Remove(fullPath);
+        window.Activate();
+        await window.LoadAsync();
+    }
+
+    /// <summary>Before the app ends: each external window closes, asking about unsaved changes. False = the user cancelled.</summary>
+    private async Task<bool> CloseExternalWindowsAsync()
+    {
+        foreach (var window in _externalWindows.Values.ToList())
+        {
+            if (!await window.TryCloseAsync())
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public void BringToFront()
@@ -349,6 +388,11 @@ internal sealed partial class MainWindow : Window
         var theme = _root.ActualTheme;
         Palette.Apply(theme);
         UpdateEditorTheme();
+        foreach (var window in _externalWindows.Values)
+        {
+            window.ApplyTheme(theme);
+        }
+
         _brushes.Refresh(); // views that compute colours re-render
 
         var tb = AppWindow.TitleBar;
@@ -367,36 +411,15 @@ internal sealed partial class MainWindow : Window
 
     private void UpdateEditorTheme()
     {
-        var theme = Palette.CurrentTheme;
-        var s = _host.Settings.Current;
-        Func<string, Windows.UI.Color> tagColor = tag => Palette.ToColor(_host.Tags.GetColor(tag));
-        var baseTheme = theme == ElementTheme.Dark ? MarkdownTheme.Dark(tagColor) : MarkdownTheme.Light(tagColor);
-        // The chosen font first; XAML falls back to the defaults if it was uninstalled.
-        var monoFont = string.IsNullOrWhiteSpace(s.EditorMonoFontFamily)
-            ? baseTheme.MonoFontFamily
-            : s.EditorMonoFontFamily.Trim() + ", " + baseTheme.MonoFontFamily;
-        _editor.Theme = new MarkdownTheme
+        EditorSetup.ApplyTheme(_editor, _host);
+        foreach (var window in _externalWindows.Values)
         {
-            Text = baseTheme.Text,
-            Muted = baseTheme.Muted,
-            Heading = baseTheme.Heading,
-            Link = baseTheme.Link,
-            Code = baseTheme.Code,
-            CodeBackground = baseTheme.CodeBackground,
-            Quote = baseTheme.Quote,
-            TaskOpen = baseTheme.TaskOpen,
-            TaskDone = baseTheme.TaskDone,
-            TagColor = tagColor,
-            FontFamily = s.EditorMonospace ? monoFont : s.EditorFontFamily,
-            MonoFontFamily = monoFont,
-            FontSize = s.EditorFontSize,
-            ColorFonts = s.EditorColorEmoji,
-        };
-        _editor.ShowLineNumbers = s.EditorLineNumbers;
+            window.ApplyEditorTheme();
+        }
     }
 
     /// <summary>Ctrl + / Ctrl − / Ctrl 0 (null steps) in the editor: the font size setting, saved once the zooming stops.</summary>
-    private void ZoomEditor(int? steps)
+    internal void ZoomEditor(int? steps)
     {
         var s = _host.Settings.Current;
         var size = steps is { } n ? LocalSettings.ZoomFontSize(s.EditorFontSize, n) : LocalSettings.EditorFontSizeDefault;
@@ -424,36 +447,7 @@ internal sealed partial class MainWindow : Window
     private void WireEditor()
     {
         var editorVm = _vm.Editor;
-        _editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
-        _editor.MenuTexts = new EditorMenuTexts(
-            Strings.Get(R.Menu_Cut),
-            Strings.Get(R.Menu_Copy),
-            Strings.Get(R.Menu_Paste),
-            Strings.Get(R.Menu_SelectAll),
-            Strings.Get(R.Spell_AddToDictionary),
-            Strings.Get(R.Spell_Ignore),
-            Strings.Get(R.Spell_NoSuggestions));
-
-        _editor.CommandIcon = FormatIcons.CreateForMenu;
-        _editor.CommandText = command => command switch
-        {
-            EditorCommand.Paragraph => Strings.Get(R.Format_Paragraph),
-            EditorCommand.Heading1 => Strings.Get(R.Format_H1),
-            EditorCommand.Heading2 => Strings.Get(R.Format_H2),
-            EditorCommand.Heading3 => Strings.Get(R.Format_H3),
-            EditorCommand.Quote => Strings.Get(R.Format_Quote),
-            EditorCommand.BulletList => Strings.Get(R.Format_Bullet),
-            EditorCommand.NumberedList => Strings.Get(R.Format_Numbered),
-            EditorCommand.Task => Strings.Get(R.Format_Task),
-            EditorCommand.Bold => Strings.Get(R.Format_Bold),
-            EditorCommand.Italic => Strings.Get(R.Format_Italic),
-            EditorCommand.Strikethrough => Strings.Get(R.Format_Strike),
-            EditorCommand.Code => Strings.Get(R.Format_Code),
-            EditorCommand.Link => Strings.Get(R.Format_Link),
-            EditorCommand.CopyPlainText => Strings.Get(R.Copy_Plain),
-            EditorCommand.CopyHtml => Strings.Get(R.Copy_Html),
-            _ => command.ToString(),
-        };
+        EditorSetup.ConfigureTexts(_editor);
         _editor.Mode = editorVm.Mode == EditorMode.Raw ? MarkdownEditorMode.Raw : MarkdownEditorMode.Formatted;
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();
@@ -463,8 +457,6 @@ internal sealed partial class MainWindow : Window
             var day = editorVm.Day;
             return await Task.Run(() => _host.Engine.SaveAssetAsync(day, DateTime.Now, extension, data, CancellationToken.None));
         };
-        _editor.DropImageCaption = Strings.Get(R.Editor_DropImage);
-        _editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
         _editor.PreviewCacheDirectory = _host.Paths.PreviewCacheDirectory;
 
         editorVm.LoadRequested += (_, request) =>
@@ -531,7 +523,7 @@ internal sealed partial class MainWindow : Window
             Padding = new Thickness(10, 2, 2, 2),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 16, 26),
+            Margin = new Thickness(0, 0, 8, 13),
         };
         return badge.Bind(editor, nameof(NoteEditorViewModel.IsClaudeCode),
             () => badge.Visibility = editor.IsClaudeCode ? Visibility.Visible : Visibility.Collapsed);
@@ -712,6 +704,11 @@ internal sealed partial class MainWindow : Window
                 SavePlacement();
                 await _host.SaveSettingsAsync();
                 AppWindow.Hide();
+                return;
+            }
+
+            if (!await CloseExternalWindowsAsync())
+            {
                 return;
             }
 

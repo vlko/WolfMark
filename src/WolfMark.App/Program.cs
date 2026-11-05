@@ -8,13 +8,11 @@ using Windows.Win32.System.Com;
 namespace WolfMark.App;
 
 /// <summary>
-/// Custom entry point (M0-05): the first process owns the window; any later launch redirects its
-/// activation to it and exits, so there is always exactly one window.
+/// Custom entry point (M0-05): the first process owns the data folder and the window; any later launch on the same
+/// data (<see cref="Infrastructure.InstanceIdentity"/>) redirects its activation – with a file to open – to it and exits.
 /// </summary>
 public static class Program
 {
-    private const string InstanceKey = "WolfMark.Main";
-
     [STAThread]
     public static int Main(string[] args)
     {
@@ -39,8 +37,9 @@ public static class Program
     private static bool TryRedirectToMainInstance()
     {
         var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
-        // Demo mode runs next to the real app (its own instance key).
-        var main = AppInstance.FindOrRegisterForKey(Infrastructure.LaunchOptions.Current.IsDemo ? InstanceKey + ".Demo" : InstanceKey);
+        // Demo mode runs next to the real app: other data, another key.
+        var key = Infrastructure.InstanceIdentity.Key(Infrastructure.InstanceIdentity.DataDirectory(Infrastructure.LaunchOptions.Current));
+        var main = AppInstance.FindOrRegisterForKey(key);
         if (main.IsCurrent)
         {
             main.Activated += (_, e) => App.Current?.OnRedirectedActivation(e);

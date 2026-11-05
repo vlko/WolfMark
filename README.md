@@ -137,6 +137,15 @@ files.
   to five lines high) and behaves as one block: the caret sits before or after it, text typed there goes to its own
   line, Backspace/Delete remove the whole image. Double-click opens it in the default Windows viewer. Only images inside the notes folder are shown, never remote or network paths.
 
+- **Other Markdown files**: WolfMark can be the app that opens `.md` files (Settings → *Markdown files*; Windows
+  asks you to confirm it in *Default apps*). A note from your notes folder opens in the main window; any other file
+  opens in its own window – like the full view, with the folder and the file name on top. It is not saved on its own:
+  *Save* (`Ctrl+S`) lights up once you change something, and closing asks about unsaved changes. The status bar shows
+  when the file was created and modified, its word count, encoding and line ends (saving keeps them). Opened files
+  appear in the history with the time you last opened or saved them; *Copy to my notes* in the corner of the editor
+  copies the file into today's notes.
+  The same works from the command line: `WolfMark.exe C:\path\file.md` hands the file to the running WolfMark.
+
 <table>
 <tr>
 <td><img src="docs/screenshots/raw-mode.png" alt="Raw Markdown mode"></td>
@@ -167,6 +176,7 @@ files.
 | `Ctrl+B` / `Ctrl+I` / `Ctrl+Shift+L` | Bold / italic / task |
 | `Tab` / `Shift+Tab`, `Enter` | Indent list, continue list |
 | `Ctrl+,` | Settings |
+| `Ctrl+S` / `Ctrl+W` | Save / close a Markdown file opened from outside the notes folder |
 
 ---
 
@@ -187,6 +197,8 @@ an [Avalonia](https://avaloniaui.net) UI, also Native AOT and self-contained.
 - **macOS:** unzip and move `WolfMark.app` to Applications. The app is not notarised: the first start needs
   right-click → **Open** (or `xattr -dr com.apple.quarantine WolfMark.app`). Data lives in
   `~/Library/Application Support/WolfMark`.
+- **Open .md files with WolfMark:** Settings → *Markdown files*. On macOS this needs `WolfMark.app` (Finder also
+  lists it under *Open With*); on Linux it adds a desktop entry and sets it with `xdg-mime`.
 - Not there yet compared to Windows: spell check, start with the system, app icon choice.
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed:

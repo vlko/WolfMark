@@ -22,13 +22,10 @@ namespace WolfMark.Desktop.Views;
 internal sealed class NoteBar : UserControl
 {
     private readonly MainViewModel _vm;
-    private readonly MarkdownTextEditor _editor;
-    private readonly Dictionary<FormatCommand, Button> _toggles = [];
 
     public NoteBar(MainViewModel vm, MarkdownTextEditor editor)
     {
         _vm = vm;
-        _editor = editor;
         var note = vm.Editor;
 
         var square = new Border { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
@@ -77,43 +74,13 @@ internal sealed class NoteBar : UserControl
             stateText.Foreground = note.SaveState == SaveState.Error ? Brushes.IndianRed : Palette.InkTertiary;
         });
 
-        var headings = Ui.HStack(2,
-            Format(HeadingLabel("H1"), R.Format_H1, FormatCommand.Heading1),
-            Format(HeadingLabel("H2"), R.Format_H2, FormatCommand.Heading2),
-            Format(HeadingLabel("H3"), R.Format_H3, FormatCommand.Heading3));
-        var inline = Ui.HStack(2,
-            Format(Icons.Create(Icons.Bold, 18), R.Format_Bold, FormatCommand.Bold),
-            Format(Icons.Create(Icons.Italic, 18), R.Format_Italic, FormatCommand.Italic),
-            Format(Icons.Create(Icons.Strikethrough, 16), R.Format_Strike, FormatCommand.Strikethrough),
-            Format(Icons.Create(Icons.Code, 17), R.Format_Code, FormatCommand.Code),
-            Format(Icons.Create(Icons.Link, 18), R.Format_Link, FormatCommand.Link),
-            Format(Icons.Create(Icons.Task, 17), R.Format_Task, FormatCommand.Task));
-        var separator = new Border { Width = 1, Height = 18, Background = Palette.Divider, Margin = new Thickness(8, 0), VerticalAlignment = VerticalAlignment.Center };
-        var format = Ui.HStack(0, headings, separator, inline);
+        var format = FormatBar.Create(editor);
         Ui.Bind(note, nameof(NoteEditorViewModel.IsReadOnly), () =>
         {
             format.Opacity = note.IsReadOnly ? 0.3 : 1;
             format.IsHitTestVisible = !note.IsReadOnly;
         });
-        editor.ActiveFormatsChanged += (_, active) => ShowActive(active);
-        Palette.Changed += (_, _) => ShowActive(_editor.ActiveFormats);
-
-        var raw = Segment(Strings.Get(R.Mode_Raw));
-        var formatted = Segment(Strings.Get(R.Mode_Formatted));
-        raw.Click += (_, _) => note.Mode = EditorMode.Raw;
-        formatted.Click += (_, _) => note.Mode = EditorMode.Formatted;
-        void UpdateMode()
-        {
-            foreach (var (button, mode) in new[] { (raw, EditorMode.Raw), (formatted, EditorMode.Formatted) })
-            {
-                var on = note.Mode == mode;
-                button.Background = on ? Palette.SubtleFillHover : Palette.SubtleFill;
-                ((TextBlock)button.Content!).Foreground = on ? Palette.Ink : Palette.InkTertiary;
-            }
-        }
-
-        Ui.Bind(note, nameof(NoteEditorViewModel.Mode), UpdateMode);
-        Palette.Changed += (_, _) => UpdateMode();
+        var segments = FormatBar.ModeSegments(note, nameof(NoteEditorViewModel.Mode), () => note.Mode, m => note.Mode = m);
 
         var addLabel = Typo.Caps(Strings.Get(R.Toolbar_NewNoteShort).ToUpper(CultureInfo.CurrentCulture), 14, Brushes.White);
         var add = Ui.FlatButton(Ui.HStack(6, Icons.Create(Icons.Plus, 14, Brushes.White), addLabel), Palette.Accent);
@@ -129,47 +96,16 @@ internal sealed class NoteBar : UserControl
         state.Width = 170;
         var fullView = Ui.IconButton(Icons.Create(Icons.Expand, 14, Palette.InkTertiary), Strings.Get(OperatingSystem.IsMacOS() ? R.FullView_EnterMac : R.FullView_Enter), () => vm.IsFullView = true);
         var left = Ui.HStack(12, tagButton, state);
-        var mode = Ui.HStack(12, Ui.HStack(4, raw, formatted), fullView, add);
+        var mode = Ui.HStack(12, segments, fullView, add);
         mode.VerticalAlignment = VerticalAlignment.Center;
 
         // Full view keeps only the formatting; the full view bar under the heading has the rest.
         Ui.Bind(vm, nameof(MainViewModel.IsFullView), () => left.IsVisible = mode.IsVisible = !vm.IsFullView);
-        format.VerticalAlignment = VerticalAlignment.Center;
         var toolbar = new ToolbarPanel();
         toolbar.Children.Add(left);
         toolbar.Children.Add(format);
         toolbar.Children.Add(mode);
         Content = toolbar;
-    }
-
-    private static TextBlock HeadingLabel(string text) => new() { Text = text, FontFamily = Typo.CondensedBold, FontSize = 16, Foreground = Palette.Ink };
-
-    private Button Format(Control content, string tooltipKey, FormatCommand command)
-    {
-        var button = Ui.ToolButton(content, Strings.Get(tooltipKey));
-        button.Click += (_, _) => _editor.Execute(command);
-        _toggles[command] = button;
-        return button;
-    }
-
-    /// <summary>Pressed look for the formats at the caret.</summary>
-    private void ShowActive(IReadOnlySet<FormatCommand> active)
-    {
-        foreach (var (command, button) in _toggles)
-        {
-            button.Background = active.Contains(command) ? Palette.SubtleFillHover : Palette.Transparent;
-        }
-    }
-
-    private static Button Segment(string text)
-    {
-        var button = Ui.FlatButton(Typo.Caps(text.ToUpper(CultureInfo.CurrentCulture), 14, Palette.InkTertiary));
-        button.Width = 112;
-        button.Height = Ui.ButtonHeight;
-        button.HorizontalContentAlignment = HorizontalAlignment.Center;
-        button.VerticalContentAlignment = VerticalAlignment.Center;
-        ToolTip.SetTip(button, Strings.Get(R.Mode_Tooltip));
-        return button;
     }
 
     private static void Dispatch(Action action) => Avalonia.Threading.Dispatcher.UIThread.Post(action);
@@ -269,5 +205,83 @@ internal sealed class NoteBar : UserControl
 
         Dispatch(() => input.Focus());
         return panel;
+    }
+}
+
+/// <summary>The formatting buttons and the Raw/Formatted switch – the note bar's, and the external file window's.</summary>
+internal static class FormatBar
+{
+    /// <summary>[H1 H2 H3 | B I S {} 🔗 ☑] for <paramref name="editor"/>; the formats at the caret show as pressed.</summary>
+    public static StackPanel Create(MarkdownTextEditor editor)
+    {
+        var toggles = new Dictionary<FormatCommand, Button>();
+        Button Format(Control content, string tooltipKey, FormatCommand command)
+        {
+            var button = Ui.ToolButton(content, Strings.Get(tooltipKey));
+            button.Click += (_, _) => editor.Execute(command);
+            toggles[command] = button;
+            return button;
+        }
+
+        void ShowActive(IReadOnlySet<FormatCommand> active)
+        {
+            foreach (var (command, button) in toggles)
+            {
+                button.Background = active.Contains(command) ? Palette.SubtleFillHover : Palette.Transparent;
+            }
+        }
+
+        var headings = Ui.HStack(2,
+            Format(HeadingLabel("H1"), R.Format_H1, FormatCommand.Heading1),
+            Format(HeadingLabel("H2"), R.Format_H2, FormatCommand.Heading2),
+            Format(HeadingLabel("H3"), R.Format_H3, FormatCommand.Heading3));
+        var inline = Ui.HStack(2,
+            Format(Icons.Create(Icons.Bold, 18), R.Format_Bold, FormatCommand.Bold),
+            Format(Icons.Create(Icons.Italic, 18), R.Format_Italic, FormatCommand.Italic),
+            Format(Icons.Create(Icons.Strikethrough, 16), R.Format_Strike, FormatCommand.Strikethrough),
+            Format(Icons.Create(Icons.Code, 17), R.Format_Code, FormatCommand.Code),
+            Format(Icons.Create(Icons.Link, 18), R.Format_Link, FormatCommand.Link),
+            Format(Icons.Create(Icons.Task, 17), R.Format_Task, FormatCommand.Task));
+        var separator = new Border { Width = 1, Height = 18, Background = Palette.Divider, Margin = new Thickness(8, 0), VerticalAlignment = VerticalAlignment.Center };
+        var format = Ui.HStack(0, headings, separator, inline);
+        format.VerticalAlignment = VerticalAlignment.Center;
+        editor.ActiveFormatsChanged += (_, active) => ShowActive(active);
+        Palette.Changed += (_, _) => ShowActive(editor.ActiveFormats);
+        return format;
+    }
+
+    /// <summary>[RAW][FORMATTED] showing and setting the mode of <paramref name="source"/>.</summary>
+    public static StackPanel ModeSegments(System.ComponentModel.INotifyPropertyChanged source, string property, Func<EditorMode> get, Action<EditorMode> set)
+    {
+        var raw = Segment(Strings.Get(R.Mode_Raw));
+        var formatted = Segment(Strings.Get(R.Mode_Formatted));
+        raw.Click += (_, _) => set(EditorMode.Raw);
+        formatted.Click += (_, _) => set(EditorMode.Formatted);
+        void UpdateMode()
+        {
+            foreach (var (button, mode) in new[] { (raw, EditorMode.Raw), (formatted, EditorMode.Formatted) })
+            {
+                var on = get() == mode;
+                button.Background = on ? Palette.SubtleFillHover : Palette.SubtleFill;
+                ((TextBlock)button.Content!).Foreground = on ? Palette.Ink : Palette.InkTertiary;
+            }
+        }
+
+        Ui.Bind(source, property, UpdateMode);
+        Palette.Changed += (_, _) => UpdateMode();
+        return Ui.HStack(4, raw, formatted);
+    }
+
+    private static TextBlock HeadingLabel(string text) => new() { Text = text, FontFamily = Typo.CondensedBold, FontSize = 16, Foreground = Palette.Ink };
+
+    private static Button Segment(string text)
+    {
+        var button = Ui.FlatButton(Typo.Caps(text.ToUpper(CultureInfo.CurrentCulture), 14, Palette.InkTertiary));
+        button.Width = 112;
+        button.Height = Ui.ButtonHeight;
+        button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        button.VerticalContentAlignment = VerticalAlignment.Center;
+        ToolTip.SetTip(button, Strings.Get(R.Mode_Tooltip));
+        return button;
     }
 }

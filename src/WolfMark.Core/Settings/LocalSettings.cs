@@ -83,6 +83,12 @@ public sealed class LocalSettings
 
     public WindowPlacement? Window { get; set; }
 
+    /// <summary>
+    /// Markdown files opened from outside the notes tree (file association, command line), newest first – shown in
+    /// the history beside the notes. Kept here, not in the index: they are not part of the notes tree.
+    /// </summary>
+    public List<ExternalFileEntry> ExternalFiles { get; set; } = [];
+
     public ClaudeCodeSyncSettings ClaudeCode { get; set; } = new();
 }
 
@@ -97,6 +103,14 @@ public sealed class WindowPlacement
     public int Height { get; set; }
 
     public bool IsMaximized { get; set; }
+}
+
+/// <summary>An external Markdown file in the history: its full path and when it was last opened or saved.</summary>
+public sealed class ExternalFileEntry
+{
+    public string Path { get; set; } = string.Empty;
+
+    public DateTime TouchedUtc { get; set; }
 }
 
 public sealed class ClaudeCodeSyncSettings

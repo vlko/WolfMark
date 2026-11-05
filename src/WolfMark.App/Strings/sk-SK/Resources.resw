@@ -582,4 +582,79 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Ukončiť</value>
   </data>
+  <data name="History_External" xml:space="preserve">
+    <value>externý</value>
+  </data>
+  <data name="Menu_Open" xml:space="preserve">
+    <value>Otvoriť</value>
+  </data>
+  <data name="Menu_OpenFolder" xml:space="preserve">
+    <value>Otvoriť priečinok</value>
+  </data>
+  <data name="Menu_RemoveFromHistory" xml:space="preserve">
+    <value>Odstrániť z histórie</value>
+  </data>
+  <data name="ExtFile_Created" xml:space="preserve">
+    <value>Vytvorený {0}</value>
+  </data>
+  <data name="ExtFile_Modified" xml:space="preserve">
+    <value>Zmenený {0}</value>
+  </data>
+  <data name="ExtFile_Words" xml:space="preserve">
+    <value>{0} slov</value>
+  </data>
+  <data name="ExtFile_OpenFailed" xml:space="preserve">
+    <value>Súbor {0} sa nepodarilo otvoriť</value>
+  </data>
+  <data name="ExtFile_SaveFailed" xml:space="preserve">
+    <value>Súbor {0} sa nepodarilo uložiť</value>
+  </data>
+  <data name="ExtFile_Missing" xml:space="preserve">
+    <value>Súbor {0} neexistuje</value>
+  </data>
+  <data name="ExtFile_Save" xml:space="preserve">
+    <value>Uložiť (Ctrl+S)</value>
+  </data>
+  <data name="ExtFile_SaveMac" xml:space="preserve">
+    <value>Uložiť (⌘S)</value>
+  </data>
+  <data name="ExtFile_Badge" xml:space="preserve">
+    <value>Externý súbor · neukladá sa sám</value>
+  </data>
+  <data name="ExtFile_CopyMessage" xml:space="preserve">
+    <value>Tento súbor je mimo priečinka poznámok. Kópia v dnešných poznámkach sa správa ako každá poznámka: ukladá sa sama, má tag a je v kalendári. Pôvodný súbor zostane tak, ako je.</value>
+  </data>
+  <data name="ExtFile_CopyButton" xml:space="preserve">
+    <value>Skopírovať do mojich poznámok</value>
+  </data>
+  <data name="ExtFile_CloseTitle" xml:space="preserve">
+    <value>Uložiť zmeny v súbore {0}?</value>
+  </data>
+  <data name="ExtFile_DontSave" xml:space="preserve">
+    <value>Neuložiť</value>
+  </data>
+  <data name="ExtFile_DeletedTitle" xml:space="preserve">
+    <value>Súbor bol zmazaný alebo presunutý</value>
+  </data>
+  <data name="ExtFile_DeletedMessage" xml:space="preserve">
+    <value>Uložením sa zapíše znova na to isté miesto.</value>
+  </data>
+  <data name="Settings_Files" xml:space="preserve">
+    <value>Markdown súbory</value>
+  </data>
+  <data name="Settings_FileAssociation" xml:space="preserve">
+    <value>Otvárať .md súbory vo WolfMark</value>
+  </data>
+  <data name="Settings_FileAssociationHint" xml:space="preserve">
+    <value>Windows chce voľbu potvrdiť: v Predvolených aplikáciách vyber pre .md WolfMark.</value>
+  </data>
+  <data name="Settings_FileAssociationHintDesktop" xml:space="preserve">
+    <value>WolfMark sa stane predvolenou aplikáciou pre Markdown súbory.</value>
+  </data>
+  <data name="Settings_FileAssociationDefault" xml:space="preserve">
+    <value>Predvolené aplikácie…</value>
+  </data>
+  <data name="Settings_FileAssociationFailed" xml:space="preserve">
+    <value>Priradenie .md súborov sa nepodarilo zmeniť: {0}</value>
+  </data>
 </root>

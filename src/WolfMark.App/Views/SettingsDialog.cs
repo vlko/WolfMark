@@ -183,6 +183,12 @@ internal static class SettingsDialog
         var startupWas = await Task.Run(() => StartupRegistration.IsEnabled);
         var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows), IsEnabled = !LaunchOptions.Current.IsDemo };
         var closeToTray = new ToggleSwitch { IsOn = s.CloseToTray, Header = Strings.Get(R.Settings_CloseToTray) };
+        // .md files: the association of this exe (registry is the truth); Windows confirms the default itself.
+        var associationWas = await Task.Run(() => FileAssociation.IsEnabled);
+        var fileAssociation = new ToggleSwitch { IsOn = associationWas, Header = Strings.Get(R.Settings_FileAssociation) };
+        var defaultApps = Ui.Ui.TextButton(Strings.Get(R.Settings_FileAssociationDefault), () => _ = FileAssociation.OpenDefaultAppsAsync());
+        var associationHint = Typo.Body(Strings.Get(R.Settings_FileAssociationHint), 12.5, Palette.InkTertiary);
+        associationHint.TextWrapping = TextWrapping.Wrap;
 
         var rendering = Combo([Strings.Get(R.Settings_RenderingMica), Strings.Get(R.Settings_RenderingClass)], (int)s.WindowRendering);
 
@@ -223,6 +229,10 @@ internal static class SettingsDialog
             Section(Strings.Get(R.Settings_System)),
             startWithWindows,
             closeToTray,
+            Section(Strings.Get(R.Settings_Files)),
+            fileAssociation,
+            associationHint,
+            defaultApps,
             Section(Strings.Get(R.Settings_Editor)),
             lineNumbers,
             colorEmoji,
@@ -295,6 +305,23 @@ internal static class SettingsDialog
             catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
             {
                 vm.ErrorNotice = Strings.Format(R.Settings_StartupFailed, ex.Message);
+            }
+        }
+
+        if (fileAssociation.IsOn != associationWas)
+        {
+            var on = fileAssociation.IsOn;
+            try
+            {
+                await Task.Run(() => FileAssociation.Set(on));
+                if (on)
+                {
+                    await FileAssociation.OpenDefaultAppsAsync();
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+            {
+                vm.ErrorNotice = Strings.Format(R.Settings_FileAssociationFailed, ex.Message);
             }
         }
 

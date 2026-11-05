@@ -178,6 +178,11 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *Stav:* `.resw` sk/en generované z jednej tabuľky (`tools/gen-strings.py`).
 - 🟨 **M8-07 – Indikátor OneDrive stavu** a UI pre konflikty.
   *Stav:* Čiastočne: konflikty v UI, ikona pre placeholdery; stav synchronizácie OneDrive nie.
+- 🟨 **M8-08 – WolfMark ako predvolený editor `.md`** (Windows, macOS, Linux), ADR 0008.
+  *Stav:* Implementované, čaká na overenie: súbor ako argument (aj presmerovaný bežiacej inštancii – jedna
+  na dátový priečinok), súbor zo stromu prepne poznámku, mimo stromu vlastné okno (Uložiť, otázka pri
+  zatvorení, zmena na disku, kópia do dnešných poznámok, stavový riadok), externé súbory v histórii,
+  registrácia v Nastaveniach (Windows HKCU + Predvolené aplikácie, macOS Launch Services, Linux xdg-mime).
 
 ## M9 – Rozšírenia 🟡/⚪
 

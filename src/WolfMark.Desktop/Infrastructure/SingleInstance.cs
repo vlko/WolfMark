@@ -5,9 +5,9 @@ using System.Text;
 namespace WolfMark.Desktop.Infrastructure;
 
 /// <summary>
-/// One window per data folder (the Windows app uses AppInstance redirection): the first process holds an
-/// exclusive lock file and listens on a local socket; a later launch pokes that socket – the first window comes
-/// to the front – and exits.
+/// One instance per data folder (the Windows app uses AppInstance redirection): the first process holds an
+/// exclusive lock file and listens on a local socket; a later launch sends that socket the file it was started
+/// with (or nothing) – the first instance opens it or comes to the front – and exits.
 /// </summary>
 internal sealed class SingleInstance : IDisposable
 {
@@ -23,11 +23,14 @@ internal sealed class SingleInstance : IDisposable
         _ = AcceptLoopAsync();
     }
 
-    /// <summary>Raised on a thread-pool thread when another launch asked for the window.</summary>
-    public event EventHandler? Activated;
+    /// <summary>Raised on a thread-pool thread when another launch asked for the window; the file it was started with, or null.</summary>
+    public event EventHandler<string?>? Activated;
 
-    /// <summary>Null when another instance owns <paramref name="directory"/> (it has been asked to show itself).</summary>
-    public static SingleInstance? TryAcquire(string directory)
+    /// <summary>
+    /// Null when another instance owns <paramref name="directory"/> (it has been handed <paramref name="file"/>, or
+    /// asked to show itself).
+    /// </summary>
+    public static SingleInstance? TryAcquire(string directory, string? file)
     {
         Directory.CreateDirectory(directory);
         var socketPath = SocketPath(directory);
@@ -38,7 +41,7 @@ internal sealed class SingleInstance : IDisposable
         }
         catch (IOException)
         {
-            Poke(socketPath);
+            Poke(socketPath, file);
             return null;
         }
 
@@ -69,7 +72,7 @@ internal sealed class SingleInstance : IDisposable
             try
             {
                 using var client = await _listener.AcceptAsync();
-                Activated?.Invoke(this, EventArgs.Empty);
+                Activated?.Invoke(this, await ReadFileAsync(client));
             }
             catch (ObjectDisposedException)
             {
@@ -82,12 +85,36 @@ internal sealed class SingleInstance : IDisposable
         }
     }
 
-    private static void Poke(string socketPath)
+    /// <summary>The path a launch sent (UTF-8 up to the end of the stream), null for none or when it took too long.</summary>
+    private static async Task<string?> ReadFileAsync(Socket client)
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await using var stream = new NetworkStream(client, ownsSocket: false);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, timeout.Token);
+            var path = Encoding.UTF8.GetString(buffer.ToArray()).Trim();
+            return path.Length > 0 ? path : null;
+        }
+        catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    private static void Poke(string socketPath, string? file)
     {
         try
         {
             using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
             socket.Connect(new UnixDomainSocketEndPoint(socketPath));
+            if (file is not null)
+            {
+                socket.Send(Encoding.UTF8.GetBytes(file));
+            }
+
+            socket.Shutdown(SocketShutdown.Send);
         }
         catch (SocketException)
         {

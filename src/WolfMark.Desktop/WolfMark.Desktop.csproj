@@ -13,6 +13,8 @@
     <Product>WolfMark</Product>
     <Version>0.3.3</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- LibraryImport (macOS Launch Services, Infrastructure/DefaultHandler.cs) generates unsafe stubs. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

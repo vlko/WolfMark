@@ -32,6 +32,7 @@ internal sealed class MainWindow : Window
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly TextBlock _fullViewTimes = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
     private readonly DispatcherTimer _zoomSave = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly Dictionary<string, ExternalNoteWindow> _externalWindows = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private bool _closing;
 
     public MainWindow(MainViewModel vm)
@@ -101,6 +102,7 @@ internal sealed class MainWindow : Window
 
         WireEditor();
         WireOverlays();
+        _vm.ExternalFileRequested += (_, path) => OpenExternal(path);
         WireShortcuts();
         WireLifecycle();
         ApplyTray();
@@ -110,6 +112,37 @@ internal sealed class MainWindow : Window
     {
         await _vm.InitializeAsync();
         _editor.FocusEditor();
+    }
+
+    /// <summary>A file from outside the notes tree in its own window (or the window it already has).</summary>
+    private void OpenExternal(string fullPath)
+    {
+        if (_externalWindows.TryGetValue(fullPath, out var open))
+        {
+            open.BringToFront();
+            return;
+        }
+
+        BringToFront();
+        var window = new ExternalNoteWindow(this, _vm, new ExternalDocumentViewModel(_host, fullPath, _vm.TouchExternalFile));
+        _externalWindows[fullPath] = window;
+        window.Closed += (_, _) => _externalWindows.Remove(fullPath);
+        window.Show();
+        _ = window.LoadAsync();
+    }
+
+    /// <summary>Before the app ends: each external window closes, asking about unsaved changes. False = the user cancelled.</summary>
+    private async Task<bool> CloseExternalWindowsAsync()
+    {
+        foreach (var window in _externalWindows.Values.ToList())
+        {
+            if (!await window.TryCloseAsync())
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public void BringToFront()
@@ -264,7 +297,7 @@ internal sealed class MainWindow : Window
     }
 
     /// <summary>Ctrl + / Ctrl − / Ctrl 0 in the editor: the font size setting, saved once the zooming stops.</summary>
-    private void ZoomEditor(int step)
+    internal void ZoomEditor(int step)
     {
         var s = _host.Settings.Current;
         var size = step == 0 ? LocalSettings.EditorFontSizeDefault : LocalSettings.ZoomFontSize(s.EditorFontSize, step);
@@ -279,20 +312,30 @@ internal sealed class MainWindow : Window
         _zoomSave.Start();
     }
 
-    /// <summary>Markdown colours for the current light/dark palette; fonts and size from the settings.</summary>
     private void UpdateEditorTheme()
     {
-        var s = _host.Settings.Current;
-        Func<string, Color> tagColor = tag => Palette.ToColor(_host.Tags.GetColor(tag));
+        ApplyEditorTheme(_editor, _host);
+        foreach (var window in _externalWindows.Values)
+        {
+            ApplyEditorTheme(window.Editor, _host);
+        }
+    }
+
+    /// <summary>Markdown colours for the current light/dark palette; fonts and size from the settings.</summary>
+    internal static void ApplyEditorTheme(MarkdownTextEditor editor, AppHost host)
+    {
+        var s = host.Settings.Current;
+        Func<string, Color> tagColor = tag => Palette.ToColor(host.Tags.GetColor(tag));
         var theme = Palette.IsDark ? EditorTheme.Dark(tagColor) : EditorTheme.Light(tagColor);
         // Settings hold Windows font names; unknown ones fall back to the platform's fonts.
         var mono = new FontFamily(s.EditorMonoFontFamily + ", " + theme.MonoFont);
-        _editor.MarkdownTheme = theme with
+        editor.MarkdownTheme = theme with
         {
             FontSize = s.EditorFontSize,
             Font = s.EditorMonospace ? mono : new FontFamily(s.EditorFontFamily + ", " + FontFamily.DefaultFontFamilyName),
             MonoFont = mono,
         };
+        editor.ShowLineNumbers = s.EditorLineNumbers;
     }
 
     private void WireEditor()
@@ -353,6 +396,12 @@ internal sealed class MainWindow : Window
                 SavePlacement();
                 await _host.SaveSettingsAsync();
                 Hide();
+                return;
+            }
+
+            if (!await CloseExternalWindowsAsync())
+            {
+                _exitRequested = false;
                 return;
             }
 
@@ -440,7 +489,7 @@ internal sealed class MainWindow : Window
             Padding = new Thickness(10, 2, 2, 2),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 16, 26),
+            Margin = new Thickness(0, 0, 8, 13),
         };
         Ui.Bind(editor, nameof(NoteEditorViewModel.IsClaudeCode), () => badge.IsVisible = editor.IsClaudeCode);
         return badge;
@@ -544,7 +593,6 @@ internal sealed class MainWindow : Window
             };
         }
 
-        _editor.ShowLineNumbers = s.EditorLineNumbers;
         UpdateEditorTheme();
         ApplyTray();
     }

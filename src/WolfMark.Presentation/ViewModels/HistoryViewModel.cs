@@ -2,13 +2,16 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using WolfMark.App.Infrastructure;
+using WolfMark.Core.Notes;
 using WolfMark.Index.Queries;
+using WolfMark.Storage;
 
 namespace WolfMark.App.ViewModels;
 
 /// <summary>
 /// History list (M5-01/M5-02): ordered by the last edit, keyset paging, tag/day filters, headers per
-/// day of the last edit.
+/// day of the last edit. External files (opened from outside the notes tree) are merged in by the time they were
+/// last opened or saved; they have no tag and no tasks, so the tag and open-tasks filters leave them out.
 /// </summary>
 internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 {
@@ -19,8 +22,11 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
     private int _generation;
     private string? _currentPath;
     private bool _loaded;
+    private List<HistoryExternalRowViewModel> _externals = [];
+    private int _externalIndex;
+    private readonly Dictionary<string, ExternalPreview> _previews = new(StringComparer.Ordinal);
 
-    /// <summary><see cref="HistoryHeaderViewModel"/> and <see cref="HistoryRowViewModel"/> items.</summary>
+    /// <summary><see cref="HistoryHeaderViewModel"/>, <see cref="HistoryRowViewModel"/> and <see cref="HistoryExternalRowViewModel"/> items.</summary>
     public ObservableCollection<object> Items { get; } = [];
 
     [ObservableProperty]
@@ -113,6 +119,7 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
         OnPropertyChanged(nameof(HasFilter));
         OnPropertyChanged(nameof(FilterLabel));
         var generation = ++_generation;
+        var externals = await LoadExternalsAsync();
         await host.DatabaseReady;
         IsLoading = true;
         try
@@ -137,7 +144,9 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 
             _lastDay = null;
             _next = next;
-            Replace([.. Entries(items)]);
+            _externals = externals;
+            _externalIndex = 0;
+            Replace([.. Entries(items, lastPage: next is null)]);
             IsEmpty = Items.Count == 0;
             _loaded = true;
         }
@@ -165,7 +174,7 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
             }
 
             _next = page.Next;
-            Append(page.Items);
+            Append(page.Items, lastPage: page.Next is null);
         }
         finally
         {
@@ -173,31 +182,129 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
         }
     }
 
-    private void Append(IReadOnlyList<NoteSummary> notes)
+    private void Append(IReadOnlyList<NoteSummary> notes, bool lastPage)
     {
-        foreach (var entry in Entries(notes))
+        foreach (var entry in Entries(notes, lastPage))
         {
             Items.Add(entry);
         }
     }
 
-    /// <summary>Headers and rows for <paramref name="notes"/>, continuing after <see cref="_lastDay"/>.</summary>
-    private IEnumerable<object> Entries(IReadOnlyList<NoteSummary> notes)
+    /// <summary>
+    /// Headers and rows for <paramref name="notes"/>, continuing after <see cref="_lastDay"/>; the external files
+    /// newer than each note come before it, the rest after the last page.
+    /// </summary>
+    private IEnumerable<object> Entries(IReadOnlyList<NoteSummary> notes, bool lastPage)
     {
         foreach (var note in notes)
         {
-            // History is ordered by the last edit, so it is also grouped by the day of the last edit.
-            var editedDay = DateOnly.FromDateTime(note.ModifiedAt);
-            if (DayFilter is null && editedDay != _lastDay)
+            while (_externalIndex < _externals.Count && _externals[_externalIndex].TouchedAt > note.ModifiedAt)
             {
-                yield return new HistoryHeaderViewModel(HeaderLabel(editedDay));
-                _lastDay = editedDay;
+                var external = _externals[_externalIndex++];
+                foreach (var entry in Entry(external, external.TouchedAt))
+                {
+                    yield return entry;
+                }
             }
 
-            yield return new HistoryRowViewModel(note)
+            var row = new HistoryRowViewModel(note)
             {
                 IsCurrent = string.Equals(note.RelativePath, _currentPath, StringComparison.OrdinalIgnoreCase),
             };
+            foreach (var entry in Entry(row, note.ModifiedAt))
+            {
+                yield return entry;
+            }
+        }
+
+        while (lastPage && _externalIndex < _externals.Count)
+        {
+            var external = _externals[_externalIndex++];
+            foreach (var entry in Entry(external, external.TouchedAt))
+            {
+                yield return entry;
+            }
+        }
+    }
+
+    /// <summary>The row, after a header when it starts a new day (the list is grouped by the day of the last edit).</summary>
+    private IEnumerable<object> Entry(object row, DateTime editedAt)
+    {
+        var editedDay = DateOnly.FromDateTime(editedAt);
+        if (DayFilter is null && editedDay != _lastDay)
+        {
+            yield return new HistoryHeaderViewModel(HeaderLabel(editedDay));
+            _lastDay = editedDay;
+        }
+
+        yield return row;
+    }
+
+    /// <summary>
+    /// The external files the filters let through, newest first. Their title and preview come from the file
+    /// (read off the UI thread, cached until it changes); a file that is gone stays in the list, dimmed.
+    /// </summary>
+    private async Task<List<HistoryExternalRowViewModel>> LoadExternalsAsync()
+    {
+        if (TagFilter is not null || OpenTasksOnly)
+        {
+            return [];
+        }
+
+        var day = DayFilter;
+        var entries = host.Settings.Current.ExternalFiles
+            .Select(e => (e.Path, TouchedAt: e.TouchedUtc.ToLocalTime()))
+            .Where(e => day is null || DateOnly.FromDateTime(e.TouchedAt) == day)
+            .OrderByDescending(e => e.TouchedAt)
+            .ToList();
+        if (entries.Count == 0)
+        {
+            return [];
+        }
+
+        var cache = _previews;
+        var previews = await Task.Run(() => entries.Select(e => ReadPreview(e.Path, cache)).ToList());
+        return [.. entries.Select((e, i) => new HistoryExternalRowViewModel(e.Path, e.TouchedAt, previews[i]))];
+    }
+
+    private static ExternalPreview ReadPreview(string path, Dictionary<string, ExternalPreview> cache)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists)
+            {
+                return ExternalPreview.Missing;
+            }
+
+            lock (cache)
+            {
+                if (cache.TryGetValue(path, out var cached) && cached.ModifiedUtc == info.LastWriteTimeUtc)
+                {
+                    return cached;
+                }
+            }
+
+            // Title and preview come from the start of the file; a huge file is not read whole for them.
+            const int MaxBytes = 64 * 1024;
+            var bytes = new byte[Math.Min(info.Length, MaxBytes)];
+            using (var stream = info.OpenRead())
+            {
+                stream.ReadExactly(bytes);
+            }
+
+            var content = NoteContentAnalyzer.Analyze(DirectoryEngine.Decode(bytes));
+            var preview = new ExternalPreview(info.LastWriteTimeUtc, content.Title, content.Preview, IsMissing: false);
+            lock (cache)
+            {
+                cache[path] = preview;
+            }
+
+            return preview;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new ExternalPreview(default, string.Empty, string.Empty, IsMissing: false);
         }
     }
 
@@ -215,6 +322,7 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
             {
                 (HistoryHeaderViewModel a, HistoryHeaderViewModel b) => a.Label == b.Label,
                 (HistoryRowViewModel a, HistoryRowViewModel b) => a.Note.RelativePath == b.Note.RelativePath,
+                (HistoryExternalRowViewModel a, HistoryExternalRowViewModel b) => a.FullPath == b.FullPath,
                 _ => false,
             };
         }
@@ -233,9 +341,10 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 
         for (var i = 0; i < fresh.Count; i++)
         {
-            if (fresh[i] is HistoryRowViewModel row && Items[i] is HistoryRowViewModel old && old.Note != row.Note)
+            if ((fresh[i], Items[i]) is (HistoryRowViewModel row, HistoryRowViewModel old) && old.Note != row.Note
+                || (fresh[i], Items[i]) is (HistoryExternalRowViewModel external, HistoryExternalRowViewModel oldExternal) && !external.SameAs(oldExternal))
             {
-                Items[i] = row;
+                Items[i] = fresh[i];
             }
         }
     }
@@ -296,4 +405,34 @@ internal sealed partial class HistoryRowViewModel(NoteSummary note) : Observable
 
     [ObservableProperty]
     public partial bool IsCurrent { get; set; }
+}
+
+/// <summary>An external file in the history: when it was last opened or saved, "external" instead of the creation.</summary>
+internal sealed partial class HistoryExternalRowViewModel(string fullPath, DateTime touchedAt, ExternalPreview preview) : ObservableObject
+{
+    public string FullPath { get; } = fullPath;
+
+    /// <summary>Last open or save, local time – the lead time of the row.</summary>
+    public DateTime TouchedAt { get; } = touchedAt;
+
+    public string FileName => Path.GetFileName(FullPath);
+
+    public string Title => Info.Title.Length > 0 ? Info.Title : Path.GetFileNameWithoutExtension(FullPath);
+
+    public string Preview => Info.Preview;
+
+    /// <summary>The file is no longer there (moved or deleted elsewhere).</summary>
+    public bool IsMissing => Info.IsMissing;
+
+    public string ExternalText => Strings.Get(R.History_External).ToUpper(CultureInfo.CurrentCulture);
+
+    internal ExternalPreview Info { get; } = preview;
+
+    internal bool SameAs(HistoryExternalRowViewModel other) => TouchedAt == other.TouchedAt && Info == other.Info;
+}
+
+/// <summary>Title and preview of an external file as of its modification time.</summary>
+internal sealed record ExternalPreview(DateTime ModifiedUtc, string Title, string Preview, bool IsMissing)
+{
+    public static ExternalPreview Missing { get; } = new(default, string.Empty, string.Empty, IsMissing: true);
 }

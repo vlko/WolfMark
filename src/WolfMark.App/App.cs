@@ -80,6 +80,11 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
             host.StartBackground();
             await _window.InitializeAsync();
+            if (LaunchOptions.Current.OpenFile is { } file)
+            {
+                await vm.OpenFileAsync(file);
+            }
+
             if (LaunchOptions.Current.ScreenshotDirectory is { } shots)
             {
                 await new ScreenshotRunner(_window, host, shots).RunAsync();
@@ -166,7 +171,53 @@ public sealed partial class App : Application, IXamlMetadataProvider
         return drawn.Task.WaitAsync(TimeSpan.FromMilliseconds(500)).ContinueWith(_ => { }, TaskScheduler.Default);
     }
 
-    internal void OnRedirectedActivation(AppActivationArguments e) => UiThread.Post(() => _window?.BringToFront());
+    /// <summary>
+    /// A later start (another command line, or Explorer opening a <c>.md</c> file): its file opens here, otherwise
+    /// the window just comes to the front. Runs on a background thread.
+    /// </summary>
+    internal void OnRedirectedActivation(AppActivationArguments e)
+    {
+        var file = RedirectedFile(e);
+        UiThread.Post(() =>
+        {
+            if (_window is null)
+            {
+                return;
+            }
+
+            if (file is null)
+            {
+                _window.BringToFront();
+            }
+            else
+            {
+                _ = _window.ViewModel.OpenFileAsync(file);
+            }
+        });
+    }
+
+    /// <summary>
+    /// The file of a redirected activation. A launch carries the second process's command line as one string – with
+    /// or without the program in front, so a first word that is not an .exe is taken as an argument already.
+    /// </summary>
+    private static string? RedirectedFile(AppActivationArguments e)
+    {
+        switch (e.Data)
+        {
+            case Windows.ApplicationModel.Activation.IFileActivatedEventArgs files:
+                return files.Files.Count > 0 ? files.Files[0].Path : null;
+            case Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch when !string.IsNullOrWhiteSpace(launch.Arguments):
+                var args = CommandLine.Split(launch.Arguments);
+                if (args.Count > 0 && !args[0].EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    args.Insert(0, "WolfMark.exe");
+                }
+
+                return LaunchOptions.Parse(args).OpenFile;
+            default:
+                return null;
+        }
+    }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {

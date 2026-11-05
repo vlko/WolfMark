@@ -48,6 +48,7 @@ public sealed class SettingsTests
         store.Current.LastNotePath = "2026/10/15/praca_1403.md";
         store.Current.Theme = AppTheme.Dark;
         store.Current.ClaudeCode.ExcludedProjects.Add("C:\\secret");
+        ExternalFileHistory.Touch(store.Current.ExternalFiles, "/home/a/readme.md", new DateTime(2026, 11, 5, 9, 30, 0, DateTimeKind.Utc));
         await store.SaveAsync(Ct);
 
         var again = new LocalSettingsStore(new LocalPaths(dir.Path), NullLogger<LocalSettingsStore>.Instance);
@@ -55,6 +56,9 @@ public sealed class SettingsTests
         Assert.Equal("2026/10/15/praca_1403.md", loaded.LastNotePath);
         Assert.Equal(AppTheme.Dark, loaded.Theme);
         Assert.Equal(["C:\\secret"], loaded.ClaudeCode.ExcludedProjects);
+        var external = Assert.Single(loaded.ExternalFiles);
+        Assert.Equal("/home/a/readme.md", external.Path);
+        Assert.Equal(new DateTime(2026, 11, 5, 9, 30, 0, DateTimeKind.Utc), external.TouchedUtc.ToUniversalTime());
         Assert.Contains("\"theme\": \"Dark\"", await File.ReadAllTextAsync(Path.Combine(dir.Path, "settings.json"), Ct));
     }
 

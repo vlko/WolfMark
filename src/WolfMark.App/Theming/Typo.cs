@@ -168,4 +168,6 @@ internal static class Glyphs
     public const string Edit = "";
     public const string Expand = "";
     public const string Collapse = "";
+    public const string Save = "\uE74E";
+    public const string Document = "\uE8A5";
 }

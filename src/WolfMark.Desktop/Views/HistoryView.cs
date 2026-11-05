@@ -42,6 +42,7 @@ internal sealed class HistoryView : UserControl
             {
                 HistoryHeaderViewModel header => Header(header),
                 HistoryRowViewModel row => new HistoryRow(vm, row),
+                HistoryExternalRowViewModel external => new ExternalRow(vm, external),
                 _ => null,
             }, supportsRecycling: false),
         };
@@ -146,5 +147,61 @@ internal sealed class HistoryView : UserControl
         }
 
         private void UpdateCurrent() => Background = _row.IsCurrent ? Palette.SubtleFill : Palette.Transparent;
+    }
+
+    /// <summary>
+    /// An external file: when it was last opened or saved, "external" instead of the creation, the file name where
+    /// the tag is (full path on hover); a click opens it in its own window, the menu drops it from the history.
+    /// </summary>
+    private sealed class ExternalRow : Button
+    {
+        public ExternalRow(MainViewModel vm, HistoryExternalRowViewModel row)
+        {
+            var time = Typo.LeadTime(out var setTime, 24, Palette.InkSecondary);
+            setTime(row.TouchedAt);
+            var external = Typo.Caps(row.ExternalText, 10.5, Palette.InkTertiary);
+            external.HorizontalAlignment = HorizontalAlignment.Right;
+            var times = Ui.VStack(0, time, external);
+            times.HorizontalAlignment = HorizontalAlignment.Right;
+            times.VerticalAlignment = VerticalAlignment.Center;
+
+            var preview = Typo.Body(row.Preview, 12.5, Palette.InkSecondary);
+            preview.IsVisible = row.Preview.Length > 0;
+            var text = Ui.VStack(1, Typo.Body(row.Title, 14), preview);
+            text.Margin = new Thickness(12, 0, 0, 0);
+            text.VerticalAlignment = VerticalAlignment.Center;
+
+            var fileName = Typo.Body(row.FileName, 11.5, Palette.InkTertiary);
+            fileName.VerticalAlignment = VerticalAlignment.Center;
+            var badge = Icons.Create(row.IsMissing ? Icons.Warning : Icons.Document, 12, Palette.InkTertiary);
+            badge.Margin = new Thickness(8, 0);
+            badge.VerticalAlignment = VerticalAlignment.Center;
+
+            Content = Ui.Columns(
+                (Ui.Px(3), new Border { Width = 3, Margin = new Thickness(0, 4), Background = Palette.Divider }),
+                (Ui.Px(Metrics.TimeGutter - 3 - Metrics.TimeGutterGap), times),
+                (Ui.Px(Metrics.TimeGutterGap), null),
+                (Ui.Px(1), new DottedLine()),
+                (Ui.Star, text),
+                (Ui.Auto, badge),
+                (Ui.Auto, fileName));
+
+            HorizontalAlignment = HorizontalAlignment.Stretch;
+            HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            BorderThickness = new Thickness(0);
+            CornerRadius = new CornerRadius(0);
+            Padding = new Thickness(0, 4, 10, 4);
+            Foreground = Palette.Ink;
+            Background = Palette.Transparent;
+            Opacity = row.IsMissing ? 0.5 : 1;
+            ToolTip.SetTip(this, row.FullPath);
+            Click += async (_, _) => await vm.OpenFileAsync(row.FullPath);
+
+            var open = new MenuItem { Header = Strings.Get(R.Menu_Open), IsEnabled = !row.IsMissing };
+            open.Click += async (_, _) => await vm.OpenFileAsync(row.FullPath);
+            var remove = new MenuItem { Header = Strings.Get(R.Menu_RemoveFromHistory) };
+            remove.Click += (_, _) => vm.RemoveExternalFile(row.FullPath);
+            ContextMenu = new ContextMenu { Items = { open, new Separator(), remove } };
+        }
     }
 }

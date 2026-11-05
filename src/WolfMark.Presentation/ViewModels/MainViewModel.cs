@@ -5,6 +5,7 @@ using WolfMark.App.Infrastructure;
 using WolfMark.Core.Calendar;
 using WolfMark.Core.Events;
 using WolfMark.Core.Notes;
+using WolfMark.Core.Settings;
 using WolfMark.Core.Tags;
 using WolfMark.Index.Indexing;
 using WolfMark.Index.Queries;
@@ -18,6 +19,7 @@ internal sealed partial class MainViewModel : ObservableObject
     private readonly AppHost _host;
     private readonly ILogger _logger;
     private readonly Debouncer _historyRefresh = new(TimeSpan.FromMilliseconds(300));
+    private readonly Debouncer _externalSave = new(TimeSpan.FromSeconds(1));
     private readonly HashSet<DateOnly> _pendingDays = [];
     private bool _initialized;
 
@@ -212,6 +214,49 @@ internal sealed partial class MainViewModel : ObservableObject
             SelectedDay = day;
             await Week.LoadAsync(day, day);
             await SyncCalendarMonthAsync();
+        }
+    }
+
+    /// <summary>
+    /// A Markdown file from outside (file association, command line, a second start): a note of the notes tree
+    /// opens here, any other file goes to <see cref="ExternalFileRequested"/> – the view opens it in its own window.
+    /// </summary>
+    public async Task OpenFileAsync(string fullPath)
+    {
+        var root = _host.Engine.Root;
+        if (NotesTree.TryGetNotePath(root, fullPath, out var path))
+        {
+            IsFullView = false;
+            await OpenNoteAsync(path.RelativePath);
+            return;
+        }
+
+        if (!await Task.Run(() => File.Exists(fullPath)))
+        {
+            ErrorNotice = Strings.Format(R.ExtFile_Missing, fullPath);
+            return;
+        }
+
+        ExternalFileRequested?.Invoke(this, fullPath);
+    }
+
+    /// <summary>A file outside the notes tree is to be shown in an external window.</summary>
+    public event EventHandler<string>? ExternalFileRequested;
+
+    /// <summary>An external file was opened or saved: it goes to the top of the history.</summary>
+    public void TouchExternalFile(string fullPath)
+    {
+        ExternalFileHistory.Touch(_host.Settings.Current.ExternalFiles, fullPath, DateTime.UtcNow);
+        _externalSave.Schedule(_ => _host.SaveSettingsAsync());
+        _ = History.ReloadAsync();
+    }
+
+    public void RemoveExternalFile(string fullPath)
+    {
+        if (ExternalFileHistory.Remove(_host.Settings.Current.ExternalFiles, fullPath))
+        {
+            _externalSave.Schedule(_ => _host.SaveSettingsAsync());
+            _ = History.ReloadAsync();
         }
     }
 

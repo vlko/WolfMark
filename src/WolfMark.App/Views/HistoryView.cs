@@ -29,11 +29,17 @@ internal sealed partial class HistoryView : UserControl
         var history = vm.History;
 
         var rowFactory = new ElementFactory<HistoryRowViewModel, HistoryRowView>(() => new HistoryRowView(this));
+        var externalFactory = new ElementFactory<HistoryExternalRowViewModel, HistoryRowView>(() => new HistoryRowView(this));
         var headerFactory = new ElementFactory<HistoryHeaderViewModel, HistoryHeaderView>(() => new HistoryHeaderView());
         var repeater = new ItemsRepeater
         {
             ItemsSource = history.Items,
-            ItemTemplate = new SelectingElementFactory(item => item is HistoryHeaderViewModel ? headerFactory : rowFactory),
+            ItemTemplate = new SelectingElementFactory(item => item switch
+            {
+                HistoryHeaderViewModel => headerFactory,
+                HistoryExternalRowViewModel => externalFactory,
+                _ => rowFactory,
+            }),
             Layout = new StackLayout { Spacing = 0 },
         };
 
@@ -200,6 +206,35 @@ internal sealed partial class HistoryView : UserControl
     }
 }
 
+/// <summary>External file row: open it, show its folder, or drop it from the history (the file stays).</summary>
+internal static class ExternalRowMenu
+{
+    public static MenuFlyout Create(MainViewModel vm, HistoryExternalRowViewModel row)
+    {
+        var menu = new MenuFlyout();
+        var open = new MenuFlyoutItem { Text = Strings.Get(R.Menu_Open), Icon = new FontIcon { Glyph = Glyphs.Document } };
+        open.Click += (_, _) => _ = vm.OpenFileAsync(row.FullPath);
+        open.IsEnabled = !row.IsMissing;
+
+        var folder = new MenuFlyoutItem { Text = Strings.Get(R.Menu_OpenInExplorer), Icon = new FontIcon { Glyph = Glyphs.Folder } };
+        folder.Click += (_, _) =>
+        {
+            var full = row.FullPath;
+            var missing = row.IsMissing;
+            _ = Task.Run(() => Process.Start(new ProcessStartInfo("explorer.exe", missing ? $"\"{System.IO.Path.GetDirectoryName(full)}\"" : $"/select,\"{full}\"") { UseShellExecute = false }));
+        };
+
+        var remove = new MenuFlyoutItem { Text = Strings.Get(R.Menu_RemoveFromHistory), Icon = new FontIcon { Glyph = Glyphs.Close } };
+        remove.Click += (_, _) => vm.RemoveExternalFile(row.FullPath);
+
+        menu.Items.Add(open);
+        menu.Items.Add(folder);
+        menu.Items.Add(new MenuFlyoutSeparator());
+        menu.Items.Add(remove);
+        return menu;
+    }
+}
+
 internal sealed partial class HistoryHeaderView : UserControl, IItemView<HistoryHeaderViewModel>
 {
     private readonly TextBlock _label;
@@ -214,7 +249,8 @@ internal sealed partial class HistoryHeaderView : UserControl, IItemView<History
     public void Bind(HistoryHeaderViewModel item) => _label.Text = item.Label.ToUpper(System.Globalization.CultureInfo.CurrentCulture);
 }
 
-internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRowViewModel>
+/// <summary>A note row, or an external file row (no tag: the file name instead, "external" instead of the creation).</summary>
+internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRowViewModel>, IItemView<HistoryExternalRowViewModel>
 {
     private readonly HistoryView _owner;
     private readonly Button _button;
@@ -231,6 +267,7 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
     private readonly TextBlock _tasks = Typo.Body(string.Empty, 11.5, Palette.InkTertiary);
     private readonly FontIcon _badge = Typo.Icon(string.Empty, 12, Palette.InkTertiary);
     private HistoryRowViewModel? _item;
+    private HistoryExternalRowViewModel? _external;
 
     public HistoryRowView(HistoryView owner)
     {
@@ -281,12 +318,19 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
             {
                 await _owner.ViewModel.OpenNoteAsync(_item.Note.RelativePath);
             }
+            else if (_external is not null)
+            {
+                await _owner.ViewModel.OpenFileAsync(_external.FullPath);
+            }
         };
         _button.ContextRequested += (_, e) =>
         {
-            if (_item is not null)
+            var menu = _item is not null ? _owner.CreateContextMenu(_item)
+                : _external is not null ? ExternalRowMenu.Create(_owner.ViewModel, _external)
+                : null;
+            if (menu is not null)
             {
-                _owner.CreateContextMenu(_item).ShowAt(_button);
+                menu.ShowAt(_button);
                 e.Handled = true;
             }
         };
@@ -301,7 +345,10 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
         }
 
         _item = item;
+        _external = null;
         item.PropertyChanged += OnItemChanged;
+        _button.Opacity = 1;
+        ToolTipService.SetToolTip(_button, null);
         var note = item.Note;
         _bar.Fill = _owner.Brushes.BrushOf(note.PrimaryTag);
         _setTime(note.ModifiedAt);
@@ -314,6 +361,31 @@ internal sealed partial class HistoryRowView : UserControl, IItemView<HistoryRow
         _tasks.Text = item.TaskText;
         _badge.Glyph = note.IsConflict ? Glyphs.Warning : note.IsClaudeCode ? Glyphs.Lock : note.IsPlaceholder ? Glyphs.Cloud : string.Empty;
         AutomationProperties.SetName(_button, $"{item.TimeText} {item.Title} {note.PrimaryTag}");
+        UpdateCurrent();
+    }
+
+    public void Bind(HistoryExternalRowViewModel item)
+    {
+        if (_item is not null)
+        {
+            _item.PropertyChanged -= OnItemChanged;
+            _item = null;
+        }
+
+        _external = item;
+        _bar.Fill = Palette.Divider;
+        _setTime(item.TouchedAt);
+        _created.Text = item.ExternalText;
+        _title.Text = item.Title;
+        _preview.Text = item.Preview;
+        _preview.Visibility = item.Preview.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _tag.Text = item.FileName;
+        _tag.FontFamily = Typo.Text;
+        _tasks.Text = string.Empty;
+        _badge.Glyph = item.IsMissing ? Glyphs.Warning : Glyphs.Document;
+        _button.Opacity = item.IsMissing ? 0.5 : 1;
+        ToolTipService.SetToolTip(_button, item.FullPath);
+        AutomationProperties.SetName(_button, $"{item.ExternalText} {item.Title} {item.FullPath}");
         UpdateCurrent();
     }
 

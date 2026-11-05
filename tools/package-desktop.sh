@@ -27,9 +27,10 @@ case "$rid" in
 Type=Application
 Name=WolfMark
 Comment=Daily notes in Markdown
-Exec=wolfmark
+Exec=wolfmark %f
 Icon=wolfmark
 Categories=Office;Utility;
+MimeType=text/markdown;text/x-markdown;
 StartupWMClass=WolfMark.Desktop
 DESKTOP
     cat > "$dir/INSTALL.txt" <<'TXT'
@@ -40,6 +41,8 @@ Run ./wolfmark from this folder. To get a menu entry:
   cp -R . ~/.local/share/wolfmark && ln -sf ~/.local/share/wolfmark/wolfmark ~/.local/bin/wolfmark
   cp wolfmark.png ~/.local/share/icons/hicolor/256x256/apps/
   cp wolfmark.desktop ~/.local/share/applications/
+
+Open .md files in WolfMark: Settings → Markdown files (or: xdg-mime default wolfmark.desktop text/markdown).
 TXT
     tar -C "$stage" -czf "$out/WolfMark-$version-$rid.tar.gz" "WolfMark-$version"
     ;;
@@ -71,6 +74,44 @@ TXT
   <key>CFBundleVersion</key><string>${version%%-*}</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- Markdown documents: Finder offers WolfMark in Open With; Settings → Markdown files makes it the default. -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>Markdown</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>net.daringfireball.markdown</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>md</string>
+        <string>markdown</string>
+      </array>
+    </dict>
+  </array>
+  <key>UTImportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key><string>net.daringfireball.markdown</string>
+      <key>UTTypeDescription</key><string>Markdown</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.plain-text</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>md</string>
+          <string>markdown</string>
+        </array>
+        <key>public.mime-type</key><string>text/markdown</string>
+      </dict>
+    </dict>
+  </array>
 </dict>
 </plist>
 PLIST

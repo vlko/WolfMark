@@ -66,10 +66,8 @@ public static class MarkdownImageLink
         }
 
         relative = relative.Replace('\\', '/').Replace('/', Path.DirectorySeparatorChar);
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(notesRoot)) + Path.DirectorySeparatorChar;
         var candidate = Path.GetFullPath(Path.Combine(noteDirectory, relative));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (!candidate.StartsWith(root, comparison))
+        if (!Notes.NotesTree.Contains(notesRoot, candidate))
         {
             return false;
         }

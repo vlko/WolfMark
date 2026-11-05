@@ -65,10 +65,10 @@ internal sealed class Notices : StackPanel
         Margin = new Thickness(24, 0, 24, 6);
     }
 
-    private static void Bind(Item item, System.ComponentModel.INotifyPropertyChanged source, string property, Func<bool> isOpen) =>
+    internal static void Bind(Item item, System.ComponentModel.INotifyPropertyChanged source, string property, Func<bool> isOpen) =>
         Ui.Bind(source, property, () => item.Root.IsVisible = isOpen());
 
-    private static Item Notice(string title, string message, bool warning, params (string Label, Action Action)[] actions)
+    internal static Item Notice(string title, string message, bool warning, params (string Label, Action Action)[] actions)
     {
         var item = new Item();
         var text = Ui.VStack(2, new TextBlock { Text = title, FontWeight = FontWeight.SemiBold, Foreground = Palette.Ink }, item.Message);
@@ -102,7 +102,7 @@ internal sealed class Notices : StackPanel
         return item;
     }
 
-    private sealed class Item
+    internal sealed class Item
     {
         public Border Root { get; } = new();
 
