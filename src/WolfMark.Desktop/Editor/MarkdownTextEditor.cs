@@ -55,6 +55,7 @@ internal sealed class MarkdownTextEditor : UserControl
     private double _zoomWheel; // Ctrl+wheel delta not yet turned into a font size step
     private int _applying;
     private bool _ownLinePending;
+    private string? _menuLink; // web link under the last right click, offered by the context menu
     private readonly LineNumberMargin _lineNumbers;
     private readonly MarkerChips _chips;
     private int _caretLine;
@@ -507,10 +508,21 @@ internal sealed class MarkdownTextEditor : UserControl
         }
 
         MenuItem Format(string key, FormatCommand command) => Item(key, () => Execute(command));
+        // Links are not clickable (a click places the caret); a web link opens from here.
+        var openLink = Item(R.Menu_OpenLink, () =>
+        {
+            if (_menuLink is { } url && TopLevel.GetTopLevel(this)?.Launcher is { } launcher)
+            {
+                _ = launcher.LaunchUriAsync(new Uri(url));
+            }
+        });
+        var linkSeparator = new Separator();
         var menu = new ContextMenu
         {
             Items =
             {
+                openLink,
+                linkSeparator,
                 Item(R.Menu_Cut, () => _editor.Cut(), "Ctrl+X"),
                 Item(R.Menu_Copy, () => _editor.Copy(), "Ctrl+C"),
                 Item(R.Menu_Paste, () => _ = PasteAsync(), "Ctrl+V"),
@@ -537,17 +549,20 @@ internal sealed class MarkdownTextEditor : UserControl
         };
         menu.Opening += (_, _) =>
         {
+            openLink.IsVisible = linkSeparator.IsVisible = _menuLink is not null;
             // Editing entries only for editable notes; copying always.
             foreach (var item in menu.Items.OfType<MenuItem>())
             {
                 var header = item.Header as string;
                 item.IsEnabled = !_editor.IsReadOnly
+                    || header == Strings.Get(R.Menu_OpenLink)
                     || header == Strings.Get(R.Menu_Copy)
                     || header == Strings.Get(R.Menu_SelectAll)
                     || header == Strings.Get(R.Copy_Plain)
                     || header == Strings.Get(R.Copy_Html);
             }
         };
+        menu.Closed += (_, _) => _menuLink = null; // a menu from the keyboard has no link under a pointer
         return menu;
     }
 
@@ -719,9 +734,22 @@ internal sealed class MarkdownTextEditor : UserControl
         }
     }
 
-    /// <summary>A click on a task checkbox toggles it (formatted mode, editable notes).</summary>
+    /// <summary>
+    /// A right click remembers the web link under the pointer for the context menu; a click on a task checkbox
+    /// toggles it (formatted mode, editable notes).
+    /// </summary>
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (e.GetCurrentPoint(_editor).Properties.IsRightButtonPressed)
+        {
+            _menuLink = _editor.GetPositionFromPoint(e.GetPosition(_editor)) is { } at
+                && _editor.Document.GetLineByNumber(at.Line) is var atLine
+                && TokensOf(atLine) is { } atTokens
+                ? MarkdownLinks.WebUrlAt(_editor.Document.GetText(atLine), atTokens, at.Column - 1)
+                : null;
+            return;
+        }
+
         if (_mode != EditorMode.Formatted || _editor.IsReadOnly || e.KeyModifiers != KeyModifiers.None
             || !e.GetCurrentPoint(_editor).Properties.IsLeftButtonPressed
             || _editor.GetPositionFromPoint(e.GetPosition(_editor)) is not { } position)

@@ -195,6 +195,7 @@ S = {
  "Tray_Exit": ("Exit", "Ukončiť"),
  "History_External": ("external", "externý"),
  "Menu_Open": ("Open", "Otvoriť"),
+ "Menu_OpenLink": ("Open link in browser", "Otvoriť odkaz v prehliadači"),
  "Menu_OpenFolder": ("Open folder", "Otvoriť priečinok"),
  "Menu_RemoveFromHistory": ("Remove from history", "Odstrániť z histórie"),
  "ExtFile_Created": ("Created {0}", "Vytvorený {0}"),

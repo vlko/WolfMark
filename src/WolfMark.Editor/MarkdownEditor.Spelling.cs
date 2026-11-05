@@ -18,7 +18,8 @@ public sealed record EditorMenuTexts(
     string SelectAll = "Select all",
     string AddToDictionary = "Add to dictionary",
     string Ignore = "Ignore",
-    string NoSuggestions = "No suggestions");
+    string NoSuggestions = "No suggestions",
+    string OpenLink = "Open link in browser");
 
 /// <summary>
 /// Spell check of the lines in view: each line's prose (<see cref="MarkdownSpelling.ProseOnly"/>) goes to the
@@ -178,6 +179,14 @@ public sealed partial class MarkdownEditor
 
         e.Handled = true;
         var menu = new MenuFlyout();
+
+        // Links are not clickable (a click places the caret); a web link opens from here.
+        var line = _doc.GetLineAtOffset(offset);
+        if (MarkdownLinks.WebUrlAt(_doc.GetLineText(line), _doc.GetTokens(line), offset - _doc.GetLineStart(line)) is { } url)
+        {
+            menu.Items.Add(MenuItem(MenuTexts.OpenLink, () => _ = Windows.System.Launcher.LaunchUriAsync(new Uri(url))));
+            menu.Items.Add(new MenuFlyoutSeparator());
+        }
         if (Proofing && !_readOnly && ErrorAt(offset) is { } error)
         {
             var suggestions = await _speller!.SuggestAsync(error.Word);

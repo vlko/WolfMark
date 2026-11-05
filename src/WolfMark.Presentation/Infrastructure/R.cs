@@ -195,6 +195,7 @@ internal static class R
     public const string Tray_Exit = nameof(Tray_Exit);
     public const string History_External = nameof(History_External);
     public const string Menu_Open = nameof(Menu_Open);
+    public const string Menu_OpenLink = nameof(Menu_OpenLink);
     public const string Menu_OpenFolder = nameof(Menu_OpenFolder);
     public const string Menu_RemoveFromHistory = nameof(Menu_RemoveFromHistory);
     public const string ExtFile_Created = nameof(ExtFile_Created);

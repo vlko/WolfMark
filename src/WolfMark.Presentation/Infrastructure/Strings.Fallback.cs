@@ -196,6 +196,7 @@ internal static partial class Strings
         [R.Tray_Exit] = "Exit",
         [R.History_External] = "external",
         [R.Menu_Open] = "Open",
+        [R.Menu_OpenLink] = "Open link in browser",
         [R.Menu_OpenFolder] = "Open folder",
         [R.Menu_RemoveFromHistory] = "Remove from history",
         [R.ExtFile_Created] = "Created {0}",

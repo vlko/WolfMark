@@ -198,6 +198,7 @@ internal static partial class DesktopStrings
         [R.Tray_Exit] = "Ukončiť",
         [R.History_External] = "externý",
         [R.Menu_Open] = "Otvoriť",
+        [R.Menu_OpenLink] = "Otvoriť odkaz v prehliadači",
         [R.Menu_OpenFolder] = "Otvoriť priečinok",
         [R.Menu_RemoveFromHistory] = "Odstrániť z histórie",
         [R.ExtFile_Created] = "Vytvorený {0}",

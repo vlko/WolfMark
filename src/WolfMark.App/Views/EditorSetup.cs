@@ -18,7 +18,8 @@ internal static class EditorSetup
             Strings.Get(R.Menu_SelectAll),
             Strings.Get(R.Spell_AddToDictionary),
             Strings.Get(R.Spell_Ignore),
-            Strings.Get(R.Spell_NoSuggestions));
+            Strings.Get(R.Spell_NoSuggestions),
+            Strings.Get(R.Menu_OpenLink));
 
         editor.CommandIcon = FormatIcons.CreateForMenu;
         editor.CommandText = command => command switch

@@ -588,6 +588,9 @@
   <data name="Menu_Open" xml:space="preserve">
     <value>Otvoriť</value>
   </data>
+  <data name="Menu_OpenLink" xml:space="preserve">
+    <value>Otvoriť odkaz v prehliadači</value>
+  </data>
   <data name="Menu_OpenFolder" xml:space="preserve">
     <value>Otvoriť priečinok</value>
   </data>
