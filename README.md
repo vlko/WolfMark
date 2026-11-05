@@ -306,7 +306,8 @@ Engineering rules – no reflection under AOT, no I/O on the UI thread, files as
 
 The images above come from the real app running on generated demo data (English notes with a few tags, a table,
 three Claude Code projects and a project README outside the notes folder, all relative to today). Demo mode keeps everything – notes, transcripts, settings and index –
-inside the given folder and never touches your own notes:
+inside the given folder and never touches your own notes. `--screenshots` generates the demo anew each time, so the
+images always show today:
 
 ```powershell
 WolfMark.App.exe --demo %TEMP%\WolfMarkDemo                                  # explore the demo

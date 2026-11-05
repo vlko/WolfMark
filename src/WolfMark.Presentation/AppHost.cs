@@ -98,9 +98,18 @@ internal sealed partial class AppHost : IAsyncDisposable
 
     public event EventHandler<Exception>? ClaudeSyncFailed;
 
-    public static Task<AppHost> CreateAsync(string? demoDirectory = null) => Task.Run(async () =>
+    /// <param name="freshDemo">
+    /// Screenshots: the demo is generated anew, so the images always show today – an older demo folder would show an
+    /// empty today and last week's notes.
+    /// </param>
+    public static Task<AppHost> CreateAsync(string? demoDirectory = null, bool freshDemo = false) => Task.Run(async () =>
     {
         var paths = demoDirectory is null ? LocalPaths.Default : new LocalPaths(Path.Combine(demoDirectory, "local"));
+        if (demoDirectory is not null && freshDemo)
+        {
+            ResetDemo(demoDirectory, paths);
+        }
+
         var fileLogger = new FileLoggerProvider(paths.LogsDirectory);
         var loggers = LoggerFactory.Create(b => b.AddProvider(fileLogger).SetMinimumLevel(LogLevel.Information));
         var settings = new LocalSettingsStore(paths, loggers.CreateLogger<LocalSettingsStore>());
@@ -112,6 +121,27 @@ internal sealed partial class AppHost : IAsyncDisposable
 
         return new AppHost(paths, settings, fileLogger, loggers);
     });
+
+    /// <summary>
+    /// Removes the generated demo content – only the demo's own subfolders (notes, Claude Code transcripts, the
+    /// sample project) and its index and settings; never anything outside <paramref name="directory"/>.
+    /// </summary>
+    private static void ResetDemo(string directory, LocalPaths paths)
+    {
+        foreach (var folder in new[] { "notes", "claude", "projects" })
+        {
+            var path = Path.Combine(directory, folder);
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+
+        foreach (var file in new[] { paths.IndexDatabase, paths.IndexDatabase + "-wal", paths.IndexDatabase + "-shm", paths.SettingsFile })
+        {
+            File.Delete(file);
+        }
+    }
 
     /// <summary>Demo mode: everything inside <paramref name="directory"/>, English UI, seeded on first run.</summary>
     private static async Task PrepareDemoAsync(string directory, LocalSettingsStore settings)

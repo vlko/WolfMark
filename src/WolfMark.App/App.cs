@@ -51,7 +51,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
         try
         {
-            var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory);
+            var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory, freshDemo: LaunchOptions.Current.ScreenshotDirectory is not null);
             _logger = host.Loggers.CreateLogger<App>();
             if (LaunchOptions.Current.TraceEditor)
             {
