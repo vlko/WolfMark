@@ -47,6 +47,10 @@ public static class NoteContentAnalyzer
         var open = 0;
         var done = 0;
 
+        // Tables read as their cells in the title and preview ("Method · Path · Notes"), not as pipes and dashes.
+        // Lines in code blocks are skipped below before this is used, so the code check is not needed here.
+        var tables = MarkdownTable.Find(lines.Length, k => lines[k], _ => false).Where(t => t.FirstLine >= frontMatter.LineCount).ToList();
+
         var tokens = new List<MarkdownToken>();
         var state = frontMatter.IsPresent ? LineState.Normal : LineState.DocumentStart;
         for (var i = frontMatter.LineCount; i < lines.Length; i++)
@@ -57,7 +61,11 @@ public static class NoteContentAnalyzer
             state = MarkdownLineLexer.Tokenize(line, stateIn, tokens);
 
             var isCode = stateIn.Kind == LineStateKind.FencedCode || tokens is [{ Kind: MarkdownTokenKind.CodeFence }, ..];
-            var plain = isCode ? line.Trim() : StripMarkdown(line, tokens);
+            var table = isCode ? null : tables.Find(t => t.Contains(i));
+            var plain = isCode ? line.Trim()
+                : table is null ? StripMarkdown(line, tokens)
+                : i == table.FirstLine + 1 ? string.Empty // the delimiter row
+                : TableRowText(line, tokens);
 
             body.Append(line).Append('\n');
             words += CountWords(plain);
@@ -124,6 +132,12 @@ public static class NoteContentAnalyzer
             }
         }
     }
+
+    /// <summary>A table row as its cells' text, separated by " · " (empty cells left out).</summary>
+    private static string TableRowText(string line, IReadOnlyList<MarkdownToken> tokens) => string.Join(" · ",
+        MarkdownTable.Cells(line)
+            .Select(c => StripMarkdown(line.Substring(c.Start, c.Length), MarkdownTable.CellTokens(tokens, c)))
+            .Where(text => text.Length > 0));
 
     /// <summary>Removes syntax tokens and collapses whitespace.</summary>
     public static string StripMarkdown(string line, IReadOnlyList<MarkdownToken> tokens)

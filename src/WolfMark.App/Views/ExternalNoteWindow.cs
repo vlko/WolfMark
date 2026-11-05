@@ -89,6 +89,9 @@ internal sealed partial class ExternalNoteWindow : Window
 
     public string FullPath => _doc.FullPath;
 
+    /// <summary>For <see cref="Infrastructure.ScreenshotRunner"/>: the window content.</summary>
+    internal Grid RootElement => _root;
+
     /// <summary>Same theme as the main window (also after a change in the settings).</summary>
     public void ApplyTheme(ElementTheme theme)
     {

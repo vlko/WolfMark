@@ -62,6 +62,25 @@ internal sealed partial class ScreenshotRunner(MainWindow window, AppHost host, 
             await ShotAsync("search.png", settle: 1500);
             vm.IsSearchOpen = false;
 
+            // Full view: only the day, the formatting and the note (the table at the top).
+            vm.IsFullView = true;
+            await ShotAsync("full-view.png");
+            vm.IsFullView = false;
+
+            // A README outside the notes in its own window – the demo has it in the history.
+            if (host.Settings.Current.ExternalFiles.FirstOrDefault()?.Path is { } external)
+            {
+                await vm.OpenFileAsync(external);
+                await Task.Delay(600);
+                if (window.ExternalWindowOf(external) is { } externalWindow)
+                {
+                    var s = externalWindow.Content.XamlRoot?.RasterizationScale ?? scale;
+                    externalWindow.AppWindow.Resize(new SizeInt32((int)(1100 * s), (int)(820 * s)));
+                    await ShotAsync("external-file.png", externalWindow.RootElement, externalWindow.Content.XamlRoot);
+                    await externalWindow.TryCloseAsync();
+                }
+            }
+
             SetTheme(AppTheme.Dark);
             await ShotAsync("main-dark.png");
             SetTheme(AppTheme.Light);
@@ -126,16 +145,19 @@ internal sealed partial class ScreenshotRunner(MainWindow window, AppHost host, 
         return file is null ? null : Path.GetRelativePath(root, file).Replace('\\', '/');
     }
 
-    private async Task ShotAsync(string name, int settle = 900)
+    private Task ShotAsync(string name, int settle = 900) => ShotAsync(name, window.RootElement, window.Content.XamlRoot, settle);
+
+    /// <summary>Saves <paramref name="element"/> (a window's content) as a PNG after the UI settled.</summary>
+    private async Task ShotAsync(string name, Microsoft.UI.Xaml.UIElement element, Microsoft.UI.Xaml.XamlRoot? root, int settle = 900)
     {
         await Task.Delay(settle);
         await NextFrameAsync();
         await NextFrameAsync();
 
         var bitmap = new RenderTargetBitmap();
-        await bitmap.RenderAsync(window.RootElement);
+        await bitmap.RenderAsync(element);
         var pixels = (await bitmap.GetPixelsAsync()).ToArray();
-        var dpi = 96 * (window.Content.XamlRoot?.RasterizationScale ?? 1.0);
+        var dpi = 96 * (root?.RasterizationScale ?? 1.0);
 
         using var stream = new InMemoryRandomAccessStream();
         var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);

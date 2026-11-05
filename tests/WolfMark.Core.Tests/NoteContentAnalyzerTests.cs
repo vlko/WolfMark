@@ -5,6 +5,25 @@ namespace WolfMark.Core.Tests;
 public sealed class NoteContentAnalyzerTests
 {
     [Fact]
+    public void A_table_reads_as_its_cells_without_the_delimiter_row()
+    {
+        const string content = """
+            # Endpoints
+
+            | Method | Path | Notes |
+            |:--|:--|--:|
+            | `GET` | **/invoices** |  |
+            """;
+
+        var info = NoteContentAnalyzer.Analyze(content);
+        Assert.Equal("Method · Path · Notes GET · /invoices", info.Preview);
+    }
+
+    [Fact]
+    public void A_table_on_the_first_line_is_a_readable_title() =>
+        Assert.Equal("A · B", NoteContentAnalyzer.Analyze("| A | B |\n|---|---|\n| 1 | 2 |").Title);
+
+    [Fact]
     public void Extracts_title_preview_tags_tasks()
     {
         const string content = """

@@ -128,6 +128,13 @@ internal sealed partial class AppHost : IAsyncDisposable
         s.ClaudeCode.Enabled = true;
         s.ClaudeCode.ClaudeDirectory = claude;
         s.ClaudeCode.RedactSecrets = true;
+        // A README outside the notes, opened an hour ago: an external file in the history.
+        var external = await WolfMark.Storage.Demo.DemoDataSeeder.WriteExternalFileAsync(Path.Combine(directory, "projects", "billing-api"), CancellationToken.None).ConfigureAwait(false);
+        if (s.ExternalFiles.Count == 0)
+        {
+            WolfMark.Core.Settings.ExternalFileHistory.Touch(s.ExternalFiles, external, DateTime.UtcNow.AddMinutes(-70));
+        }
+
         await settings.SaveAsync(CancellationToken.None).ConfigureAwait(false);
     }
 

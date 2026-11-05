@@ -129,6 +129,12 @@ public static class DemoDataSeeder
 
         Goal for this week: the calendar should explain the week *at a glance*.
 
+        | Area | Status | Owner | Est. |
+        |:-----|:------:|:------|-----:|
+        | Week strip | **done** | design | 2 d |
+        | Month labels | review | me | 1 d |
+        | Keyboard focus | `todo` | me | 0.5 d |
+
         ## Done
         - [x] Week strip shows counts per tag and per Claude Code project
         - [x] Hatched past days, dashed frame for today
@@ -224,6 +230,47 @@ public static class DemoDataSeeder
     private static string Untagged(Random random) => random.Next(2) == 0
         ? "Call the dentist back, Thursday after 3 pm works."
         : "Parking spot moved to level -2 from next month.";
+
+    /// <summary>
+    /// A project README outside the notes folder – the demo of a Markdown file opened from elsewhere (its own
+    /// window, in the history). Written only when missing; returns its path.
+    /// </summary>
+    public static async Task<string> WriteExternalFileAsync(string directory, CancellationToken ct)
+    {
+        var path = Path.Combine(directory, "README.md");
+        if (!File.Exists(path))
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllTextAsync(path, """
+                # billing-api
+
+                Invoicing service for the web shop. Opened from the repository – WolfMark edits it in place and saves
+                only when asked.
+
+                ## Endpoints
+
+                | Method | Path | Notes |
+                |:-------|:-----|:------|
+                | `GET` | `/invoices/{id}` | PDF or JSON by `Accept` |
+                | `POST` | `/invoices` | idempotent with `Idempotency-Key` |
+                | `DELETE` | `/invoices/{id}` | drafts only |
+
+                ## Run locally
+
+                ```
+                dotnet run --project src/Billing.Api
+                ```
+
+                - [x] Health check on `/healthz`
+                - [ ] Rate limiting per customer
+
+                See the [API guidelines](https://example.com/api) for naming.
+
+                """.ReplaceLineEndings("\r\n"), ct).ConfigureAwait(false);
+        }
+
+        return path;
+    }
 
     private static async Task WriteNoteAsync(string root, DateOnly day, string? tag, TimeOnly time, string text, CancellationToken ct)
     {

@@ -244,6 +244,9 @@ internal sealed partial class MainWindow : Window
         await _host.DisposeAsync();
     }
 
+    /// <summary>For <see cref="ScreenshotRunner"/>: the open window of an external file.</summary>
+    internal ExternalNoteWindow? ExternalWindowOf(string fullPath) => _externalWindows.GetValueOrDefault(fullPath);
+
     /// <summary>A file from outside the notes tree in its own window (or the window it already has).</summary>
     private async Task OpenExternalAsync(string fullPath)
     {
