@@ -4,10 +4,10 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Runtime -->
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.2.26504.105" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0-rc.2.26504.105" />
-    <PackageVersion Include="System.IO.Hashing" Version="11.0.0-rc.2.26504.105" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0-rc.2.26504.105" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="System.IO.Hashing" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0-rc.3.26522.148" />
     <PackageVersion Include="sqlite-vec" Version="0.1.7-alpha.2.1" />
     <!-- Canvas editor (docs/adr/0007-canvas-editor.md); depends only on the WinUI component. -->
     <PackageVersion Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
