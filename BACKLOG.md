@@ -183,13 +183,13 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   na dátový priečinok), súbor zo stromu prepne poznámku, mimo stromu vlastné okno (Uložiť, otázka pri
   zatvorení, zmena na disku, kópia do dnešných poznámok, stavový riadok), externé súbory v histórii,
   registrácia v Nastaveniach (Windows HKCU + Predvolené aplikácie, macOS Launch Services, Linux xdg-mime).
-- 🟨 **M8-09 – Prenosný režim** (ADR 0009): značka `WolfMark.portable.json` vedľa exe, dáta v `WolfMarkData`
+- ✅ **M8-09 – Prenosný režim** (ADR 0009): značka `WolfMark.portable.json` vedľa exe, dáta v `WolfMarkData`
   (`local/`, `notes/` – relatívne cesty), zapnutie (Kopírovať/Presunúť) a vypnutie (kopírovať späť) v Nastaveniach
   s upozornením, integrácia so systémom v prenosnom režime vypnutá.
   *Akceptácia:* po zapnutí a reštarte sú poznámky, vyhľadávanie a nastavenia z prenosného priečinka; po presune
   priečinka (iné písmeno disku) aplikácia funguje; zmazaná poznámka ide do `.wolfmark/trash`; poškodená značka
   zastaví štart s hlásením; vypnutie vráti dáta do profilu; z Program Files je voľba nedostupná s dôvodom.
-  *Stav:* Implementované, testy zelené (Linux); čaká na overenie na Windows.
+  *Stav:* Hotové, overené na Windows (vydané vo verzii 0.5.0).
 
 ## M9 – Rozšírenia 🟡/⚪
 
