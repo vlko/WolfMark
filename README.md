@@ -66,6 +66,7 @@ notebook unless I ask.
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
 | **Markdown files anywhere** | WolfMark can open every `.md` file: notes switch the main window, other files open in their own window with *Save*, a status bar and *Copy to my notes* |
 | **Full view** | `F11` (macOS `Ctrl+Cmd+F`): only the day, the formatting buttons and the note |
+| **Portable mode** | Notes, settings and index in a `WolfMarkData` folder next to the app – carry it on a USB drive, nothing written to the computer |
 | **Desktop integration** | Light/dark theme, notification-area icon, single instance; start with Windows and app icon choice on Windows |
 | **Robust storage** | Atomic writes, recycle bin instead of delete, OneDrive placeholders and conflict copies handled |
 
@@ -154,6 +155,27 @@ optional vectors), downscaled image previews (`cache\previews`), logs, window pl
 files you opened from outside the notes folder (`settings.json`). It is a cache – delete `index.db` and WolfMark
 rebuilds it from the files. On macOS it is `~/Library/Application Support/WolfMark`, on Linux `~/.local/share/WolfMark`.
 
+**Portable mode.** Settings → *General* → *Portable mode* copies the notes, settings and index into a folder next to
+the app and restarts from there. A warning comes first, and you choose whether the original notes stay (*Copy*) or
+go to the Recycle Bin (*Move*). A `WolfMark.portable.json` file next to the executable is what makes a copy
+portable:
+
+```
+WolfMark\
+├─ WolfMark.exe
+├─ WolfMark.portable.json       # { "version": 1, "dataDirectory": "WolfMarkData" }
+└─ WolfMarkData\
+   ├─ local\                    # settings.json, index.db, logs – what normally sits in %LOCALAPPDATA%
+   └─ notes\                    # the notes folder, as above
+```
+
+Paths are relative to the app, so the folder works on any computer and under any drive letter. While portable,
+WolfMark writes nothing to the system: start at sign-in and the `.md` association are off, and deleted notes go to
+`notes\.wolfmark\trash` because removable drives have no Recycle Bin. *Leave portable mode…* copies everything back
+to your profile and keeps the portable folder. Deleting `WolfMark.portable.json` by hand returns the app to the data
+it had before, without the changes made while portable. Details are in
+[ADR 0009](docs/adr/0009-portable-mode.md).
+
 ## Search, editor and the rest
 
 ![Search palette](docs/screenshots/search.png)
@@ -205,7 +227,7 @@ rebuilds it from the files. On macOS it is `~/Library/Application Support/WolfMa
 </tr>
 </table>
 
-- **Settings** are grouped on the left: *General* (notes folder, language, start-up, Markdown files), *Appearance*,
+- **Settings** are grouped on the left: *General* (notes folder, language, start-up, Markdown files, portable mode), *Appearance*,
   *Editor*, *Claude Code* and *Index & diagnostics*.
 - **Windows**: Mica-backed flat design with Barlow typography, light and dark theme, a choice of app icons.
   Optionally WolfMark starts with Windows and keeps running in the notification area when the window is closed
@@ -252,6 +274,9 @@ view and Markdown files from anywhere – on an [Avalonia](https://avaloniaui.ne
 
 - **Open .md files with WolfMark:** Settings → *General* → *Markdown files*. On macOS this needs `WolfMark.app`
   (Finder also lists it under *Open With*); on Linux it adds a desktop entry and sets it with `xdg-mime`.
+- **Portable:** unpack anywhere you can write (a USB drive, not `Program Files`) and switch on Settings → *General* →
+  *Portable mode*; see [Portable mode](#your-data-plain-markdown-in-onedrive). Works for the Windows and Linux
+  builds and for a macOS app run from outside Applications.
 - Windows only so far: spell check, start with the system, app icon choice.
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed:
