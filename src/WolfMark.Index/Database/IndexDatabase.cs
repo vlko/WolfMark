@@ -112,6 +112,30 @@ public sealed partial class IndexDatabase : IAsyncDisposable
             },
             cancellationToken);
 
+    /// <summary>
+    /// A consistent copy of the database in <paramref name="targetPath"/> (portable mode, ADR 0009): <c>VACUUM INTO</c>
+    /// on a reader connection – safe with WAL and the single writer – into a temp file that then replaces the target.
+    /// </summary>
+    public Task BackupToAsync(string targetPath, CancellationToken cancellationToken) => ReadAsync(
+        c =>
+        {
+            var full = System.IO.Path.GetFullPath(targetPath);
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+            var temp = full + ".backup.tmp";
+            File.Delete(temp); // a leftover of an interrupted backup (our own temp file)
+            using (var cmd = c.Command("VACUUM INTO $path;"))
+            {
+                cmd.With("$path", temp).ExecuteNonQuery();
+            }
+
+            File.Delete(full + "-wal"); // a stale WAL of an older copy would be replayed over the new file
+            File.Delete(full + "-shm");
+
+            File.Move(temp, full, overwrite: true);
+            return true;
+        },
+        cancellationToken);
+
     /// <summary>Drops and recreates all tables (index rebuild, M2-07). Callers must rescan afterwards.</summary>
     public Task ResetAsync(CancellationToken cancellationToken) => WriteAsync(
         c =>

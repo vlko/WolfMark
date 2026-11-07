@@ -221,6 +221,49 @@ S = {
  "Settings_FileAssociationHintDesktop": ("WolfMark becomes the default app for Markdown files.", "WolfMark sa stane predvolenou aplikáciou pre Markdown súbory."),
  "Settings_FileAssociationDefault": ("Default apps…", "Predvolené aplikácie…"),
  "Settings_FileAssociationFailed": ("The .md file association could not be changed: {0}", "Priradenie .md súborov sa nepodarilo zmeniť: {0}"),
+ "Settings_Portable": ("Portable mode", "Prenosný režim"),
+ "Settings_PortableTitle": ("Portable", "Prenosná verzia"),
+ "Settings_PortableOff": ("Off – the data is stored in your user profile.", "Vypnutý – dáta sú uložené v profile používateľa."),
+ "Settings_PortableOn": ("On – all data is in {0}", "Zapnutý – všetky dáta sú v {0}"),
+ "Settings_PortableEnable": ("Switch to portable mode…", "Prepnúť na prenosný režim…"),
+ "Settings_PortableDisable": ("Leave portable mode…", "Ukončiť prenosný režim…"),
+ "Settings_PortableEnableWarning": (
+  "Notes, settings and the search index are copied next to the app:\n{0}\n\n"
+  "• From then on the app reads and writes only there. With Copy the original notes stay where they are but are no longer updated – you will have two diverging copies.\n"
+  "• With Move the original notes folder goes to the Recycle Bin once the copy is verified. The settings in your user profile stay.\n"
+  "• Notes in the portable folder are not synchronised by OneDrive.\n"
+  "• Start at sign-in and the .md file association are removed – they are not available in portable mode.\n"
+  "• Deleted notes go to .wolfmark/trash in the portable folder, not to the system Recycle Bin.\n"
+  "• Deleting WolfMark.portable.json next to the app returns to the previous data, without the changes made in portable mode.\n\n"
+  "The app restarts afterwards.",
+  "Poznámky, nastavenia a index vyhľadávania sa skopírujú vedľa aplikácie:\n{0}\n\n"
+  "• Odvtedy aplikácia číta a zapisuje len tam. Pri Kopírovať pôvodné poznámky ostanú na mieste, ale už sa nebudú aktualizovať – vzniknú dve rozbiehajúce sa kópie.\n"
+  "• Pri Presunúť pôjde pôvodný priečinok poznámok po overení kópie do koša. Nastavenia v profile používateľa ostanú.\n"
+  "• Poznámky v prenosnom priečinku nesynchronizuje OneDrive.\n"
+  "• Spúšťanie po prihlásení a priradenie .md súborov sa zrušia – v prenosnom režime nie sú dostupné.\n"
+  "• Zmazané poznámky idú do .wolfmark/trash v prenosnom priečinku, nie do systémového koša.\n"
+  "• Zmazaním WolfMark.portable.json vedľa aplikácie sa vrátiš k pôvodným dátam, bez zmien z prenosného režimu.\n\n"
+  "Aplikácia sa potom reštartuje."),
+ "Settings_PortableDisableWarning": (
+  "Notes, settings and the search index are copied back to this computer. Notes:\n{0}\n\n"
+  "• A note that differs in that folder goes to the Recycle Bin and the portable version takes its place. Notes deleted in portable mode stay there.\n"
+  "• The portable folder {1} is kept – delete it yourself when you no longer need it.\n"
+  "• Start at sign-in and the .md file association stay off; you can switch them on again.\n\n"
+  "The app restarts afterwards.",
+  "Poznámky, nastavenia a index vyhľadávania sa skopírujú späť do tohto počítača. Poznámky:\n{0}\n\n"
+  "• Poznámka, ktorá sa v tom priečinku líši, pôjde do koša a nahradí ju verzia z prenosného režimu. Poznámky zmazané v prenosnom režime tam ostanú.\n"
+  "• Prenosný priečinok {1} ostane – zmaž ho sám, keď ho už nebudeš potrebovať.\n"
+  "• Spúšťanie po prihlásení a priradenie .md súborov ostanú vypnuté; môžeš ich znova zapnúť.\n\n"
+  "Aplikácia sa potom reštartuje."),
+ "Settings_PortableCopy": ("Copy", "Kopírovať"),
+ "Settings_PortableMove": ("Move", "Presunúť"),
+ "Settings_PortableCopyBack": ("Copy back", "Skopírovať späť"),
+ "Settings_PortableProgress": ("Copying… {0} files", "Kopíruje sa… {0} súborov"),
+ "Settings_PortableFailed": ("Portable mode could not be switched: {0}", "Prenosný režim sa nepodarilo prepnúť: {0}"),
+ "Settings_PortableCleanupFailed": ("Portable mode is on, but the original notes could not be moved to the Recycle Bin: {0}", "Prenosný režim je zapnutý, ale pôvodné poznámky sa nepodarilo presunúť do koša: {0}"),
+ "Settings_PortableNotWritable": ("Not available: the app folder {0} is not writable. Copy the app to a folder you can write to, e.g. a USB drive.", "Nedostupné: do priečinka aplikácie {0} sa nedá zapisovať. Skopíruj aplikáciu do zapisovateľného priečinka, napr. na USB kľúč."),
+ "Settings_PortableAppBundle": ("Not available for an app installed in Applications.", "Nedostupné pre aplikáciu nainštalovanú v Applications."),
+ "Settings_PortableUnavailable": ("Not available in portable mode – it writes to this computer's system settings.", "V prenosnom režime nie je dostupné – zapisuje do systému tohto počítača."),
 }
 
 import os, sys, html
@@ -262,7 +305,10 @@ internal static class R
 '''
 open(os.path.join(SHARED, "R.cs"), "w", encoding="utf-8").write(cs)
 # English fallback (used when resources.pri is missing, e.g. tests/dev hosts)
-fallback = "\n".join(f'        [R.{k}] = "{v[0].replace(chr(92), chr(92)*2).replace(chr(34), chr(92)+chr(34))}",' for k, v in S.items())
+def lit(v):
+    """C# string literal body: backslash, quote and line breaks escaped."""
+    return v.replace(chr(92), chr(92)*2).replace(chr(34), chr(92)+chr(34)).replace("\n", "\\n")
+fallback = "\n".join(f'        [R.{k}] = "{lit(v[0])}",' for k, v in S.items())
 cs2 = f'''namespace WolfMark.App.Infrastructure;
 
 internal static partial class Strings
@@ -277,8 +323,6 @@ open(os.path.join(SHARED, "Strings.Fallback.cs"), "w", encoding="utf-8").write(c
 # Slovak table of the macOS/Linux app (no .resw/.pri off Windows; English comes from the fallback).
 desktop = os.path.join(out, "..", "..", "WolfMark.Desktop", "Infrastructure")
 if os.path.isdir(desktop):
-    def lit(v):
-        return v.replace(chr(92), chr(92)*2).replace(chr(34), chr(92)+chr(34))
     sk = "\n".join(f'        [R.{k}] = "{lit(v[1])}",' for k, v in S.items())
     cs3 = f'''using WolfMark.App.Infrastructure;
 

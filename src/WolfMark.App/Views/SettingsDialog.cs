@@ -8,6 +8,7 @@ using WolfMark.App.Ui;
 using WolfMark.App.ViewModels;
 using WolfMark.Core.Settings;
 using WolfMark.Storage;
+using WolfMark.Storage.Settings;
 
 namespace WolfMark.App.Views;
 
@@ -81,7 +82,7 @@ internal static class SettingsDialog
                 browse.IsEnabled = true;
             }
 
-            s.RootDirectory = newRoot;
+            s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
             await host.SaveSettingsAsync();
             rootText.Text = newRoot;
             restartNeeded = true;
@@ -91,6 +92,88 @@ internal static class SettingsDialog
         moveButton.Click += async (_, _) => await ApplyRootAsync(move: true);
         switchButton.Click += async (_, _) => await ApplyRootAsync(move: false);
         cancelMove.Click += (_, _) => movePanel.Visibility = Visibility.Collapsed;
+
+        // Portable mode (ADR 0009): copy everything next to the app, or back; then a restart.
+        var portableData = host.PortableDataDirectory;
+        var isPortable = portableData is not null;
+        var portableStatus = Typo.Body(isPortable ? Strings.Format(R.Settings_PortableOn, portableData!) : Strings.Get(R.Settings_PortableOff), 13, Palette.InkSecondary);
+        portableStatus.TextWrapping = TextWrapping.Wrap;
+        portableStatus.IsTextSelectionEnabled = true;
+        var portableButton = Ui.Ui.TextButton(Strings.Get(isPortable ? R.Settings_PortableDisable : R.Settings_PortableEnable));
+        var availability = isPortable || LaunchOptions.Current.IsDemo
+            ? PortableUnavailableReason.None
+            : await Task.Run(() => PortableMode.CheckAvailability(PortableMode.AppDirectory));
+        portableButton.IsEnabled = !LaunchOptions.Current.IsDemo && availability == PortableUnavailableReason.None;
+        var portableReason = Typo.Body(
+            availability switch
+            {
+                PortableUnavailableReason.NotWritable => Strings.Format(R.Settings_PortableNotWritable, PortableMode.AppDirectory),
+                PortableUnavailableReason.AppBundle => Strings.Get(R.Settings_PortableAppBundle),
+                _ => string.Empty,
+            },
+            12.5,
+            Palette.InkTertiary);
+        portableReason.TextWrapping = TextWrapping.Wrap;
+        portableReason.Visibility = availability == PortableUnavailableReason.None ? Visibility.Collapsed : Visibility.Visible;
+
+        var portableWarning = Typo.Body(string.Empty, 13);
+        portableWarning.TextWrapping = TextWrapping.Wrap;
+        var portableCopy = Ui.Ui.TextButton(Strings.Get(isPortable ? R.Settings_PortableCopyBack : R.Settings_PortableCopy));
+        var portableMove = Ui.Ui.TextButton(Strings.Get(R.Settings_PortableMove));
+        portableMove.Visibility = isPortable ? Visibility.Collapsed : Visibility.Visible;
+        var portableCancel = Ui.Ui.TextButton(Strings.Get(R.Common_Cancel));
+        var portableProgress = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
+        portableProgress.TextWrapping = TextWrapping.Wrap;
+        var portablePanel = Ui.Ui.VStack(8, portableWarning, Ui.Ui.HStack(8, portableCopy, portableMove, portableCancel), portableProgress);
+        portablePanel.Visibility = Visibility.Collapsed;
+
+        portableButton.Click += async (_, _) =>
+        {
+            portableWarning.Text = isPortable
+                ? Strings.Format(R.Settings_PortableDisableWarning, await Task.Run(() => PortableMigrator.StandardNotesRoot(LocalPaths.Standard)), portableData!)
+                : Strings.Format(R.Settings_PortableEnableWarning, PortableMode.DefaultDataDirectory(PortableMode.AppDirectory));
+            portableProgress.Text = string.Empty;
+            portablePanel.Visibility = Visibility.Visible;
+        };
+        portableCancel.Click += (_, _) => portablePanel.Visibility = Visibility.Collapsed;
+
+        async Task SwitchPortableAsync(bool moveNotes)
+        {
+            portableButton.IsEnabled = portableCopy.IsEnabled = portableMove.IsEnabled = portableCancel.IsEnabled = browse.IsEnabled = false;
+            await vm.Editor.FlushAsync();
+            var progress = new Progress<int>(n => portableProgress.Text = Strings.Format(R.Settings_PortableProgress, n));
+            try
+            {
+                var result = isPortable
+                    ? await host.DisablePortableAsync(progress)
+                    : await host.EnablePortableAsync(moveNotes, progress);
+                if (!isPortable)
+                {
+                    await Task.Run(SystemIntegration.Remove);
+                }
+
+                if (result.CleanupError is { } cleanup)
+                {
+                    portableProgress.Text = Strings.Format(R.Settings_PortableCleanupFailed, cleanup.Message);
+                    restartNeeded = true;
+                    restartBar.IsOpen = true;
+                    return;
+                }
+
+                AppInstance.Restart(string.Empty);
+            }
+            catch (Exception ex)
+            {
+                // Watcher and Claude Code sync are stopped: only a restart brings them back.
+                portableProgress.Text = Strings.Format(R.Settings_PortableFailed, ex.Message);
+                portableCancel.IsEnabled = true;
+                restartNeeded = true;
+                restartBar.IsOpen = true;
+            }
+        }
+
+        portableCopy.Click += async (_, _) => await SwitchPortableAsync(moveNotes: false);
+        portableMove.Click += async (_, _) => await SwitchPortableAsync(moveNotes: true);
 
         // Appearance
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
@@ -181,14 +264,25 @@ internal static class SettingsDialog
         var testNotice = Ui.Ui.TextButton(Strings.Get(R.Settings_TestNotice), () => vm.IsTestNoticeOpen = true);
         // Windows: start at sign-in (registry Run entry is the truth) and close to the notification area.
         var startupWas = await Task.Run(() => StartupRegistration.IsEnabled);
-        var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows), IsEnabled = !LaunchOptions.Current.IsDemo };
+        // Portable mode writes nothing to this computer's system settings: both integrations are off there.
+        var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows), IsEnabled = !LaunchOptions.Current.IsDemo && !isPortable };
         var closeToTray = new ToggleSwitch { IsOn = s.CloseToTray, Header = Strings.Get(R.Settings_CloseToTray) };
         // .md files: the association of this exe (registry is the truth); Windows confirms the default itself.
         var associationWas = await Task.Run(() => FileAssociation.IsEnabled);
-        var fileAssociation = new ToggleSwitch { IsOn = associationWas, Header = Strings.Get(R.Settings_FileAssociation) };
+        var fileAssociation = new ToggleSwitch { IsOn = associationWas, Header = Strings.Get(R.Settings_FileAssociation), IsEnabled = !isPortable };
         var defaultApps = Ui.Ui.TextButton(Strings.Get(R.Settings_FileAssociationDefault), () => _ = FileAssociation.OpenDefaultAppsAsync());
+        defaultApps.IsEnabled = !isPortable;
+        TextBlock PortableUnavailable()
+        {
+            var t = Typo.Body(Strings.Get(R.Settings_PortableUnavailable), 12.5, Palette.InkTertiary);
+            t.TextWrapping = TextWrapping.Wrap;
+            t.Visibility = isPortable ? Visibility.Visible : Visibility.Collapsed;
+            return t;
+        }
+
         var associationHint = Typo.Body(Strings.Get(R.Settings_FileAssociationHint), 12.5, Palette.InkTertiary);
         associationHint.TextWrapping = TextWrapping.Wrap;
+        associationHint.Visibility = isPortable ? Visibility.Collapsed : Visibility.Visible;
 
         var rendering = Combo([Strings.Get(R.Settings_RenderingMica), Strings.Get(R.Settings_RenderingClass)], (int)s.WindowRendering);
 
@@ -227,11 +321,18 @@ internal static class SettingsDialog
                 Field(Strings.Get(R.Settings_Language), language),
                 Section(Strings.Get(R.Settings_System)),
                 startWithWindows,
+                PortableUnavailable(),
                 closeToTray,
                 Section(Strings.Get(R.Settings_Files)),
                 fileAssociation,
                 associationHint,
-                defaultApps)),
+                PortableUnavailable(),
+                defaultApps,
+                Section(Strings.Get(R.Settings_Portable)),
+                portableStatus,
+                portableButton,
+                portableReason,
+                portablePanel)),
             (Glyphs.Appearance, Strings.Get(R.Settings_Appearance), Ui.Ui.VStack(
                 10,
                 Field(Strings.Get(R.Settings_Theme), theme),
@@ -268,7 +369,7 @@ internal static class SettingsDialog
         var dialog = new ContentDialog
         {
             XamlRoot = root,
-            Title = $"{Strings.Get(R.Settings_Title)} · {DiagnosticInfo.ShortVersion}",
+            Title = $"{Strings.Get(R.Settings_Title)} · {DiagnosticInfo.ShortVersion}{(isPortable ? " · " + Strings.Get(R.Settings_PortableTitle) : string.Empty)}",
             Content = Categories(pages, restartBar),
             PrimaryButtonText = "OK",
             CloseButtonText = Strings.Get(R.Common_Cancel),
@@ -305,7 +406,7 @@ internal static class SettingsDialog
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
         s.CloseToTray = closeToTray.IsOn;
-        if (!LaunchOptions.Current.IsDemo && (startWithWindows.IsOn != startupWas || startupWas))
+        if (!LaunchOptions.Current.IsDemo && !isPortable && (startWithWindows.IsOn != startupWas || startupWas))
         {
             // Re-written also when unchanged: keeps the path current if the exe moved.
             var on = startWithWindows.IsOn;
@@ -319,7 +420,7 @@ internal static class SettingsDialog
             }
         }
 
-        if (fileAssociation.IsOn != associationWas)
+        if (!isPortable && fileAssociation.IsOn != associationWas)
         {
             var on = fileAssociation.IsOn;
             try

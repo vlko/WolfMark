@@ -21,6 +21,18 @@ internal static class StartupRegistration
         }
     }
 
+    /// <summary>The Run entry starts this exe (another copy of WolfMark may own it).</summary>
+    public static bool PointsToThisApp
+    {
+        get
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey);
+            return key?.GetValue(ValueName) is string value
+                   && Environment.ProcessPath is { } exe
+                   && value.Contains(exe, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     public static void Set(bool enabled)
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);

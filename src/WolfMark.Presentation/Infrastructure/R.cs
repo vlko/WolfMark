@@ -221,4 +221,21 @@ internal static class R
     public const string Settings_FileAssociationHintDesktop = nameof(Settings_FileAssociationHintDesktop);
     public const string Settings_FileAssociationDefault = nameof(Settings_FileAssociationDefault);
     public const string Settings_FileAssociationFailed = nameof(Settings_FileAssociationFailed);
+    public const string Settings_Portable = nameof(Settings_Portable);
+    public const string Settings_PortableTitle = nameof(Settings_PortableTitle);
+    public const string Settings_PortableOff = nameof(Settings_PortableOff);
+    public const string Settings_PortableOn = nameof(Settings_PortableOn);
+    public const string Settings_PortableEnable = nameof(Settings_PortableEnable);
+    public const string Settings_PortableDisable = nameof(Settings_PortableDisable);
+    public const string Settings_PortableEnableWarning = nameof(Settings_PortableEnableWarning);
+    public const string Settings_PortableDisableWarning = nameof(Settings_PortableDisableWarning);
+    public const string Settings_PortableCopy = nameof(Settings_PortableCopy);
+    public const string Settings_PortableMove = nameof(Settings_PortableMove);
+    public const string Settings_PortableCopyBack = nameof(Settings_PortableCopyBack);
+    public const string Settings_PortableProgress = nameof(Settings_PortableProgress);
+    public const string Settings_PortableFailed = nameof(Settings_PortableFailed);
+    public const string Settings_PortableCleanupFailed = nameof(Settings_PortableCleanupFailed);
+    public const string Settings_PortableNotWritable = nameof(Settings_PortableNotWritable);
+    public const string Settings_PortableAppBundle = nameof(Settings_PortableAppBundle);
+    public const string Settings_PortableUnavailable = nameof(Settings_PortableUnavailable);
 }

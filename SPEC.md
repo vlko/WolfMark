@@ -63,6 +63,7 @@ WolfMark.sln
 
 - Predvolene: `%OneDrive%\WolfMark` (zistiť z premennej prostredia `OneDrive`, fallback `OneDriveConsumer` / `OneDriveCommercial`, fallback `Documents\WolfMark`).
 - Meniteľný v nastaveniach. Pri zmene: ponúknuť **presun existujúcich poznámok** alebo **len prepnúť** (a reindexovať).
+- **Prenosný režim** (ADR 0009): značka `WolfMark.portable.json` vedľa exe presunie poznámky aj lokálne dáta do `<exe>\WolfMarkData` (`notes/`, `local/`); zapína/vypína sa v nastaveniach kopírovaním dát a reštartom.
 
 ### 3.2 Štruktúra
 

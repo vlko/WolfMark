@@ -11,9 +11,24 @@ namespace WolfMark.App.Infrastructure;
 /// </summary>
 internal static class InstanceIdentity
 {
-    /// <summary>The data folder of this run: <c>&lt;demo&gt;/local</c> or the user's local app data.</summary>
-    public static string DataDirectory(LaunchOptions options) =>
-        options.DemoDirectory is { } demo ? Path.Combine(demo, "local") : LocalPaths.Default.BaseDirectory;
+    /// <summary>The data folder of this run: <c>&lt;demo&gt;/local</c>, the portable folder or the user's local app data.</summary>
+    public static string DataDirectory(LaunchOptions options)
+    {
+        if (options.DemoDirectory is { } demo)
+        {
+            return Path.Combine(demo, "local");
+        }
+
+        try
+        {
+            return LocalPaths.Default.BaseDirectory;
+        }
+        catch (InvalidDataException)
+        {
+            // A damaged portable marker: the start fails later with a message; until then the app folder is the key.
+            return PortableMode.AppDirectory;
+        }
+    }
 
     /// <summary>"WolfMark.3f2a…": the same for every spelling of the same folder (case on Windows, trailing separator).</summary>
     public static string Key(string dataDirectory) => "WolfMark." + Hash(dataDirectory);

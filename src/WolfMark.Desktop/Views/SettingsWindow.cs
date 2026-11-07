@@ -9,6 +9,7 @@ using WolfMark.Core.Settings;
 using WolfMark.Desktop.Infrastructure;
 using WolfMark.Desktop.Theming;
 using WolfMark.Storage;
+using WolfMark.Storage.Settings;
 using WolfMark.Storage.Trash;
 
 namespace WolfMark.Desktop.Views;
@@ -30,7 +31,9 @@ internal sealed class SettingsWindow : Window
         _applyAppearance = applyAppearance;
         var host = vm.Host;
         var s = host.Settings.Current;
-        Title = Strings.Get(R.Settings_Title);
+        var portableData = host.PortableDataDirectory;
+        var isPortable = portableData is not null;
+        Title = isPortable ? $"{Strings.Get(R.Settings_Title)} · {Strings.Get(R.Settings_PortableTitle)}" : Strings.Get(R.Settings_Title);
         Width = 820;
         Height = 640;
         Background = Palette.WindowTint;
@@ -85,7 +88,7 @@ internal sealed class SettingsWindow : Window
                 browse.IsEnabled = true;
             }
 
-            s.RootDirectory = newRoot;
+            s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
             await host.SaveSettingsAsync();
             rootText.Text = newRoot;
             _restartNeeded = true;
@@ -95,6 +98,105 @@ internal sealed class SettingsWindow : Window
         move.Click += async (_, _) => await ApplyRootAsync(moveNotes: true);
         switchTo.Click += async (_, _) => await ApplyRootAsync(moveNotes: false);
         cancelMove.Click += (_, _) => movePanel.IsVisible = false;
+
+        // Portable mode (ADR 0009): copy everything next to the app, or back; then a restart.
+        var portableStatus = Typo.Body(isPortable ? Strings.Format(R.Settings_PortableOn, portableData!) : Strings.Get(R.Settings_PortableOff), 13, Palette.InkSecondary);
+        portableStatus.TextWrapping = TextWrapping.Wrap;
+        var portableButton = Ui.FlatButton(Strings.Get(isPortable ? R.Settings_PortableDisable : R.Settings_PortableEnable));
+        portableButton.IsEnabled = false;
+        var portableReason = Typo.Body(string.Empty, 12.5, Palette.InkTertiary);
+        portableReason.TextWrapping = TextWrapping.Wrap;
+        portableReason.IsVisible = false;
+        if (!LaunchOptions.Current.IsDemo)
+        {
+            _ = Task.Run(() => isPortable ? PortableUnavailableReason.None : PortableMode.CheckAvailability(PortableMode.AppDirectory)).ContinueWith(
+                t =>
+                {
+                    var reason = t.IsCompletedSuccessfully ? t.Result : PortableUnavailableReason.NotWritable;
+                    portableButton.IsEnabled = reason == PortableUnavailableReason.None;
+                    portableReason.Text = reason switch
+                    {
+                        PortableUnavailableReason.NotWritable => Strings.Format(R.Settings_PortableNotWritable, PortableMode.AppDirectory),
+                        PortableUnavailableReason.AppBundle => Strings.Get(R.Settings_PortableAppBundle),
+                        _ => string.Empty,
+                    };
+                    portableReason.IsVisible = reason != PortableUnavailableReason.None;
+                },
+                TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        var portableWarning = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
+        portableWarning.TextWrapping = TextWrapping.Wrap;
+        var portableCopy = Ui.FlatButton(Strings.Get(isPortable ? R.Settings_PortableCopyBack : R.Settings_PortableCopy));
+        var portableMove = Ui.FlatButton(Strings.Get(R.Settings_PortableMove));
+        portableMove.IsVisible = !isPortable;
+        var portableCancel = Ui.FlatButton(Strings.Get(R.Common_Cancel), Palette.Transparent);
+        var portableProgress = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
+        portableProgress.TextWrapping = TextWrapping.Wrap;
+        var portablePanel = Ui.VStack(6, portableWarning, Ui.HStack(6, portableCopy, portableMove, portableCancel), portableProgress);
+        portablePanel.IsVisible = false;
+        portableButton.Click += async (_, _) =>
+        {
+            portableWarning.Text = isPortable
+                ? Strings.Format(R.Settings_PortableDisableWarning, await Task.Run(() => PortableMigrator.StandardNotesRoot(LocalPaths.Standard)), portableData!)
+                : Strings.Format(R.Settings_PortableEnableWarning, PortableMode.DefaultDataDirectory(PortableMode.AppDirectory));
+            portableProgress.Text = string.Empty;
+            portablePanel.IsVisible = true;
+        };
+        portableCancel.Click += (_, _) => portablePanel.IsVisible = false;
+
+        async Task SwitchPortableAsync(bool moveNotes)
+        {
+            portableButton.IsEnabled = portableCopy.IsEnabled = portableMove.IsEnabled = portableCancel.IsEnabled = browse.IsEnabled = false;
+            await vm.Editor.FlushAsync();
+            var progress = new Progress<int>(n => portableProgress.Text = Strings.Format(R.Settings_PortableProgress, n));
+            try
+            {
+                var result = isPortable
+                    ? await host.DisablePortableAsync(progress)
+                    : await host.EnablePortableAsync(moveNotes, progress);
+                if (!isPortable && DefaultHandler.IsSupported)
+                {
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            if (DefaultHandler.IsEnabled)
+                            {
+                                DefaultHandler.Set(false);
+                            }
+                        }
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                        {
+                            // best effort – the mode switch already happened
+                        }
+                    });
+                }
+
+                if (result.CleanupError is { } cleanup)
+                {
+                    portableProgress.Text = Strings.Format(R.Settings_PortableCleanupFailed, cleanup.Message);
+                    _restartNeeded = true;
+                    restartRow.IsVisible = true;
+                    return;
+                }
+
+                Program.RestartRequested = true;
+                Close();
+                (Owner as Window)?.Close();
+            }
+            catch (Exception ex)
+            {
+                // Watcher and Claude Code sync are stopped: only a restart brings them back.
+                portableProgress.Text = Strings.Format(R.Settings_PortableFailed, ex.Message);
+                portableCancel.IsEnabled = true;
+                _restartNeeded = true;
+                restartRow.IsVisible = true;
+            }
+        }
+
+        portableCopy.Click += async (_, _) => await SwitchPortableAsync(moveNotes: false);
+        portableMove.Click += async (_, _) => await SwitchPortableAsync(moveNotes: true);
 
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
         var languages = new[] { (string?)null, "sk-SK", "en-US" };
@@ -106,7 +208,12 @@ internal sealed class SettingsWindow : Window
         var fileAssociation = new ToggleSwitch { Content = Strings.Get(R.Settings_FileAssociation), IsEnabled = false };
         var associationHint = Typo.Body(Strings.Get(R.Settings_FileAssociationHintDesktop), 12.5, Palette.InkTertiary);
         associationHint.TextWrapping = TextWrapping.Wrap;
-        if (DefaultHandler.IsSupported)
+        // Portable mode writes nothing to this computer's system settings.
+        var associationPortable = Typo.Body(Strings.Get(R.Settings_PortableUnavailable), 12.5, Palette.InkTertiary);
+        associationPortable.TextWrapping = TextWrapping.Wrap;
+        associationPortable.IsVisible = isPortable;
+        associationHint.IsVisible = !isPortable;
+        if (DefaultHandler.IsSupported && !isPortable)
         {
             _ = Task.Run(() => DefaultHandler.IsEnabled).ContinueWith(
                 t =>
@@ -207,7 +314,13 @@ internal sealed class SettingsWindow : Window
                 closeToTray,
                 Section(Strings.Get(R.Settings_Files)),
                 fileAssociation,
-                associationHint)),
+                associationHint,
+                associationPortable,
+                Section(Strings.Get(R.Settings_Portable)),
+                portableStatus,
+                Ui.HStack(8, portableButton),
+                portableReason,
+                portablePanel)),
             (Icons.Appearance, Strings.Get(R.Settings_Appearance), Ui.VStack(
                 10,
                 Field(Strings.Get(R.Settings_Theme), theme))),

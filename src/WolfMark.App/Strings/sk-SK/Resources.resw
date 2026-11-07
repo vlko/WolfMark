@@ -666,4 +666,72 @@
   <data name="Settings_FileAssociationFailed" xml:space="preserve">
     <value>Priradenie .md súborov sa nepodarilo zmeniť: {0}</value>
   </data>
+  <data name="Settings_Portable" xml:space="preserve">
+    <value>Prenosný režim</value>
+  </data>
+  <data name="Settings_PortableTitle" xml:space="preserve">
+    <value>Prenosná verzia</value>
+  </data>
+  <data name="Settings_PortableOff" xml:space="preserve">
+    <value>Vypnutý – dáta sú uložené v profile používateľa.</value>
+  </data>
+  <data name="Settings_PortableOn" xml:space="preserve">
+    <value>Zapnutý – všetky dáta sú v {0}</value>
+  </data>
+  <data name="Settings_PortableEnable" xml:space="preserve">
+    <value>Prepnúť na prenosný režim…</value>
+  </data>
+  <data name="Settings_PortableDisable" xml:space="preserve">
+    <value>Ukončiť prenosný režim…</value>
+  </data>
+  <data name="Settings_PortableEnableWarning" xml:space="preserve">
+    <value>Poznámky, nastavenia a index vyhľadávania sa skopírujú vedľa aplikácie:
+{0}
+
+• Odvtedy aplikácia číta a zapisuje len tam. Pri Kopírovať pôvodné poznámky ostanú na mieste, ale už sa nebudú aktualizovať – vzniknú dve rozbiehajúce sa kópie.
+• Pri Presunúť pôjde pôvodný priečinok poznámok po overení kópie do koša. Nastavenia v profile používateľa ostanú.
+• Poznámky v prenosnom priečinku nesynchronizuje OneDrive.
+• Spúšťanie po prihlásení a priradenie .md súborov sa zrušia – v prenosnom režime nie sú dostupné.
+• Zmazané poznámky idú do .wolfmark/trash v prenosnom priečinku, nie do systémového koša.
+• Zmazaním WolfMark.portable.json vedľa aplikácie sa vrátiš k pôvodným dátam, bez zmien z prenosného režimu.
+
+Aplikácia sa potom reštartuje.</value>
+  </data>
+  <data name="Settings_PortableDisableWarning" xml:space="preserve">
+    <value>Poznámky, nastavenia a index vyhľadávania sa skopírujú späť do tohto počítača. Poznámky:
+{0}
+
+• Poznámka, ktorá sa v tom priečinku líši, pôjde do koša a nahradí ju verzia z prenosného režimu. Poznámky zmazané v prenosnom režime tam ostanú.
+• Prenosný priečinok {1} ostane – zmaž ho sám, keď ho už nebudeš potrebovať.
+• Spúšťanie po prihlásení a priradenie .md súborov ostanú vypnuté; môžeš ich znova zapnúť.
+
+Aplikácia sa potom reštartuje.</value>
+  </data>
+  <data name="Settings_PortableCopy" xml:space="preserve">
+    <value>Kopírovať</value>
+  </data>
+  <data name="Settings_PortableMove" xml:space="preserve">
+    <value>Presunúť</value>
+  </data>
+  <data name="Settings_PortableCopyBack" xml:space="preserve">
+    <value>Skopírovať späť</value>
+  </data>
+  <data name="Settings_PortableProgress" xml:space="preserve">
+    <value>Kopíruje sa… {0} súborov</value>
+  </data>
+  <data name="Settings_PortableFailed" xml:space="preserve">
+    <value>Prenosný režim sa nepodarilo prepnúť: {0}</value>
+  </data>
+  <data name="Settings_PortableCleanupFailed" xml:space="preserve">
+    <value>Prenosný režim je zapnutý, ale pôvodné poznámky sa nepodarilo presunúť do koša: {0}</value>
+  </data>
+  <data name="Settings_PortableNotWritable" xml:space="preserve">
+    <value>Nedostupné: do priečinka aplikácie {0} sa nedá zapisovať. Skopíruj aplikáciu do zapisovateľného priečinka, napr. na USB kľúč.</value>
+  </data>
+  <data name="Settings_PortableAppBundle" xml:space="preserve">
+    <value>Nedostupné pre aplikáciu nainštalovanú v Applications.</value>
+  </data>
+  <data name="Settings_PortableUnavailable" xml:space="preserve">
+    <value>V prenosnom režime nie je dostupné – zapisuje do systému tohto počítača.</value>
+  </data>
 </root>

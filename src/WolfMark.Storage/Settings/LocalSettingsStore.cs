@@ -52,10 +52,28 @@ public sealed partial class LocalSettingsStore(LocalPaths paths, ILogger<LocalSe
         }
     }
 
-    /// <summary>Resolved notes root: configured or default.</summary>
-    public string ResolveRoot() => string.IsNullOrWhiteSpace(Current.RootDirectory)
-        ? RootDirectoryResolver.ResolveDefault()
-        : Current.RootDirectory;
+    /// <summary>
+    /// Resolved notes root: configured or default. In portable mode the default is <c>&lt;data&gt;/notes</c> and a
+    /// relative path resolves against the data folder (another drive letter on another computer still works).
+    /// </summary>
+    public string ResolveRoot()
+    {
+        var configured = Current.RootDirectory;
+        if (paths.PortableDataDirectory is { } data)
+        {
+            return string.IsNullOrWhiteSpace(configured)
+                ? Path.Combine(data, PortableMode.NotesFolderName)
+                : Path.GetFullPath(Path.Combine(data, configured));
+        }
+
+        return string.IsNullOrWhiteSpace(configured) ? RootDirectoryResolver.ResolveDefault() : configured;
+    }
+
+    /// <summary>How a chosen notes root is stored: relative when it lies in the portable data folder.</summary>
+    public string ToStoredRoot(string root) =>
+        paths.PortableDataDirectory is { } data && PathScope.IsSameOrUnder(root, data)
+            ? Path.GetRelativePath(data, root)
+            : root;
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Settings file {Path} is invalid – using defaults")]
     private partial void LogInvalid(Exception ex, string path);

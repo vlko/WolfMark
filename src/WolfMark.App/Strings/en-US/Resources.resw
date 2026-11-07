@@ -666,4 +666,72 @@
   <data name="Settings_FileAssociationFailed" xml:space="preserve">
     <value>The .md file association could not be changed: {0}</value>
   </data>
+  <data name="Settings_Portable" xml:space="preserve">
+    <value>Portable mode</value>
+  </data>
+  <data name="Settings_PortableTitle" xml:space="preserve">
+    <value>Portable</value>
+  </data>
+  <data name="Settings_PortableOff" xml:space="preserve">
+    <value>Off – the data is stored in your user profile.</value>
+  </data>
+  <data name="Settings_PortableOn" xml:space="preserve">
+    <value>On – all data is in {0}</value>
+  </data>
+  <data name="Settings_PortableEnable" xml:space="preserve">
+    <value>Switch to portable mode…</value>
+  </data>
+  <data name="Settings_PortableDisable" xml:space="preserve">
+    <value>Leave portable mode…</value>
+  </data>
+  <data name="Settings_PortableEnableWarning" xml:space="preserve">
+    <value>Notes, settings and the search index are copied next to the app:
+{0}
+
+• From then on the app reads and writes only there. With Copy the original notes stay where they are but are no longer updated – you will have two diverging copies.
+• With Move the original notes folder goes to the Recycle Bin once the copy is verified. The settings in your user profile stay.
+• Notes in the portable folder are not synchronised by OneDrive.
+• Start at sign-in and the .md file association are removed – they are not available in portable mode.
+• Deleted notes go to .wolfmark/trash in the portable folder, not to the system Recycle Bin.
+• Deleting WolfMark.portable.json next to the app returns to the previous data, without the changes made in portable mode.
+
+The app restarts afterwards.</value>
+  </data>
+  <data name="Settings_PortableDisableWarning" xml:space="preserve">
+    <value>Notes, settings and the search index are copied back to this computer. Notes:
+{0}
+
+• A note that differs in that folder goes to the Recycle Bin and the portable version takes its place. Notes deleted in portable mode stay there.
+• The portable folder {1} is kept – delete it yourself when you no longer need it.
+• Start at sign-in and the .md file association stay off; you can switch them on again.
+
+The app restarts afterwards.</value>
+  </data>
+  <data name="Settings_PortableCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Settings_PortableMove" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="Settings_PortableCopyBack" xml:space="preserve">
+    <value>Copy back</value>
+  </data>
+  <data name="Settings_PortableProgress" xml:space="preserve">
+    <value>Copying… {0} files</value>
+  </data>
+  <data name="Settings_PortableFailed" xml:space="preserve">
+    <value>Portable mode could not be switched: {0}</value>
+  </data>
+  <data name="Settings_PortableCleanupFailed" xml:space="preserve">
+    <value>Portable mode is on, but the original notes could not be moved to the Recycle Bin: {0}</value>
+  </data>
+  <data name="Settings_PortableNotWritable" xml:space="preserve">
+    <value>Not available: the app folder {0} is not writable. Copy the app to a folder you can write to, e.g. a USB drive.</value>
+  </data>
+  <data name="Settings_PortableAppBundle" xml:space="preserve">
+    <value>Not available for an app installed in Applications.</value>
+  </data>
+  <data name="Settings_PortableUnavailable" xml:space="preserve">
+    <value>Not available in portable mode – it writes to this computer's system settings.</value>
+  </data>
 </root>

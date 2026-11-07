@@ -40,7 +40,10 @@ internal sealed partial class AppHost : IAsyncDisposable
         Root = settings.ResolveRoot();
         Hub = new NoteEventHub();
         SelfWrites = new SelfWriteRegistry(Time);
-        IRecycleBin recycleBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) ? new WindowsRecycleBin() : new FolderRecycleBin(Root);
+        // Portable: removable drives have no Recycle Bin – Windows would delete permanently (CLAUDE.md rule 5).
+        IRecycleBin recycleBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && paths.PortableDataDirectory is null
+            ? new WindowsRecycleBin()
+            : new FolderRecycleBin(Root);
         Engine = new DirectoryEngine(Root, recycleBin, Hub, SelfWrites, loggers.CreateLogger<DirectoryEngine>());
         Tags = new TagStore(Root, SelfWrites, loggers.CreateLogger<TagStore>());
         Db = new IndexDatabase(paths.IndexDatabase, loggers.CreateLogger<IndexDatabase>());
@@ -243,6 +246,83 @@ internal sealed partial class AppHost : IAsyncDisposable
         await DatabaseReady.ConfigureAwait(false);
         await Db.ResetAsync(ShutdownToken).ConfigureAwait(false);
     });
+
+    /// <summary>Portable mode of this run (ADR 0009): the data folder, or null in standard mode.</summary>
+    public string? PortableDataDirectory => Paths.PortableDataDirectory;
+
+    /// <summary>
+    /// Copies everything into the portable folder next to the app and writes the marker (ADR 0009). Call on the UI
+    /// thread after flushing the editor; watcher and Claude Code sync stop first, so the app must restart afterwards.
+    /// </summary>
+    /// <param name="moveNotes">Send the original notes folder to the Recycle Bin after the verified copy.</param>
+    public Task<PortableMigrator.Result> EnablePortableAsync(bool moveNotes, IProgress<int>? progress)
+    {
+        var source = RelocationSource();
+        return Task.Run(async () =>
+        {
+            await StopForRelocationAsync().ConfigureAwait(false);
+            var app = PortableMode.AppDirectory;
+            return await PortableMigrator.EnableAsync(
+                app,
+                PortableMode.DefaultDataDirectory(app),
+                source,
+                moveNotes ? RecycleBinForFolder(source.NotesRoot) : null,
+                progress,
+                CancellationToken.None).ConfigureAwait(false);
+        });
+    }
+
+    /// <summary>Copies the portable data back to the user profile and removes the marker; the app must restart.</summary>
+    public Task<PortableMigrator.Result> DisablePortableAsync(IProgress<int>? progress)
+    {
+        var source = RelocationSource();
+        return Task.Run(async () =>
+        {
+            await StopForRelocationAsync().ConfigureAwait(false);
+            var target = LocalPaths.Standard;
+            var notes = PortableMigrator.StandardNotesRoot(target);
+            IRecycleBin replaced = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) ? new WindowsRecycleBin() : new FolderRecycleBin(notes);
+            return await PortableMigrator.DisableAsync(PortableMode.AppDirectory, source, target, notes, replaced, progress, CancellationToken.None).ConfigureAwait(false);
+        });
+    }
+
+    private PortableMigrator.Source RelocationSource() => new(
+        Paths,
+        Root,
+        Settings.CreateSnapshot(),
+        async (path, ct) =>
+        {
+            await DatabaseReady.WaitAsync(ct).ConfigureAwait(false);
+            await Db.BackupToAsync(path, ct).ConfigureAwait(false);
+        });
+
+    /// <summary>No new files while the data is copied: the watcher and the Claude Code import stop.</summary>
+    private async Task StopForRelocationAsync()
+    {
+        if (_claudeScheduler is { } scheduler)
+        {
+            _claudeScheduler = null;
+            await scheduler.DisposeAsync().ConfigureAwait(false);
+        }
+
+        if (_watcher is { } watcher)
+        {
+            _watcher = null;
+            await watcher.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>A recycle bin that can take a whole notes folder (the folder trash cannot hold its own folder).</summary>
+    private static IRecycleBin RecycleBinForFolder(string folder)
+    {
+        if (OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000))
+        {
+            return new WindowsRecycleBin();
+        }
+
+        var parent = Path.GetDirectoryName(Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar))!;
+        return new FolderRecycleBin(parent, Path.Combine(parent, ".wolfmark-trash"));
+    }
 
     /// <summary>Call on the UI thread (which owns the settings object); only the write runs in the background.</summary>
     public Task SaveSettingsAsync()

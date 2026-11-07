@@ -13,5 +13,6 @@ namespace WolfMark.Core.Settings;
     AllowTrailingCommas = true)]
 [JsonSerializable(typeof(LocalSettings))]
 [JsonSerializable(typeof(TagsDocument))]
+[JsonSerializable(typeof(PortableMarker))]
 [JsonSerializable(typeof(List<TagCount>))]
 public sealed partial class WolfMarkJsonContext : JsonSerializerContext;

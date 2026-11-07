@@ -28,6 +28,7 @@ internal static class DiagnosticInfo
         sb.AppendLine(inv, $"{RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         sb.AppendLine(inv, $"Display scale {displayScale * 100:0} %, UI language {CultureInfo.CurrentUICulture.Name}, formats {CultureInfo.CurrentCulture.Name}");
         sb.AppendLine(inv, $"Notes: {noteCount} in {host.Root}{(LaunchOptions.Current.IsDemo ? " (demo)" : string.Empty)}");
+        sb.AppendLine(inv, $"Portable: {(host.PortableDataDirectory is { } portable ? "yes, " + portable : "no")}");
         sb.AppendLine(inv, $"Index: {host.Paths.IndexDatabase} ({FileSize(host.Paths.IndexDatabase)})");
         sb.Append(inv, $"Logs: {host.Paths.LogsDirectory}");
         return sb.ToString();
