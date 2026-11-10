@@ -30,10 +30,18 @@ public sealed partial class MarkdownEditor
             {
                 // E_INVALIDARG: the canvas shrank between the invalidation and this callback; a new pass follows.
             }
+            catch (Exception ex) when (sender.Device.IsDeviceLost(ex.HResult))
+            {
+                // The GPU device is gone (sleep/resume, driver update, remote desktop, display change). Swallowing
+                // this would leave the canvas blank for good – every later draw fails the same way. Win2D recovers
+                // only when the exception reaches it: it recreates the device and raises CreateResources, which
+                // drops the layouts made on the old device and redraws.
+                throw;
+            }
             catch (Exception ex)
             {
-                // Win2D calls this from native code: an exception would become an HRESULT and WinUI ends the
-                // process without a trace (0xc000027b). Reported instead; the next relayout or edit draws again.
+                // Win2D calls this from native code: any other exception would become an HRESULT and WinUI ends
+                // the process without a trace (0xc000027b). Reported instead; the next relayout or edit draws again.
                 ReportDrawFailure(ex);
             }
         }
