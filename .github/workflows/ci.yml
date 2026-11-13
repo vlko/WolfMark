@@ -71,6 +71,18 @@ jobs:
         with:
           name: WolfMark-${{ matrix.rid }}
           path: publish/${{ matrix.rid }}
+      - name: Smoke test
+        # The real AOT binary on demo data: imports (no .NET / VC++ needed), screenshots, single instance.
+        if: matrix.rid == 'win-x64'
+        run: pwsh tools/smoke-windows.ps1 -PublishDir publish/${{ matrix.rid }} -WorkDir "${{ runner.temp }}/smoke"
+      - uses: actions/upload-artifact@v7
+        if: always() && matrix.rid == 'win-x64'
+        with:
+          name: smoke-${{ matrix.rid }}
+          path: |
+            ${{ runner.temp }}/smoke/screenshots
+            ${{ runner.temp }}/smoke/*/local/logs
+          if-no-files-found: ignore
 
   desktop:
     name: macOS/Linux app, AOT publish

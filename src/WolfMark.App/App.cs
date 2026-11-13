@@ -178,6 +178,11 @@ public sealed partial class App : Application, IXamlMetadataProvider
     internal void OnRedirectedActivation(AppActivationArguments e)
     {
         var file = RedirectedFile(e);
+        if (_logger is not null)
+        {
+            LogRedirectedActivation(_logger, file is not null); // tools/smoke-windows.ps1 checks for it
+        }
+
         UiThread.Post(() =>
         {
             if (_window is null)
@@ -286,6 +291,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
             // nothing left to report to
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Activation redirected from another launch (with file: {WithFile})")]
+    private static partial void LogRedirectedActivation(ILogger logger, bool withFile);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception ({Source}) {Detail}")]
     private static partial void LogUnhandled(ILogger logger, string source, string detail, Exception ex);
