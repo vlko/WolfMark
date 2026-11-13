@@ -70,9 +70,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M2-04 – sqlite-vec integrácia.** Načítanie extension pod Native AOT (x64 aj arm64 natívne binárky v publish výstupe).
   *Stav:* vec0 sa načíta a testy prechádzajú na linux-x64; `vec0.dll` je vo win-x64 výstupe. Balík nemá win-arm64 → na ARM64 vypnuté.
   *AK:* AOT publish spustí `SELECT vec_version()` úspešne.
-- 🟨 **M2-05 – Embedding provider.** Rozhranie `IEmbeddingProvider`; implementácia ONNX Runtime + multilingválny model; stiahnutie modelu pri prvom použití s overením hashu; chunking; dávkové počítanie v pozadí s nízkou prioritou.
-  *Stav:* Čiastočne: `IEmbeddingProvider`, chunking, `EmbeddingIndexer` (nízka priorita, zmena modelu = prepočet). **ONNX provider + model chýba.**
-  *AK:* Indexovanie embeddingov nezvýši latenciu UI (merať); AOT build bez trim warningov. Ak ONNX pod AOT zlyhá, zdokumentovať a navrhnúť alternatívu.
+- ↓ **M2-05 – Embedding provider** – odložené, presunuté do M9 – Rozšírenia (2026-11-13). Vyhľadávanie
+  zatiaľ beží len nad FTS5; hybridná vrstva (M2-04, M2-06) je pripravená a zapne sa s providerom.
 - ✅ **M2-06 – Hybridné vyhľadávanie.** FTS5 + vektorové výsledky zlúčené cez RRF; API `SearchAsync(query, filters, ct)`.
   *Stav:* RRF; test sémantického dotazu s testovacím providerom.
   *AK:* Sémantický dotaz („čo som riešil s deploymentom“) nájde relevantné poznámky bez presnej zhody slov.
@@ -211,7 +210,12 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M9-01 – 🟡 Úlohy:** pohľad „Nedokončené“ naprieč dňami, počty v kalendári.
   *Stav:* Čiastočne: filter „Nedokončené“, progres úloh v týždennej lište.
 - ⬜ **M9-02 – 🟡 Denný pohľad** (všetky poznámky dňa ako jedna stránka).
-- ⬜ **M9-03 – 🟡 Podobné poznámky** pod editorom (vektory).
+- 🟨 **M2-05 – 🟡 Embedding provider** (presunuté z M2 – odložené 2026-11-13, ID ostáva kvôli odkazom v kóde a ADR 0003).
+  Rozhranie `IEmbeddingProvider`; implementácia ONNX Runtime + multilingválny model; stiahnutie modelu pri prvom použití s overením hashu; chunking; dávkové počítanie v pozadí s nízkou prioritou.
+  *Stav:* Čiastočne: `IEmbeddingProvider`, chunking, `EmbeddingIndexer` (nízka priorita, zmena modelu = prepočet). **ONNX provider + model chýba.**
+  *AK:* Indexovanie embeddingov nezvýši latenciu UI (merať); AOT build bez trim warningov. Ak ONNX pod AOT zlyhá, zdokumentovať a navrhnúť alternatívu.
+  *Postup:* najprv spike – AOT publish s `Microsoft.ML.OnnxRuntime` (win-x64/arm64, linux-x64, osx-arm64), tokenizér bez reflexie, model (napr. `multilingual-e5-small`) → ADR.
+- ⬜ **M9-03 – 🟡 Podobné poznámky** pod editorom (vektory). *Závisí od M2-05.*
 - ⬜ **M9-04 – 🟡 Wiki odkazy a spätné odkazy.**
 - ⬜ **M9-05 – 🟡 Šablóny** pre tagy.
 - ⬜ **M9-06 – 🟡 Export** dňa/týždňa/tagu do `.md`/PDF.
