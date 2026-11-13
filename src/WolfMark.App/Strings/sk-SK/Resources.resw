@@ -519,15 +519,6 @@
   <data name="TestNotice_Action" xml:space="preserve">
     <value>Akcia</value>
   </data>
-  <data name="Settings_WindowRendering" xml:space="preserve">
-    <value>Vykresľovanie okna (reštart)</value>
-  </data>
-  <data name="Settings_RenderingMica" xml:space="preserve">
-    <value>Mica pod papierom</value>
-  </data>
-  <data name="Settings_RenderingClass" xml:space="preserve">
-    <value>Bez backdropu + pozadie okna</value>
-  </data>
   <data name="Settings_AppIcon" xml:space="preserve">
     <value>Ikona aplikácie</value>
   </data>

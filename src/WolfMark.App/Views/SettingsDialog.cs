@@ -286,7 +286,6 @@ internal static class SettingsDialog
         associationHint.TextWrapping = TextWrapping.Wrap;
         associationHint.Visibility = isPortable ? Visibility.Collapsed : Visibility.Visible;
 
-        var rendering = Combo([Strings.Get(R.Settings_RenderingMica), Strings.Get(R.Settings_RenderingClass)], (int)s.WindowRendering);
 
         var paths = Typo.Body($"{host.Paths.IndexDatabase}\n{host.Paths.LogsDirectory}", 11.5, Palette.InkTertiary);
         paths.TextWrapping = TextWrapping.Wrap;
@@ -340,8 +339,7 @@ internal static class SettingsDialog
             (Glyphs.Appearance, Strings.Get(R.Settings_Appearance), Ui.Ui.VStack(
                 10,
                 Field(Strings.Get(R.Settings_Theme), theme),
-                Field(Strings.Get(R.Settings_AppIcon), iconPicker),
-                Field(Strings.Get(R.Settings_WindowRendering), rendering))),
+                Field(Strings.Get(R.Settings_AppIcon), iconPicker))),
             (Glyphs.Edit, Strings.Get(R.Settings_Editor), Ui.Ui.VStack(
                 10,
                 lineNumbers,
@@ -401,9 +399,6 @@ internal static class SettingsDialog
         var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
         restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal);
         s.Language = newLanguage;
-        var newRendering = (WindowRendering)Math.Max(0, rendering.SelectedIndex);
-        restartNeeded |= newRendering != s.WindowRendering;
-        s.WindowRendering = newRendering;
         s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
         s.EditorMonospace = monospace.IsOn;
         s.EditorMonoFontFamily = monoFont.Selected;

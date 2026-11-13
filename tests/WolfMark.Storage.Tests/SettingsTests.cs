@@ -40,6 +40,17 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public void Settings_from_an_older_version_with_removed_keys_still_load()
+    {
+        // 0.5.0 wrote "windowRendering" (a resize-flicker diagnostic, removed in 0.6.0): unknown keys are skipped.
+        var json = """{ "theme": "Dark", "windowRendering": "ClassBackground", "editorFontSize": 17 }""";
+        var settings = System.Text.Json.JsonSerializer.Deserialize(json, WolfMarkJsonContext.Default.LocalSettings);
+        Assert.NotNull(settings);
+        Assert.Equal(AppTheme.Dark, settings.Theme);
+        Assert.Equal(17, settings.EditorFontSize);
+    }
+
+    [Fact]
     public async Task Settings_round_trip()
     {
         using var dir = new TempDirectory();

@@ -7,16 +7,6 @@ public enum AppTheme
     Dark,
 }
 
-/// <summary>Diagnostics: how the window background is set up (resize flicker investigation).</summary>
-public enum WindowRendering
-{
-    /// <summary>Mica backdrop under the opaque paper, set after the first activation.</summary>
-    MicaAfterActivation,
-
-    /// <summary>No backdrop; the window class background brush is the paper colour.</summary>
-    ClassBackground,
-}
-
 public enum EditorMode
 {
     Raw,
@@ -71,9 +61,6 @@ public sealed class LocalSettings
 
     /// <summary>App icon variant (Assets/IconProposals id); null = default.</summary>
     public string? AppIcon { get; set; }
-
-    /// <summary>Diagnostics: window background mode (takes effect after a restart).</summary>
-    public WindowRendering WindowRendering { get; set; } = WindowRendering.MicaAfterActivation;
 
     /// <summary>Closing the window hides it to the notification area; the app ends from the tray menu.</summary>
     public bool CloseToTray { get; set; }

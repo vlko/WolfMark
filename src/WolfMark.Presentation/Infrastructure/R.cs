@@ -172,9 +172,6 @@ internal static class R
     public const string TestNotice_Title = nameof(TestNotice_Title);
     public const string TestNotice_Message = nameof(TestNotice_Message);
     public const string TestNotice_Action = nameof(TestNotice_Action);
-    public const string Settings_WindowRendering = nameof(Settings_WindowRendering);
-    public const string Settings_RenderingMica = nameof(Settings_RenderingMica);
-    public const string Settings_RenderingClass = nameof(Settings_RenderingClass);
     public const string Settings_AppIcon = nameof(Settings_AppIcon);
     public const string Icon_WeekBand = nameof(Icon_WeekBand);
     public const string Icon_RisoWm = nameof(Icon_RisoWm);

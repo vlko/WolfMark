@@ -405,11 +405,6 @@ internal sealed partial class MainWindow : Window
         tb.ButtonHoverBackgroundColor = Palette.SubtleFill.Color;
         tb.ButtonHoverForegroundColor = Palette.Ink.Color;
         tb.ButtonInactiveForegroundColor = Palette.InkTertiary.Color;
-
-        if (_host.Settings.Current.WindowRendering == WindowRendering.ClassBackground)
-        {
-            WindowBackground.SetClassBackground(Win32Interop.GetWindowFromWindowId(AppWindow.Id), Palette.WindowTint.Color);
-        }
     }
 
     private void UpdateEditorTheme()
@@ -678,7 +673,7 @@ internal sealed partial class MainWindow : Window
             {
                 _ = _vm.Editor.FlushAsync();
             }
-            else if (SystemBackdrop is null && _host.Settings.Current.WindowRendering == WindowRendering.MicaAfterActivation)
+            else if (SystemBackdrop is null)
             {
                 // Not a visible feature – the paper is opaque. Without a system backdrop, areas exposed
                 // while resizing flash black. Set only once the window is shown: assigned in the
