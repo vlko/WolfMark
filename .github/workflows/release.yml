@@ -27,8 +27,8 @@ jobs:
           - rid: win-arm64
             platform: ARM64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -66,7 +66,7 @@ jobs:
           Get-ChildItem publish/${{ matrix.rid }} -Recurse -Include *.pdb | Remove-Item
           Compress-Archive -Path publish/${{ matrix.rid }}/* -DestinationPath WolfMark-${{ steps.version.outputs.full }}-${{ matrix.rid }}.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: zip-${{ matrix.rid }}
           path: WolfMark-*.zip
@@ -83,8 +83,8 @@ jobs:
           - rid: osx-arm64
             os: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -116,7 +116,7 @@ jobs:
       - name: Package
         run: bash tools/package-desktop.sh ${{ matrix.rid }} ${{ steps.version.outputs.full }} publish/${{ matrix.rid }} dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: zip-${{ matrix.rid }}
           path: dist/*
@@ -126,9 +126,9 @@ jobs:
     needs: [build, desktop]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: zip-*
           merge-multiple: true

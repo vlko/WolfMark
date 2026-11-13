@@ -21,8 +21,12 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M0-03 – Logovanie a DI.** Composition root, `ILogger` so súborovým sinkom v `%LOCALAPPDATA%\WolfMark\logs`, globálny handler neošetrených výnimiek.
   *Stav:* `AppHost` (ADR 0002), `FileLoggerProvider`, `BackgroundRunner` – test: výnimka sa zaloguje. Globálne handlery v `App`.
   *AK:* Výnimka v background tasku sa zaloguje a nezhodí aplikáciu.
-- 🟨 **M0-04 – CI.** GitHub Actions: build, testy, AOT publish pre x64 (artefakt).
-  *Stav:* `.github/workflows/ci.yml` (Linux testy + Windows build/test/AOT publish x64/arm64) – zatiaľ nespustené.
+- ✅ **M0-04 – CI.** GitHub Actions: build, testy, AOT publish pre x64 (artefakt).
+  *Stav:* `.github/workflows/ci.yml` beží na každý push (Linux testy, Windows build/test/AOT publish x64/arm64,
+  Avalonia AOT linux-x64/osx-arm64), `release.yml` na tag. Občasný pád testov na win-x64 (4 z 36 behov):
+  `Full_reindex_of_10000_notes_is_fast` mal na runneri s Defenderom príliš tesný limit 10 s → 30 s (2026-11-13).
+  Padnuté testy sa vypíšu ako anotácie (`tools/ci-test-annotations.py`), ktoré sú verejné, hoci logy jobov
+  vyžadujú admin práva. Akcie na Node 24 (checkout v7, setup-dotnet v6, upload v7, download v8).
   *AK:* Zelený pipeline na push.
 - 🟨 **M0-05 – Jedna inštancia.** Druhé spustenie aktivuje existujúce okno (Windows App SDK `AppInstance`).
   *Stav:* `AppInstance.FindOrRegisterForKey` + redirect bez blokovania STA; neoverené na Windows.

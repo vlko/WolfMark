@@ -16,14 +16,20 @@ jobs:
     name: Domain libraries (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Build
         run: dotnet build WolfMark.CrossPlatform.slnf -c Release
       - name: Test
-        run: dotnet test --solution WolfMark.CrossPlatform.slnf -c Release --no-build
+        run: >
+          dotnet test --solution WolfMark.CrossPlatform.slnf -c Release --no-build
+          --results-directory TestResults --results-directory-layout per-module --report-xunit-trx
+      - name: Report failed tests
+        # Job logs need admin rights; annotations are public, so a flaky test is identifiable afterwards.
+        if: failure()
+        run: python3 tools/ci-test-annotations.py TestResults
 
   windows:
     name: Windows build, tests, AOT publish
@@ -38,20 +44,30 @@ jobs:
           - rid: win-arm64
             platform: ARM64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Build
         run: dotnet build WolfMark.sln -c Release -p:Platform=${{ matrix.platform }}
       - name: Test
         if: matrix.rid == 'win-x64'
-        run: dotnet test --solution WolfMark.CrossPlatform.slnf -c Release
+        run: >
+          dotnet test --solution WolfMark.CrossPlatform.slnf -c Release
+          --results-directory TestResults --results-directory-layout per-module --report-xunit-trx
+      - name: Report failed tests
+        if: failure() && matrix.rid == 'win-x64'
+        run: python tools/ci-test-annotations.py TestResults
+      - uses: actions/upload-artifact@v7
+        if: failure() && matrix.rid == 'win-x64'
+        with:
+          name: TestResults-${{ matrix.rid }}
+          path: TestResults
       - name: AOT publish
         # Relies on the Build step above: the Windows App SDK writes WolfMark.pri only in a regular
         # build (with the same Platform), not in the build dotnet publish runs itself (MSB3030).
         run: dotnet publish src/WolfMark.App -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }} -o publish/${{ matrix.rid }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: WolfMark-${{ matrix.rid }}
           path: publish/${{ matrix.rid }}
@@ -69,8 +85,8 @@ jobs:
           - rid: osx-arm64
             os: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: AOT toolchain
@@ -83,7 +99,7 @@ jobs:
         run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
       - name: Package
         run: bash tools/package-desktop.sh ${{ matrix.rid }} ci publish/${{ matrix.rid }} dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: WolfMark-${{ matrix.rid }}
           path: dist/*
