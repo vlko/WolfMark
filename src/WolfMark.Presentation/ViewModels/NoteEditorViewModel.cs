@@ -273,6 +273,16 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         }
     }
 
+    /// <summary>A tag rename (M8-05) and the note not created yet: it gets the new tag when it is.</summary>
+    public void OnTagRenamed(string oldTag, string newTag)
+    {
+        if (!IsPersisted && Tag is { } tag && TagName.Comparer.Equals(tag, oldTag))
+        {
+            Tag = newTag;
+            Path = _host.Engine.ProposeNewPath(CreatedAt, newTag);
+        }
+    }
+
     public async Task DeleteAsync()
     {
         if (Path is null)
@@ -303,7 +313,23 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     /// <summary>Handles changes made outside the app to the open note (M4-08).</summary>
     public async Task OnNoteEventAsync(NoteEvent e)
     {
-        if (Path is null || e.Origin != ChangeOrigin.External)
+        if (Path is null)
+        {
+            return;
+        }
+
+        if (e is NoteRenamed { Origin: ChangeOrigin.Local } local && IsSame(local.OldPath))
+        {
+            // Renamed by the app but not by this editor – a tag rename in Settings (M8-05). The editor's own tag
+            // change has set the new path already, so it never matches here.
+            Path = local.NewPath;
+            Tag = local.NewPath.Tag;
+            PathChanged?.Invoke(this, EventArgs.Empty);
+            RememberLastNote();
+            return;
+        }
+
+        if (e.Origin != ChangeOrigin.External)
         {
             return;
         }

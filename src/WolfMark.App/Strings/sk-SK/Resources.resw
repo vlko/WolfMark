@@ -734,4 +734,49 @@ Aplikácia sa potom reštartuje.</value>
   <data name="Settings_PortableUnavailable" xml:space="preserve">
     <value>V prenosnom režime nie je dostupné – zapisuje do systému tohto počítača.</value>
   </data>
+  <data name="Settings_TagsIntro" xml:space="preserve">
+    <value>Premenuje tag v názvoch súborov všetkých jeho poznámok. Premenovanie na tag, ktorý už existuje, ich zlúči. Text poznámok sa nemení.</value>
+  </data>
+  <data name="Settings_TagsNone" xml:space="preserve">
+    <value>Zatiaľ žiadne poznámky s tagom.</value>
+  </data>
+  <data name="Settings_TagsTag" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="Settings_TagsNewName" xml:space="preserve">
+    <value>Nový názov</value>
+  </data>
+  <data name="Settings_TagsRename" xml:space="preserve">
+    <value>Premenovať…</value>
+  </data>
+  <data name="Settings_TagsSame" xml:space="preserve">
+    <value>Nový názov je rovnaký ako pôvodný.</value>
+  </data>
+  <data name="Settings_TagsReserved" xml:space="preserve">
+    <value>#ClaudeCode patrí synchronizácii Claude Code, nedá sa premenovať.</value>
+  </data>
+  <data name="Settings_TagsRenameWarning" xml:space="preserve">
+    <value>Poznámky s #{0} ({2}) sa premenujú na #{1}, napr. {0}_1403.md → {1}_1403.md. Farba ostane. Ak sa niektorý súbor nedá premenovať, už premenované poznámky sa vrátia späť.</value>
+  </data>
+  <data name="Settings_TagsMergeWarning" xml:space="preserve">
+    <value>#{1} už existuje ({3}). Poznámky s #{0} ({2}) sa k nemu pridajú a dostanú jeho farbu; #{0} zmizne. Ak sa niektorý súbor nedá premenovať, už premenované poznámky sa vrátia späť.</value>
+  </data>
+  <data name="Settings_TagsConfirmRename" xml:space="preserve">
+    <value>Premenovať</value>
+  </data>
+  <data name="Settings_TagsConfirmMerge" xml:space="preserve">
+    <value>Zlúčiť</value>
+  </data>
+  <data name="Settings_TagsProgress" xml:space="preserve">
+    <value>Premenované: {0}</value>
+  </data>
+  <data name="Settings_TagsDone" xml:space="preserve">
+    <value>#{0} je teraz #{1}. Premenované poznámky: {2}.</value>
+  </data>
+  <data name="Settings_TagsFailed" xml:space="preserve">
+    <value>Premenovanie zlyhalo: {0} Poznámky sa vrátili späť.</value>
+  </data>
+  <data name="Settings_TagsRollbackFailed" xml:space="preserve">
+    <value>Premenovanie zlyhalo: {0} Poznámky, ktoré sa nepodarilo vrátiť a majú #{2}: {1}. Podrobnosti sú v logu.</value>
+  </data>
 </root>

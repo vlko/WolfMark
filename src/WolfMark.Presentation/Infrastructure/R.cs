@@ -238,4 +238,19 @@ internal static class R
     public const string Settings_PortableNotWritable = nameof(Settings_PortableNotWritable);
     public const string Settings_PortableAppBundle = nameof(Settings_PortableAppBundle);
     public const string Settings_PortableUnavailable = nameof(Settings_PortableUnavailable);
+    public const string Settings_TagsIntro = nameof(Settings_TagsIntro);
+    public const string Settings_TagsNone = nameof(Settings_TagsNone);
+    public const string Settings_TagsTag = nameof(Settings_TagsTag);
+    public const string Settings_TagsNewName = nameof(Settings_TagsNewName);
+    public const string Settings_TagsRename = nameof(Settings_TagsRename);
+    public const string Settings_TagsSame = nameof(Settings_TagsSame);
+    public const string Settings_TagsReserved = nameof(Settings_TagsReserved);
+    public const string Settings_TagsRenameWarning = nameof(Settings_TagsRenameWarning);
+    public const string Settings_TagsMergeWarning = nameof(Settings_TagsMergeWarning);
+    public const string Settings_TagsConfirmRename = nameof(Settings_TagsConfirmRename);
+    public const string Settings_TagsConfirmMerge = nameof(Settings_TagsConfirmMerge);
+    public const string Settings_TagsProgress = nameof(Settings_TagsProgress);
+    public const string Settings_TagsDone = nameof(Settings_TagsDone);
+    public const string Settings_TagsFailed = nameof(Settings_TagsFailed);
+    public const string Settings_TagsRollbackFailed = nameof(Settings_TagsRollbackFailed);
 }

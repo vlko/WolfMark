@@ -7,6 +7,8 @@ using WolfMark.App.Theming;
 using WolfMark.App.Ui;
 using WolfMark.App.ViewModels;
 using WolfMark.Core.Settings;
+using WolfMark.Core.Tags;
+using WolfMark.Index.Queries;
 using WolfMark.Storage;
 using WolfMark.Storage.Settings;
 
@@ -347,6 +349,7 @@ internal static class SettingsDialog
                 Field(Strings.Get(R.Settings_FontFamily), font),
                 Field(Strings.Get(R.Settings_FontSize), fontSize),
                 Field(Strings.Get(R.Settings_DefaultMode), mode))),
+            (Glyphs.Tag, Strings.Get(R.Settings_Tags), TagsPage(vm)),
             (Glyphs.Code, Strings.Get(R.Settings_ClaudeCode), Ui.Ui.VStack(
                 10,
                 ccEnabled,
@@ -519,6 +522,114 @@ internal static class SettingsDialog
         layout.Height = 540;
         Show(Math.Clamp(_lastCategory, 0, pages.Length - 1));
         return layout;
+    }
+
+    /// <summary>
+    /// Tags (M8-05): pick a tag, type the new name, confirm the warning – renames or merges at once (not on OK, like
+    /// moving the notes folder). The check, texts and the rename itself are in <see cref="TagRenameModel"/>.
+    /// </summary>
+    private static StackPanel TagsPage(MainViewModel vm)
+    {
+        var model = new TagRenameModel(vm);
+        var intro = Typo.Body(Strings.Get(R.Settings_TagsIntro), 13, Palette.InkSecondary);
+        intro.TextWrapping = TextWrapping.Wrap;
+        var tags = new ComboBox { MinWidth = 260, IsEnabled = false };
+        var empty = Typo.Body(Strings.Get(R.Settings_TagsNone), 13, Palette.InkTertiary);
+        empty.Visibility = Visibility.Collapsed;
+        var name = new TextBox { MinWidth = 260, IsEnabled = false };
+        var hint = Typo.Body(string.Empty, 12.5, new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.IndianRed));
+        hint.TextWrapping = TextWrapping.Wrap;
+        var rename = Ui.Ui.TextButton(Strings.Get(R.Settings_TagsRename));
+        rename.IsEnabled = false;
+        var warning = Typo.Body(string.Empty, 13);
+        warning.TextWrapping = TextWrapping.Wrap;
+        var confirm = Ui.Ui.TextButton(string.Empty);
+        var cancel = Ui.Ui.TextButton(Strings.Get(R.Common_Cancel));
+        var confirmPanel = Ui.Ui.VStack(8, warning, Ui.Ui.HStack(8, confirm, cancel));
+        confirmPanel.Visibility = Visibility.Collapsed;
+        var status = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
+        status.TextWrapping = TextWrapping.Wrap;
+        var normalized = string.Empty;
+
+        TagUsage? Selected() => tags.SelectedIndex >= 0 && tags.SelectedIndex < model.Tags.Count ? model.Tags[tags.SelectedIndex] : null;
+
+        void Validate()
+        {
+            confirmPanel.Visibility = Visibility.Collapsed;
+            var problem = model.Check(Selected(), name.Text, out normalized);
+            hint.Text = problem ?? string.Empty;
+            rename.IsEnabled = problem is null;
+        }
+
+        async Task ReloadAsync()
+        {
+            var keep = Selected()?.Tag;
+            await model.LoadAsync();
+            tags.Items.Clear();
+            foreach (var t in model.Tags)
+            {
+                tags.Items.Add(TagRenameModel.Display(t));
+            }
+
+            var index = keep is null ? -1 : model.Tags.ToList().FindIndex(t => TagName.Comparer.Equals(t.Tag, keep));
+            tags.SelectedIndex = model.Tags.Count == 0 ? -1 : Math.Max(0, index);
+            tags.IsEnabled = name.IsEnabled = model.Tags.Count > 0;
+            empty.Visibility = model.Tags.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            Validate();
+        }
+
+        tags.SelectionChanged += (_, _) => Validate();
+        name.TextChanged += (_, _) => Validate();
+        rename.Click += (_, _) =>
+        {
+            if (Selected() is not { } old)
+            {
+                return;
+            }
+
+            warning.Text = model.Warning(old, normalized);
+            confirm.Content = model.ConfirmText(old, normalized);
+            status.Text = string.Empty;
+            confirmPanel.Visibility = Visibility.Visible;
+        };
+        cancel.Click += (_, _) => confirmPanel.Visibility = Visibility.Collapsed;
+        confirm.Click += async (_, _) =>
+        {
+            if (Selected() is not { } old)
+            {
+                return;
+            }
+
+            tags.IsEnabled = name.IsEnabled = rename.IsEnabled = confirm.IsEnabled = cancel.IsEnabled = false;
+            var progress = new Progress<int>(n => status.Text = Strings.Format(R.Settings_TagsProgress, n));
+            try
+            {
+                status.Text = await model.RenameAsync(old, normalized, progress);
+                name.Text = string.Empty;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                status.Text = Strings.Format(R.Settings_TagsFailed, ex.Message); // finding the notes failed – nothing renamed
+            }
+            finally
+            {
+                confirm.IsEnabled = cancel.IsEnabled = true;
+                confirmPanel.Visibility = Visibility.Collapsed;
+                await ReloadAsync();
+            }
+        };
+        _ = ReloadAsync();
+
+        return Ui.Ui.VStack(
+            10,
+            intro,
+            empty,
+            Field(Strings.Get(R.Settings_TagsTag), tags),
+            Field(Strings.Get(R.Settings_TagsNewName), name),
+            hint,
+            rename,
+            confirmPanel,
+            status);
     }
 
     private static async Task ShowRestartAsync(XamlRoot root, MainViewModel vm)

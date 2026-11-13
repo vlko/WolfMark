@@ -127,6 +127,64 @@ public sealed partial class TagStore
     public Task SetOrderAsync(string tag, int order, CancellationToken cancellationToken) =>
         UpdateAsync(tag, d => d.Order = order, cancellationToken);
 
+    /// <summary>
+    /// After a tag rename (M8-05): the new tag takes over the old one's colour, labels and order – a rename keeps the
+    /// look, even though a palette colour comes from the name. A tag that already exists (a merge) keeps its own.
+    /// </summary>
+    public async Task RenameAsync(string oldTag, string newTag, CancellationToken cancellationToken)
+    {
+        string json;
+        lock (_gate)
+        {
+            var oldKey = TagName.ToKey(oldTag);
+            var newKey = TagName.ToKey(newTag);
+            _byKey.TryGetValue(oldKey, out var old);
+            if (oldKey == newKey)
+            {
+                if (old is null)
+                {
+                    return; // only the letter case changed and nothing is stored
+                }
+
+                old.Name = newTag;
+            }
+            else if (_byKey.ContainsKey(newKey))
+            {
+                if (old is null)
+                {
+                    return;
+                }
+
+                _document.Tags.Remove(old); // merge: the target keeps its colour
+                _byKey.Remove(oldKey);
+            }
+            else
+            {
+                if (old is null)
+                {
+                    // The old palette colour, written down – otherwise the new name would pick another one.
+                    old = new TagDefinition { Order = _document.Tags.Count };
+                    old.Color = TagPalette.ForTag(oldTag).ToHex();
+                    _document.Tags.Add(old);
+                }
+                else
+                {
+                    old.Color ??= TagPalette.ForTag(oldTag).ToHex();
+                    _byKey.Remove(oldKey);
+                }
+
+                old.Name = newTag;
+                _byKey[newKey] = old;
+            }
+
+            json = JsonSerializer.Serialize(_document, WolfMarkJsonContext.Default.TagsDocument);
+        }
+
+        _selfWrites.RecordWrite(_relativePath, ContentHash.Compute(json));
+        await AtomicFile.WriteAllTextAsync(_path, json, cancellationToken).ConfigureAwait(false);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     private async Task UpdateAsync(string tag, Action<TagDefinition> update, CancellationToken cancellationToken)
     {
         if (!TagName.TryNormalize(tag, out var normalized))

@@ -264,6 +264,22 @@ S = {
  "Settings_PortableNotWritable": ("Not available: the app folder {0} is not writable. Copy the app to a folder you can write to, e.g. a USB drive.", "Nedostupné: do priečinka aplikácie {0} sa nedá zapisovať. Skopíruj aplikáciu do zapisovateľného priečinka, napr. na USB kľúč."),
  "Settings_PortableAppBundle": ("Not available for an app installed in Applications.", "Nedostupné pre aplikáciu nainštalovanú v Applications."),
  "Settings_PortableUnavailable": ("Not available in portable mode – it writes to this computer's system settings.", "V prenosnom režime nie je dostupné – zapisuje do systému tohto počítača."),
+ "Settings_Tags": ("Tags", "Tagy"),
+ "Settings_TagsIntro": ("Renames a tag in the file names of all its notes. Renaming to a tag that already exists merges the two. The text of the notes is not changed.", "Premenuje tag v názvoch súborov všetkých jeho poznámok. Premenovanie na tag, ktorý už existuje, ich zlúči. Text poznámok sa nemení."),
+ "Settings_TagsNone": ("No notes with a tag yet.", "Zatiaľ žiadne poznámky s tagom."),
+ "Settings_TagsTag": ("Tag", "Tag"),
+ "Settings_TagsNewName": ("New name", "Nový názov"),
+ "Settings_TagsRename": ("Rename…", "Premenovať…"),
+ "Settings_TagsSame": ("The new name is the same as the old one.", "Nový názov je rovnaký ako pôvodný."),
+ "Settings_TagsReserved": ("#ClaudeCode belongs to the Claude Code sync and cannot be renamed.", "#ClaudeCode patrí synchronizácii Claude Code, nedá sa premenovať."),
+ "Settings_TagsRenameWarning": ("Notes with #{0} ({2}) will be renamed to #{1}, e.g. {0}_1403.md → {1}_1403.md. The colour stays. If a file cannot be renamed, the notes already renamed go back.", "Poznámky s #{0} ({2}) sa premenujú na #{1}, napr. {0}_1403.md → {1}_1403.md. Farba ostane. Ak sa niektorý súbor nedá premenovať, už premenované poznámky sa vrátia späť."),
+ "Settings_TagsMergeWarning": ("#{1} already exists ({3}). The notes with #{0} ({2}) will join it and take its colour; #{0} disappears. If a file cannot be renamed, the notes already renamed go back.", "#{1} už existuje ({3}). Poznámky s #{0} ({2}) sa k nemu pridajú a dostanú jeho farbu; #{0} zmizne. Ak sa niektorý súbor nedá premenovať, už premenované poznámky sa vrátia späť."),
+ "Settings_TagsConfirmRename": ("Rename", "Premenovať"),
+ "Settings_TagsConfirmMerge": ("Merge", "Zlúčiť"),
+ "Settings_TagsProgress": ("Renamed: {0}", "Premenované: {0}"),
+ "Settings_TagsDone": ("#{0} is now #{1}. Notes renamed: {2}.", "#{0} je teraz #{1}. Premenované poznámky: {2}."),
+ "Settings_TagsFailed": ("Renaming failed: {0} The notes were renamed back.", "Premenovanie zlyhalo: {0} Poznámky sa vrátili späť."),
+ "Settings_TagsRollbackFailed": ("Renaming failed: {0} Notes that could not be renamed back and keep #{2}: {1}. Details are in the log.", "Premenovanie zlyhalo: {0} Poznámky, ktoré sa nepodarilo vrátiť a majú #{2}: {1}. Podrobnosti sú v logu."),
 }
 
 import os, sys, html

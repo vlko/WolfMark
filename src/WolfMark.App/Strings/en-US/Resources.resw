@@ -734,4 +734,49 @@ The app restarts afterwards.</value>
   <data name="Settings_PortableUnavailable" xml:space="preserve">
     <value>Not available in portable mode – it writes to this computer's system settings.</value>
   </data>
+  <data name="Settings_TagsIntro" xml:space="preserve">
+    <value>Renames a tag in the file names of all its notes. Renaming to a tag that already exists merges the two. The text of the notes is not changed.</value>
+  </data>
+  <data name="Settings_TagsNone" xml:space="preserve">
+    <value>No notes with a tag yet.</value>
+  </data>
+  <data name="Settings_TagsTag" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="Settings_TagsNewName" xml:space="preserve">
+    <value>New name</value>
+  </data>
+  <data name="Settings_TagsRename" xml:space="preserve">
+    <value>Rename…</value>
+  </data>
+  <data name="Settings_TagsSame" xml:space="preserve">
+    <value>The new name is the same as the old one.</value>
+  </data>
+  <data name="Settings_TagsReserved" xml:space="preserve">
+    <value>#ClaudeCode belongs to the Claude Code sync and cannot be renamed.</value>
+  </data>
+  <data name="Settings_TagsRenameWarning" xml:space="preserve">
+    <value>Notes with #{0} ({2}) will be renamed to #{1}, e.g. {0}_1403.md → {1}_1403.md. The colour stays. If a file cannot be renamed, the notes already renamed go back.</value>
+  </data>
+  <data name="Settings_TagsMergeWarning" xml:space="preserve">
+    <value>#{1} already exists ({3}). The notes with #{0} ({2}) will join it and take its colour; #{0} disappears. If a file cannot be renamed, the notes already renamed go back.</value>
+  </data>
+  <data name="Settings_TagsConfirmRename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="Settings_TagsConfirmMerge" xml:space="preserve">
+    <value>Merge</value>
+  </data>
+  <data name="Settings_TagsProgress" xml:space="preserve">
+    <value>Renamed: {0}</value>
+  </data>
+  <data name="Settings_TagsDone" xml:space="preserve">
+    <value>#{0} is now #{1}. Notes renamed: {2}.</value>
+  </data>
+  <data name="Settings_TagsFailed" xml:space="preserve">
+    <value>Renaming failed: {0} The notes were renamed back.</value>
+  </data>
+  <data name="Settings_TagsRollbackFailed" xml:space="preserve">
+    <value>Renaming failed: {0} Notes that could not be renamed back and keep #{2}: {1}. Details are in the log.</value>
+  </data>
 </root>

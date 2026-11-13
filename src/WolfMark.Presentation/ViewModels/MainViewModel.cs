@@ -9,6 +9,7 @@ using WolfMark.Core.Settings;
 using WolfMark.Core.Tags;
 using WolfMark.Index.Indexing;
 using WolfMark.Index.Queries;
+using WolfMark.Storage.Tags;
 using WolfMark.Sync.ClaudeCode;
 
 namespace WolfMark.App.ViewModels;
@@ -294,6 +295,55 @@ internal sealed partial class MainViewModel : ObservableObject
         await History.SetTagFilterAsync(tag);
     }
 
+    /// <summary>
+    /// Settings → Tags (M8-05): renames <paramref name="oldTag"/> in the names of all its notes; to an existing tag it
+    /// merges them. On a failure the files done are renamed back (see the result).
+    /// </summary>
+    public async Task<TagRenamer.Result> RenameTagAsync(string oldTag, string newTag, IProgress<int>? progress)
+    {
+        await Editor.FlushAsync(); // no autosave into the old file name while it is renamed
+        var engine = _host.Engine;
+        var notes = await Task.Run(() => TagRenamer.FindAsync(engine, oldTag, _host.ShutdownToken));
+        var moved = new List<(string Old, string New)>();
+        var result = await Task.Run(() => TagRenamer.RenameAsync(
+            notes,
+            newTag,
+            async (path, tag) =>
+            {
+                var renamed = await engine.ChangeTagAsync(path, tag, CancellationToken.None);
+                moved.Add((path.RelativePath, renamed.RelativePath));
+                return renamed;
+            },
+            progress));
+        if (result.Error is not null)
+        {
+            LogTagRenameFailed(result.Error, oldTag, newTag, result.RollbackFailures.Count);
+            return result; // the rename events (both ways) bring the index up to date
+        }
+
+        // Index now, not when the rename events get processed: the page lists the tags right after this.
+        var upserts = moved.Select(m => m.New).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var deletes = moved.Select(m => m.Old).Where(o => !upserts.Contains(o)).ToList(); // a case-only rename is the same file
+        await Task.Run(() => _host.Indexer.ApplyAsync(upserts, deletes, _host.ShutdownToken));
+
+        await Task.Run(() => _host.Tags.RenameAsync(oldTag, newTag, CancellationToken.None));
+        Editor.OnTagRenamed(oldTag, newTag);
+        if (ActiveTag is { } active && TagName.Comparer.Equals(active, oldTag))
+        {
+            await SetActiveTagAsync(newTag);
+        }
+
+        LogTagRenamed(oldTag, newTag, result.Renamed);
+        return result;
+    }
+
+    /// <summary>Tags in note file names with their note counts (from the index), most used first.</summary>
+    public async Task<IReadOnlyList<TagUsage>> GetPrimaryTagsAsync()
+    {
+        await _host.DatabaseReady;
+        return await _host.Calendar.GetTagUsageAsync(null, null, _host.ShutdownToken);
+    }
+
     public void OpenSearch()
     {
         Search.Reset();
@@ -456,6 +506,12 @@ internal sealed partial class MainViewModel : ObservableObject
         var status = await Task.Run(() => CleanupPeriodCheck.CheckAsync(Path.Combine(claudeDirectory, "settings.json"), CancellationToken.None));
         CleanupWarning = status.IsRisky ? status : null;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tag {Old} renamed to {New} in {Count} notes")]
+    private partial void LogTagRenamed(string old, string @new, int count);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Renaming tag {Old} to {New} failed; {NotRolledBack} notes could not be renamed back")]
+    private partial void LogTagRenameFailed(Exception ex, string old, string @new, int notRolledBack);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Claude Code sync: {Created} created, {Updated} updated")]
     private partial void LogSynced(int created, int updated);
