@@ -29,5 +29,6 @@
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <!-- Tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.0" />
   </ItemGroup>
 </Project>

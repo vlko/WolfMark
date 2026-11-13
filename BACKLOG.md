@@ -164,8 +164,10 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M7-04 – Idempotentný inkrementálny sync** so stavom v DB.
   *Stav:* Test: žiadne duplicity aj po zmazaní indexu (hľadá podľa `session:` vo front matter).
   *AK:* Opakovaný sync nevytvorí duplicity; nový prompt sa doplní do existujúcej poznámky.
-- 🟨 **M7-05 – Spúšťanie:** pri štarte, periodicky, voliteľne watcher.
-  *Stav:* `ClaudeCodeSyncScheduler`: štart, interval, voliteľný watcher.
+- ✅ **M7-05 – Spúšťanie:** pri štarte, periodicky, voliteľne watcher.
+  *Stav:* `ClaudeCodeSyncScheduler`: štart, interval, voliteľný watcher; `SyncSchedulerTests` s falošným časom
+  (2026-11-13). Pri tom opravené: „Synchronizovať teraz“ pri zapnutom watcheri čakalo 5 s; zápisy počas 5 s okna
+  spustili hneď ďalší, zbytočný sync.
 - ✅ **M7-06 – Filter citlivých údajov** a vylúčenie projektov.
 - ✅ **M7-07 – Upozornenie na `cleanupPeriodDays`.**
   *Stav:* Kontrola + zápis do `settings.json` (test); InfoBar v UI.
