@@ -9,7 +9,8 @@ namespace WolfMark.Storage.Watching;
 /// <summary>
 /// Turns raw <see cref="FileSystemWatcher"/> notifications into debounced domain events (SPEC §4.1):
 /// watcher → channel → per-path debounce (300 ms) → <see cref="NoteEvent"/> on the hub.
-/// Echoes of our own writes are dropped; buffer overflow triggers a full rescan.
+/// Echoes of our own writes are dropped; buffer overflow triggers a full rescan. A repeated notification for
+/// content already reported (Windows can deliver a late <c>Changed</c> after the debounce) is dropped too.
 /// </summary>
 public sealed partial class NoteWatcher : IAsyncDisposable
 {
@@ -22,6 +23,9 @@ public sealed partial class NoteWatcher : IAsyncDisposable
     private readonly TimeSpan _debounce;
     private readonly Channel<RawChange> _raw = Channel.CreateUnbounded<RawChange>(new UnboundedChannelOptions { SingleReader = true });
     private readonly CancellationTokenSource _cts = new();
+
+    // Hash of the content last reported as an external create/change, per note; touched only by the loop.
+    private readonly Dictionary<string, string> _reported = new(StringComparer.OrdinalIgnoreCase);
     private FileSystemWatcher? _watcher;
     private Task? _loop;
 
@@ -255,7 +259,8 @@ public sealed partial class NoteWatcher : IAsyncDisposable
                     return;
 
                 case PendingKind.Tags:
-                    if (!await IsOwnContentAsync(p.Key, ct).ConfigureAwait(false))
+                    var tagsHash = await ReadHashAsync(p.Key, ct).ConfigureAwait(false);
+                    if (tagsHash is null || !_engine.SelfWrites.IsOwnContent(p.Key, tagsHash))
                     {
                         _hub.Publish(new TagsChanged(ChangeOrigin.External));
                     }
@@ -272,6 +277,8 @@ public sealed partial class NoteWatcher : IAsyncDisposable
 
             if (p.Kind == PendingKind.Renamed && p.OldKey is not null && NotePath.TryParse(p.OldKey, out var oldPath))
             {
+                _reported.Remove(oldPath.RelativePath);
+                _reported.Remove(path.RelativePath);
                 var ownOld = _engine.SelfWrites.ConsumeExpectedRemoval(oldPath.RelativePath);
                 var ownNew = _engine.SelfWrites.ConsumeExpectedRemoval(path.RelativePath);
                 if (!(ownOld || ownNew))
@@ -284,6 +291,7 @@ public sealed partial class NoteWatcher : IAsyncDisposable
 
             if (!exists)
             {
+                _reported.Remove(path.RelativePath);
                 if (!_engine.SelfWrites.ConsumeExpectedRemoval(path.RelativePath))
                 {
                     _hub.Publish(new NoteDeleted(path, ChangeOrigin.External));
@@ -294,12 +302,29 @@ public sealed partial class NoteWatcher : IAsyncDisposable
 
             if (_engine.SelfWrites.ConsumeExpectedRemoval(path.RelativePath))
             {
+                _reported.Remove(path.RelativePath);
                 return; // target of our own rename
             }
 
-            if (await IsOwnContentAsync(path.RelativePath, ct).ConfigureAwait(false))
+            var hash = await ReadHashAsync(path.RelativePath, ct).ConfigureAwait(false);
+            if (hash is not null && _engine.SelfWrites.IsOwnContent(path.RelativePath, hash))
             {
+                _reported.Remove(path.RelativePath); // our save came in between: the same external content again is news
                 return;
+            }
+
+            if (hash is not null && _reported.TryGetValue(path.RelativePath, out var last) && last == hash)
+            {
+                return; // a late duplicate notification of a change already reported
+            }
+
+            if (hash is null)
+            {
+                _reported.Remove(path.RelativePath);
+            }
+            else
+            {
+                _reported[path.RelativePath] = hash;
             }
 
             _hub.Publish(p.Kind == PendingKind.Created ? new NoteCreated(path, ChangeOrigin.External) : new NoteChanged(path, ChangeOrigin.External));
@@ -310,7 +335,8 @@ public sealed partial class NoteWatcher : IAsyncDisposable
         }
     }
 
-    private async Task<bool> IsOwnContentAsync(string relativePath, CancellationToken ct)
+    /// <summary>Content hash of the file; null when it is gone, a cloud placeholder or unreadable.</summary>
+    private async Task<string?> ReadHashAsync(string relativePath, CancellationToken ct)
     {
         var full = _engine.GetFullPath(relativePath);
         for (var attempt = 0; attempt < 3; attempt++)
@@ -320,11 +346,11 @@ public sealed partial class NoteWatcher : IAsyncDisposable
                 var info = new FileInfo(full);
                 if (!info.Exists || CloudFileAttributes.IsPlaceholder(info.Attributes))
                 {
-                    return false; // never hydrate a placeholder just to compare
+                    return null; // never hydrate a placeholder just to compare
                 }
 
                 var bytes = await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false);
-                return _engine.SelfWrites.IsOwnContent(relativePath, ContentHash.Compute(bytes));
+                return ContentHash.Compute(bytes);
             }
             catch (IOException)
             {
@@ -332,11 +358,11 @@ public sealed partial class NoteWatcher : IAsyncDisposable
             }
             catch (UnauthorizedAccessException)
             {
-                return false;
+                return null;
             }
         }
 
-        return false;
+        return null;
     }
 
     public async ValueTask DisposeAsync()

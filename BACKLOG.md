@@ -24,7 +24,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M0-04 – CI.** GitHub Actions: build, testy, AOT publish pre x64 (artefakt).
   *Stav:* `.github/workflows/ci.yml` beží na každý push (Linux testy, Windows build/test/AOT publish x64/arm64,
   Avalonia AOT linux-x64/osx-arm64), `release.yml` na tag. Občasný pád testov na win-x64 (4 z 36 behov):
-  `Full_reindex_of_10000_notes_is_fast` mal na runneri s Defenderom príliš tesný limit 10 s → 30 s (2026-11-13).
+  `Full_reindex_of_10000_notes_is_fast` mal na runneri s Defenderom príliš tesný limit 10 s → 30 s; anotácie potom
+  ukázali aj `External_edit_raises_exactly_one_change` – skutočná chyba watchera na Windows, opravená (M1-05).
   Padnuté testy sa vypíšu ako anotácie (`tools/ci-test-annotations.py`), ktoré sú verejné, hoci logy jobov
   vyžadujú admin práva. Akcie na Node 24 (checkout v7, setup-dotnet v6, upload v7, download v8).
   *AK:* Zelený pipeline na push.
@@ -48,6 +49,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *AK:* Simulovaný pád počas zápisu nezanechá poškodený ani prázdny súbor; zmazaný súbor je v koši.
 - ✅ **M1-05 – File watcher a doménové udalosti.** `FileSystemWatcher` → `Channel` → debounce → `NoteEvent` (union typ). Pri pretečení bufferu plný rescan. Potlačenie ech vlastných zápisov.
   *Stav:* Test: externá úprava = presne 1 `NoteChanged`, vlastné uloženie/premenovanie/zmazanie = 0 externých udalostí.
+  Windows občas doručí po debounce ešte jeden oneskorený `Changed` k tomu istému zápisu (zachytené na CI 2026-11-13) →
+  externá zmena s obsahom, ktorý sme pre danú cestu už ohlásili, sa neohlási znova (po vlastnom uložení áno).
   *AK:* Úprava súboru v Notepade vyvolá presne jednu `NoteChanged`; vlastný save nevyvolá žiadnu.
 - ✅ **M1-06 – Detekcia OneDrive konfliktných kópií.**
   *Stav:* `praca_1403-PC.md` → `ConflictOriginal`; v UI InfoBar + počítadlo konfliktov.

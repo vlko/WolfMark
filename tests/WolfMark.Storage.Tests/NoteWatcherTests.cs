@@ -38,7 +38,8 @@ public sealed class NoteWatcherTests
         var path = await f.Engine.CreateAsync(At, "praca", "v1", Ct);
         f.DrainEvents();
 
-        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        // The production debounce: with 150 ms a stalled CI runner can split the three writes below.
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(300));
         watcher.Start();
 
         // An editor typically writes several times in quick succession.
@@ -51,6 +52,66 @@ public sealed class NoteWatcherTests
         var change = Assert.IsType<NoteChanged>(Assert.Single(events));
         Assert.Equal(ChangeOrigin.External, change.Origin);
         Assert.Equal(path, change.Path);
+    }
+
+    [Fact]
+    public async Task Late_notification_of_reported_content_raises_nothing()
+    {
+        // Windows can deliver another Changed for the same write after the debounce (seen on the CI runner).
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, "praca", "v1", Ct);
+        f.DrainEvents();
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        watcher.Start();
+        var full = f.Engine.GetFullPath(path);
+
+        await File.WriteAllTextAsync(full, "v2", Ct);
+        Assert.IsType<NoteChanged>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+
+        await File.WriteAllTextAsync(full, "v2", Ct); // same content again
+        Assert.Empty(await CollectAsync(f, TimeSpan.FromSeconds(1)));
+
+        await File.WriteAllTextAsync(full, "v3", Ct);
+        Assert.IsType<NoteChanged>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+    }
+
+    [Fact]
+    public async Task Reported_content_after_own_save_is_a_change_again()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, "praca", "v1", Ct);
+        f.DrainEvents();
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        watcher.Start();
+        var full = f.Engine.GetFullPath(path);
+
+        await File.WriteAllTextAsync(full, "external", Ct);
+        Assert.IsType<NoteChanged>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+
+        await f.Engine.SaveAsync(path, "mine", Ct);
+        Assert.All(await CollectAsync(f, TimeSpan.FromSeconds(1)), e => Assert.Equal(ChangeOrigin.Local, e.Origin));
+
+        // The other machine's version comes back over our save: the editor must hear about it.
+        await File.WriteAllTextAsync(full, "external", Ct);
+        var change = Assert.IsType<NoteChanged>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+        Assert.Equal(ChangeOrigin.External, change.Origin);
+    }
+
+    [Fact]
+    public async Task Recreated_note_with_the_same_content_is_reported()
+    {
+        using var f = new EngineFixture();
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        Directory.CreateDirectory(f.Engine.GetDayDirectory(new DateOnly(2026, 10, 15)));
+        watcher.Start();
+        var full = Path.Combine(f.Root, "2026", "10", "15", "0800.md");
+
+        await File.WriteAllTextAsync(full, "hello", Ct);
+        Assert.IsType<NoteCreated>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+        File.Delete(full);
+        Assert.IsType<NoteDeleted>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+        await File.WriteAllTextAsync(full, "hello", Ct);
+        Assert.IsType<NoteCreated>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
     }
 
     [Fact]
