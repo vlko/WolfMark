@@ -301,15 +301,74 @@ internal sealed partial class NoteHeaderView
         var editor = _vm.Editor;
         var host = _vm.Host;
         await host.DatabaseReady;
-        var tags = await host.History.GetAllTagsAsync(host.ShutdownToken);
+        var tags = await host.GetTagListAsync(host.ShutdownToken);
 
         var input = new TextBox { PlaceholderText = Strings.Get(R.Tag_NewPlaceholder), MinWidth = 240 };
         var error = Typo.Body(string.Empty, 11.5, new SolidColorBrush(Microsoft.UI.Colors.IndianRed));
         var list = new StackPanel { Spacing = 2 };
 
+        // A tag that does not exist yet: its colour and calendar labels are chosen here, before it is created.
+        // Existing tags are edited in Settings → Tags.
+        var newSection = new StackPanel { Spacing = 8, Visibility = Visibility.Collapsed };
+        TagColor? newColor = null;
+        var newLabels = new CheckBox { Content = Strings.Get(R.Tag_ShowLabels) };
+        var newSwatches = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 7, ItemWidth = 32, ItemHeight = 32 };
+        var newTitle = Typo.Caps(string.Empty);
+        newSection.Children.Add(new Border { Height = 1, Background = Palette.Divider, Margin = new Thickness(0, 4, 0, 4) });
+        newSection.Children.Add(newTitle);
+        newSection.Children.Add(newSwatches);
+        newSection.Children.Add(newLabels);
+
+        bool IsNew(string tag) => !tags.Any(t => TagName.Comparer.Equals(t.Tag, tag));
+
+        void RenderSwatches(string tag)
+        {
+            newSwatches.Children.Clear();
+            var selected = newColor ?? TagPalette.ForTag(tag);
+            foreach (var color in TagPalette.Colors)
+            {
+                var c = color;
+                var swatch = new Button { Width = 28, Height = 28, Padding = new Thickness(0), CornerRadius = Radius.Control };
+                swatch.StyleButton(new SolidColorBrush(Palette.ToColor(c)), new SolidColorBrush(Palette.ForegroundOn(c)), onColor: true);
+                if (c == selected)
+                {
+                    swatch.BorderThickness = new Thickness(3);
+                    swatch.BorderBrush = Palette.Ink;
+                    swatch.Resources["ButtonBorderBrush"] = Palette.Ink;
+                }
+
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(swatch, c.ToHex());
+                swatch.Click += (_, _) =>
+                {
+                    newColor = c; // kept until Enter creates the tag
+                    RenderSwatches(tag);
+                };
+                newSwatches.Children.Add(swatch);
+            }
+        }
+
         async Task ApplyAsync(string? tag)
         {
             flyout.Hide();
+            if (tag is not null && IsNew(tag))
+            {
+                // Read the choices on the UI thread; only the tags.json writes go to the pool.
+                var color = newColor;
+                var labels = newLabels.IsChecked == true;
+                await Task.Run(async () =>
+                {
+                    if (color is { } c)
+                    {
+                        await host.Tags.SetColorAsync(tag, c, CancellationToken.None);
+                    }
+
+                    if (labels)
+                    {
+                        await host.Tags.SetShowInCalendarLabelsAsync(tag, true, CancellationToken.None);
+                    }
+                });
+            }
+
             await editor.ChangeTagAsync(tag);
         }
 
@@ -327,11 +386,23 @@ internal sealed partial class NoteHeaderView
                 var tag = t.Tag;
                 list.Children.Add(TagRow(tag, tag, t.Count.ToString(CultureInfo.CurrentCulture), () => _ = ApplyAsync(tag)));
             }
+
+            if (TagName.TryNormalize(filter, out var typed) && IsNew(typed))
+            {
+                newTitle.Text = Strings.Get(R.Tag_Color) + " · #" + typed;
+                RenderSwatches(typed);
+                newSection.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                newSection.Visibility = Visibility.Collapsed;
+            }
         }
 
         input.TextChanged += (_, _) =>
         {
             error.Text = input.Text.Trim().Length > 0 && !TagName.TryNormalize(input.Text, out _) ? Strings.Get(R.Tag_Invalid) : string.Empty;
+            newColor = null; // another name: back to its palette colour
             Render();
         };
         input.KeyDown += async (_, e) =>
@@ -348,52 +419,8 @@ internal sealed partial class NoteHeaderView
             8,
             input,
             error,
-            new ScrollViewer { Content = list, MaxHeight = 260 });
-
-        if (editor.Tag is { } current)
-        {
-            panel.Children.Add(new Border { Height = 1, Background = Palette.Divider, Margin = new Thickness(0, 4, 0, 4) });
-            panel.Children.Add(Typo.Caps(Strings.Get(R.Tag_Color) + " · " + current));
-            var swatches = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 7, ItemWidth = 32, ItemHeight = 32 };
-            foreach (var color in TagPalette.Colors)
-            {
-                var c = color;
-                var swatch = new Button
-                {
-                    Width = 28,
-                    Height = 28,
-                    Padding = new Thickness(0),
-                    CornerRadius = Radius.Control,
-                };
-                swatch.StyleButton(new SolidColorBrush(Palette.ToColor(c)), new SolidColorBrush(Palette.ForegroundOn(c)), onColor: true);
-                if (host.Tags.GetColor(current) == c)
-                {
-                    // Current colour: permanent ink frame.
-                    swatch.BorderThickness = new Thickness(3);
-                    swatch.BorderBrush = Palette.Ink;
-                    swatch.Resources["ButtonBorderBrush"] = Palette.Ink;
-                }
-
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(swatch, c.ToHex());
-                swatch.Click += async (_, _) =>
-                {
-                    flyout.Hide();
-                    await Task.Run(() => host.Tags.SetColorAsync(current, c, CancellationToken.None));
-                    _brushes.Refresh();
-                };
-                swatches.Children.Add(swatch);
-            }
-
-            panel.Children.Add(swatches);
-            var labels = new CheckBox { Content = Strings.Get(R.Tag_ShowLabels), IsChecked = host.Tags.ShowsInCalendarLabels(current) };
-            labels.Click += async (_, _) =>
-            {
-                // Read UI state on the UI thread; only the file write goes to the pool.
-                var show = labels.IsChecked == true;
-                await Task.Run(() => host.Tags.SetShowInCalendarLabelsAsync(current, show, CancellationToken.None));
-            };
-            panel.Children.Add(labels);
-        }
+            new ScrollViewer { Content = list, MaxHeight = 260 },
+            newSection);
 
         input.Loaded += (_, _) => input.Focus(FocusState.Programmatic);
         return panel;

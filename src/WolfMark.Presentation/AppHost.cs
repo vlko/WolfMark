@@ -95,6 +95,19 @@ internal sealed partial class AppHost : IAsyncDisposable
     /// <summary>Completes when the index database is open and readable.</summary>
     public Task DatabaseReady => _databaseReady.Task;
 
+    /// <summary>
+    /// All tags for the pickers and Settings → Tags: the ones in note file names with their counts (most used first),
+    /// then tags known only from tags.json (added in Settings, no notes yet) with 0, by name.
+    /// </summary>
+    public async Task<IReadOnlyList<TagUsage>> GetTagListAsync(CancellationToken ct)
+    {
+        await DatabaseReady.ConfigureAwait(false);
+        var used = await Calendar.GetTagUsageAsync(null, null, ct).ConfigureAwait(false);
+        var seen = new HashSet<string>(used.Select(u => u.Tag), Core.Tags.TagName.Comparer);
+        var unused = Tags.DefinedTags.Where(seen.Add).Order(StringComparer.CurrentCultureIgnoreCase).Select(t => new TagUsage(t, 0));
+        return [.. used, .. unused];
+    }
+
     public event EventHandler<IndexProgress>? IndexProgressChanged;
 
     public event EventHandler<SyncResult>? ClaudeSynced;

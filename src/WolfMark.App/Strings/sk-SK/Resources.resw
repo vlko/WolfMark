@@ -735,19 +735,13 @@ Aplikácia sa potom reštartuje.</value>
     <value>V prenosnom režime nie je dostupné – zapisuje do systému tohto počítača.</value>
   </data>
   <data name="Settings_TagsIntro" xml:space="preserve">
-    <value>Premenuje tag v názvoch súborov všetkých jeho poznámok. Premenovanie na tag, ktorý už existuje, ich zlúči. Text poznámok sa nemení.</value>
+    <value>Tag poznámky je v názve jej súboru. Premenovanie tagu premenuje súbory všetkých jeho poznámok; text poznámok sa nemení.</value>
   </data>
   <data name="Settings_TagsNone" xml:space="preserve">
-    <value>Zatiaľ žiadne poznámky s tagom.</value>
-  </data>
-  <data name="Settings_TagsTag" xml:space="preserve">
-    <value>Tag</value>
-  </data>
-  <data name="Settings_TagsNewName" xml:space="preserve">
-    <value>Nový názov</value>
+    <value>Zatiaľ žiadne tagy.</value>
   </data>
   <data name="Settings_TagsRename" xml:space="preserve">
-    <value>Premenovať…</value>
+    <value>Premenovať</value>
   </data>
   <data name="Settings_TagsSame" xml:space="preserve">
     <value>Nový názov je rovnaký ako pôvodný.</value>
@@ -760,6 +754,48 @@ Aplikácia sa potom reštartuje.</value>
   </data>
   <data name="Settings_TagsMergeWarning" xml:space="preserve">
     <value>#{1} už existuje ({3}). Poznámky s #{0} ({2}) sa k nemu pridajú a dostanú jeho farbu; #{0} zmizne. Ak sa niektorý súbor nedá premenovať, už premenované poznámky sa vrátia späť.</value>
+  </data>
+  <data name="Settings_TagsNewPlaceholder" xml:space="preserve">
+    <value>Nový tag</value>
+  </data>
+  <data name="Settings_TagsAdd" xml:space="preserve">
+    <value>Pridať</value>
+  </data>
+  <data name="Settings_TagsExists" xml:space="preserve">
+    <value>#{0} už existuje.</value>
+  </data>
+  <data name="Settings_TagsAdded" xml:space="preserve">
+    <value>#{0} je pridaný – poznámke ho priradíš vo výbere tagu.</value>
+  </data>
+  <data name="Settings_TagsUnused" xml:space="preserve">
+    <value>bez poznámok</value>
+  </data>
+  <data name="Settings_TagsMergeNote" xml:space="preserve">
+    <value>Premenovanie tagu na tag, ktorý už existuje, ich zlúči: poznámky dostanú jeho názov a farbu.</value>
+  </data>
+  <data name="Settings_TagsMenu" xml:space="preserve">
+    <value>Farba a premenovanie</value>
+  </data>
+  <data name="Settings_TagsRenameAction" xml:space="preserve">
+    <value>Premenovať…</value>
+  </data>
+  <data name="Settings_TagsShowNotes" xml:space="preserve">
+    <value>Zobraziť poznámky</value>
+  </data>
+  <data name="Settings_TagsDelete" xml:space="preserve">
+    <value>Odstrániť tag…</value>
+  </data>
+  <data name="Settings_TagsDeleteWarning" xml:space="preserve">
+    <value>Poznámky s #{0} ({1}) ostanú, len stratia tag ({0}_1403.md → 1403.md). Farba tagu sa zabudne. Ak sa niektorý súbor nedá premenovať, už premenované poznámky sa vrátia späť.</value>
+  </data>
+  <data name="Settings_TagsDeleteUnused" xml:space="preserve">
+    <value>#{0} nemá žiadne poznámky; zmizne zo zoznamu a jeho farba sa zabudne.</value>
+  </data>
+  <data name="Settings_TagsConfirmDelete" xml:space="preserve">
+    <value>Odstrániť</value>
+  </data>
+  <data name="Settings_TagsDeleted" xml:space="preserve">
+    <value>#{0} je odstránený. Poznámky, ktoré stratili tag: {1}.</value>
   </data>
   <data name="Settings_TagsConfirmRename" xml:space="preserve">
     <value>Premenovať</value>

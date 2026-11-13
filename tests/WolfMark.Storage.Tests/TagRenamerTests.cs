@@ -87,6 +87,37 @@ public sealed class TagRenamerTests
         Assert.Equal(before, Files(f));
     }
 
+    [Fact]
+    public async Task Removing_the_tag_keeps_the_notes_untagged()
+    {
+        using var f = new EngineFixture();
+        await f.Engine.CreateAsync(At, "praca", "content", Ct);
+        var notes = await TagRenamer.FindAsync(f.Engine, "praca", Ct);
+
+        var result = await TagRenamer.RenameAsync(notes, null, (p, t) => f.Engine.ChangeTagAsync(p, t, CancellationToken.None), null);
+
+        Assert.Null(result.Error);
+        Assert.Equal(["2026/10/15/1403.md"], Files(f));
+        Assert.Equal("content", await File.ReadAllTextAsync(Path.Combine(f.Root, "2026/10/15/1403.md"), Ct));
+    }
+
+    [Fact]
+    public async Task Tag_store_adds_and_removes_tags_without_notes()
+    {
+        using var dir = new TempDirectory();
+        var store = new TagStore(dir.Path, new SelfWriteRegistry(), NullLogger<TagStore>.Instance);
+
+        await store.AddAsync("napady", Ct);
+        Assert.Contains("napady", store.DefinedTags);
+
+        var reloaded = new TagStore(dir.Path, new SelfWriteRegistry(), NullLogger<TagStore>.Instance);
+        await reloaded.LoadAsync(Ct);
+        Assert.Contains("napady", reloaded.DefinedTags);
+
+        await reloaded.RemoveAsync("NAPADY", Ct);
+        Assert.DoesNotContain("napady", reloaded.DefinedTags);
+    }
+
     [Theory]
     [InlineData("praca", "robota", null)]
     [InlineData("praca", "Praca", null)]

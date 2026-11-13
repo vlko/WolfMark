@@ -115,14 +115,64 @@ internal sealed class NoteBar : UserControl
         var note = _vm.Editor;
         var host = _vm.Host;
         await host.DatabaseReady;
-        var tags = await host.History.GetAllTagsAsync(host.ShutdownToken);
+        var tags = await host.GetTagListAsync(host.ShutdownToken);
         var input = new TextBox { PlaceholderText = Strings.Get(R.Tag_NewPlaceholder), MinWidth = 240 };
         var error = Typo.Body(string.Empty, 11.5, Brushes.IndianRed);
         var list = new StackPanel { Spacing = 2 };
 
+        // A tag that does not exist yet: its colour and calendar labels are chosen here, before it is created.
+        // Existing tags are edited in Settings → Tags.
+        TagColor? newColor = null;
+        var newLabels = new CheckBox { Content = Strings.Get(R.Tag_ShowLabels) };
+        var newSwatches = new WrapPanel { MaxWidth = 7 * 32 };
+        var newTitle = Typo.Caps(string.Empty);
+        var newSection = Ui.VStack(8, new Border { Height = 1, Background = Palette.Divider, Margin = new Thickness(0, 4) }, newTitle, newSwatches, newLabels);
+        newSection.IsVisible = false;
+
+        bool IsNew(string tag) => !tags.Any(t => TagName.Comparer.Equals(t.Tag, tag));
+
+        void RenderSwatches(string tag)
+        {
+            newSwatches.Children.Clear();
+            var selected = newColor ?? TagPalette.ForTag(tag);
+            foreach (var color in TagPalette.Colors)
+            {
+                var c = color;
+                var swatch = new Button
+                {
+                    Width = 26,
+                    Height = 26,
+                    Margin = new Thickness(3),
+                    Background = new SolidColorBrush(Palette.ToColor(c)),
+                    BorderThickness = new Thickness(c == selected ? 3 : 0),
+                    BorderBrush = Palette.Ink,
+                    CornerRadius = new CornerRadius(4),
+                };
+                swatch.Click += (_, _) =>
+                {
+                    newColor = c; // kept until Enter creates the tag
+                    RenderSwatches(tag);
+                };
+                newSwatches.Children.Add(swatch);
+            }
+        }
+
         async Task ApplyAsync(string? tag)
         {
             flyout.Hide();
+            if (tag is not null && IsNew(tag))
+            {
+                if (newColor is { } c)
+                {
+                    await host.Tags.SetColorAsync(tag, c, host.ShutdownToken);
+                }
+
+                if (newLabels.IsChecked == true)
+                {
+                    await host.Tags.SetShowInCalendarLabelsAsync(tag, true, host.ShutdownToken);
+                }
+            }
+
             await note.ChangeTagAsync(tag);
         }
 
@@ -157,12 +207,24 @@ internal sealed class NoteBar : UserControl
             {
                 list.Children.Add(Row(t.Tag, t.Tag, t.Count.ToString(CultureInfo.CurrentCulture)));
             }
+
+            if (TagName.TryNormalize(filter, out var typed) && IsNew(typed))
+            {
+                newTitle.Text = Strings.Get(R.Tag_Color) + " · #" + typed;
+                RenderSwatches(typed);
+                newSection.IsVisible = true;
+            }
+            else
+            {
+                newSection.IsVisible = false;
+            }
         }
 
         input.TextChanged += (_, _) =>
         {
             var text = (input.Text ?? string.Empty).Trim();
             error.Text = text.Length > 0 && !TagName.TryNormalize(text, out _) ? Strings.Get(R.Tag_Invalid) : string.Empty;
+            newColor = null; // another name: back to its palette colour
             Render();
         };
         input.KeyDown += async (_, e) =>
@@ -175,34 +237,7 @@ internal sealed class NoteBar : UserControl
         };
         Render();
 
-        var panel = Ui.VStack(8, input, error, new ScrollViewer { Content = list, MaxHeight = 260 });
-        if (note.Tag is { } current)
-        {
-            panel.Children.Add(new Border { Height = 1, Background = Palette.Divider, Margin = new Thickness(0, 4) });
-            panel.Children.Add(Typo.Caps(Strings.Get(R.Tag_Color) + " · " + current));
-            var swatches = new WrapPanel { MaxWidth = 7 * 32 };
-            foreach (var color in TagPalette.Colors)
-            {
-                var swatch = new Button
-                {
-                    Width = 26,
-                    Height = 26,
-                    Margin = new Thickness(3),
-                    Background = new SolidColorBrush(Palette.ToColor(color)),
-                    BorderThickness = new Thickness(0),
-                    CornerRadius = new CornerRadius(4),
-                };
-                swatch.Click += async (_, _) =>
-                {
-                    flyout.Hide();
-                    await host.Tags.SetColorAsync(current, color, host.ShutdownToken);
-                };
-                swatches.Children.Add(swatch);
-            }
-
-            panel.Children.Add(swatches);
-        }
-
+        var panel = Ui.VStack(8, input, error, new ScrollViewer { Content = list, MaxHeight = 260 }, newSection);
         Dispatch(() => input.Focus());
         return panel;
     }

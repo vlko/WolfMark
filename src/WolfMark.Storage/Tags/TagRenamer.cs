@@ -65,11 +65,12 @@ public static class TagRenamer
 
     /// <summary>
     /// Renames <paramref name="notes"/> to <paramref name="newTag"/> one by one with <paramref name="changeTag"/>
-    /// (<see cref="DirectoryEngine.ChangeTagAsync"/>). A started rename is not cancellable: it completes or rolls back.
+    /// (<see cref="DirectoryEngine.ChangeTagAsync"/>); null removes the tag (<c>praca_1403.md</c> → <c>1403.md</c>).
+    /// A started rename is not cancellable: it completes or rolls back.
     /// </summary>
     public static async Task<Result> RenameAsync(
         IReadOnlyList<NotePath> notes,
-        string newTag,
+        string? newTag,
         Func<NotePath, string?, Task<NotePath>> changeTag,
         IProgress<int>? progress)
     {

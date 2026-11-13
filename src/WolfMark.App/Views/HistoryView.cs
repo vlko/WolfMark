@@ -147,7 +147,7 @@ internal sealed partial class HistoryView : UserControl
                 tagMenu.Items.RemoveAt(1);
             }
 
-            foreach (var t in (await host.History.GetAllTagsAsync(host.ShutdownToken)).Take(15))
+            foreach (var t in (await host.GetTagListAsync(host.ShutdownToken)).Take(15))
             {
                 tagMenu.Items.Add(TagItem(t.Tag));
             }

@@ -118,6 +118,42 @@ public sealed partial class TagStore
         }
     }
 
+    /// <summary>Tags written in tags.json – also ones without notes (added in Settings, or whose notes are gone).</summary>
+    public IReadOnlyList<string> DefinedTags
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _byKey.Values.Select(d => d.Name)];
+            }
+        }
+    }
+
+    /// <summary>A new tag without notes yet (Settings → Tags): written to tags.json so the tag pickers offer it.</summary>
+    public Task AddAsync(string tag, CancellationToken cancellationToken) => UpdateAsync(tag, _ => { }, cancellationToken);
+
+    /// <summary>A removed tag (Settings → Tags): its colour, labels and order are forgotten.</summary>
+    public async Task RemoveAsync(string tag, CancellationToken cancellationToken)
+    {
+        string json;
+        lock (_gate)
+        {
+            var key = TagName.ToKey(tag);
+            if (!_byKey.Remove(key, out var def))
+            {
+                return;
+            }
+
+            _document.Tags.Remove(def);
+            json = JsonSerializer.Serialize(_document, WolfMarkJsonContext.Default.TagsDocument);
+        }
+
+        _selfWrites.RecordWrite(_relativePath, ContentHash.Compute(json));
+        await AtomicFile.WriteAllTextAsync(_path, json, cancellationToken).ConfigureAwait(false);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public Task SetColorAsync(string tag, TagColor color, CancellationToken cancellationToken) =>
         UpdateAsync(tag, d => d.Color = color.ToHex(), cancellationToken);
 

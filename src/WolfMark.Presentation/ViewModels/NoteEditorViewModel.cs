@@ -273,8 +273,8 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         }
     }
 
-    /// <summary>A tag rename (M8-05) and the note not created yet: it gets the new tag when it is.</summary>
-    public void OnTagRenamed(string oldTag, string newTag)
+    /// <summary>A tag rename or removal (M8-05) and the note not created yet: it gets the new tag (or none) when it is.</summary>
+    public void OnTagRenamed(string oldTag, string? newTag)
     {
         if (!IsPersisted && Tag is { } tag && TagName.Comparer.Equals(tag, oldTag))
         {

@@ -297,9 +297,10 @@ internal sealed partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// Settings → Tags (M8-05): renames <paramref name="oldTag"/> in the names of all its notes; to an existing tag it
-    /// merges them. On a failure the files done are renamed back (see the result).
+    /// merges them; null removes the tag from the notes (they stay, untagged). On a failure the files done are
+    /// renamed back (see the result).
     /// </summary>
-    public async Task<TagRenamer.Result> RenameTagAsync(string oldTag, string newTag, IProgress<int>? progress)
+    public async Task<TagRenamer.Result> RenameTagAsync(string oldTag, string? newTag, IProgress<int>? progress)
     {
         await Editor.FlushAsync(); // no autosave into the old file name while it is renamed
         var engine = _host.Engine;
@@ -317,7 +318,7 @@ internal sealed partial class MainViewModel : ObservableObject
             progress));
         if (result.Error is not null)
         {
-            LogTagRenameFailed(result.Error, oldTag, newTag, result.RollbackFailures.Count);
+            LogTagRenameFailed(result.Error, oldTag, newTag ?? "-", result.RollbackFailures.Count);
             return result; // the rename events (both ways) bring the index up to date
         }
 
@@ -325,23 +326,17 @@ internal sealed partial class MainViewModel : ObservableObject
         var upserts = moved.Select(m => m.New).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var deletes = moved.Select(m => m.Old).Where(o => !upserts.Contains(o)).ToList(); // a case-only rename is the same file
         await Task.Run(() => _host.Indexer.ApplyAsync(upserts, deletes, _host.ShutdownToken));
-
-        await Task.Run(() => _host.Tags.RenameAsync(oldTag, newTag, CancellationToken.None));
+        await Task.Run(() => newTag is null
+            ? _host.Tags.RemoveAsync(oldTag, CancellationToken.None)
+            : _host.Tags.RenameAsync(oldTag, newTag, CancellationToken.None));
         Editor.OnTagRenamed(oldTag, newTag);
         if (ActiveTag is { } active && TagName.Comparer.Equals(active, oldTag))
         {
             await SetActiveTagAsync(newTag);
         }
 
-        LogTagRenamed(oldTag, newTag, result.Renamed);
+        LogTagRenamed(oldTag, newTag ?? "-", result.Renamed);
         return result;
-    }
-
-    /// <summary>Tags in note file names with their note counts (from the index), most used first.</summary>
-    public async Task<IReadOnlyList<TagUsage>> GetPrimaryTagsAsync()
-    {
-        await _host.DatabaseReady;
-        return await _host.Calendar.GetTagUsageAsync(null, null, _host.ShutdownToken);
     }
 
     public void OpenSearch()

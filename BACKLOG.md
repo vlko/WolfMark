@@ -173,7 +173,9 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
   *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu, skratka rýchleho zápisu (M8-01).
 - 🟨 **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).
-  Nastavenia → Tagy: výber tagu, nový názov, upozornenie a potvrdenie; premenovanie na existujúci tag ich zlúči.
+  Nastavenia → Tagy: zoznam tagov (aj bez poznámok, z `tags.json`), pridanie nového; pri každom tagu vyskakovacie okno
+  s farbou, titulkami v kalendári, „Zobraziť poznámky“, premenovaním (na existujúci tag = zlúčenie) a odstránením
+  (poznámky stratia tag). Výber tagu v hlavičke ponúka farbu a titulky len pri vytváraní nového tagu.
   Mení sa len názov súboru (`praca_1403.md` → `robota_1403.md`), tag je len tam (ADR 0010). Poznámky sa hľadajú v súboroch,
   nie v indexe (`TagRenamer`); pri chybe sa už premenované vrátia späť. Premenovanie prenesie farbu a štítky v `tags.json`,
   pri zlúčení ostane farba cieľa. `#ClaudeCode` sa premenovať nedá (patrí synchronizácii).

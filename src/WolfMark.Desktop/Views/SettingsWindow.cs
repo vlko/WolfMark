@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -334,7 +335,7 @@ internal sealed class SettingsWindow : Window
                 Field(Strings.Get(R.Settings_FontFamily), font),
                 Field(Strings.Get(R.Settings_FontSize), fontSize),
                 Field(Strings.Get(R.Settings_DefaultMode), mode))),
-            (Icons.Tag, Strings.Get(R.Settings_Tags), TagsPage(vm)),
+            (Icons.Tag, Strings.Get(R.Settings_Tags), TagsPage(vm, () => save.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)))),
             (Icons.Code, Strings.Get(R.Settings_ClaudeCode), Ui.VStack(
                 10,
                 ccEnabled,
@@ -358,106 +359,248 @@ internal sealed class SettingsWindow : Window
     private Task SaveAsync() => _vm.Host.SaveSettingsAsync();
 
     /// <summary>
-    /// Tags (M8-05), as src/WolfMark.App/Views/SettingsDialog.cs: pick a tag, type the new name, confirm the warning –
-    /// renames or merges at once. The check, texts and the rename itself are in <see cref="TagRenameModel"/>.
+    /// Tags (M8-05), as src/WolfMark.App/Views/SettingsDialog.cs: the list of tags, a field to add one, and per tag a
+    /// flyout (the arrow) with its colour, calendar labels, "show notes", rename (or merge) and removal. Everything
+    /// applies at once. The checks, texts and the work are in <see cref="TagManagerModel"/>.
     /// </summary>
-    private static StackPanel TagsPage(MainViewModel vm)
+    /// <param name="showNotes">Closes Settings as Save, so the main window shows the filtered history.</param>
+    private static StackPanel TagsPage(MainViewModel vm, Action showNotes)
     {
-        var model = new TagRenameModel(vm);
+        var model = new TagManagerModel(vm);
         var intro = Typo.Body(Strings.Get(R.Settings_TagsIntro), 13, Palette.InkSecondary);
         intro.TextWrapping = TextWrapping.Wrap;
-        var tags = new ComboBox { MinWidth = 260, IsEnabled = false };
-        var empty = Typo.Body(Strings.Get(R.Settings_TagsNone), 13, Palette.InkTertiary);
-        empty.IsVisible = false;
-        var name = new TextBox { MinWidth = 260, IsEnabled = false };
-        var hint = Typo.Body(string.Empty, 12.5, Brushes.IndianRed);
-        hint.TextWrapping = TextWrapping.Wrap;
-        var rename = Ui.FlatButton(Strings.Get(R.Settings_TagsRename));
-        rename.IsEnabled = false;
-        var warning = Typo.Body(string.Empty, 13);
-        warning.TextWrapping = TextWrapping.Wrap;
-        var confirm = Ui.FlatButton(string.Empty);
-        var cancel = Ui.FlatButton(Strings.Get(R.Common_Cancel), Palette.Transparent);
-        var confirmPanel = Ui.VStack(6, warning, Ui.HStack(6, confirm, cancel));
-        confirmPanel.IsVisible = false;
+        var mergeNote = Typo.Body(Strings.Get(R.Settings_TagsMergeNote), 12.5, Palette.InkTertiary);
+        mergeNote.TextWrapping = TextWrapping.Wrap;
+        mergeNote.Margin = new Thickness(0, 8, 0, 0);
         var status = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
         status.TextWrapping = TextWrapping.Wrap;
-        var normalized = string.Empty;
 
-        TagUsage? Selected() => tags.SelectedIndex >= 0 && tags.SelectedIndex < model.Tags.Count ? model.Tags[tags.SelectedIndex] : null;
-
-        void Validate()
+        var newName = new TextBox { PlaceholderText = Strings.Get(R.Settings_TagsNewPlaceholder), MinWidth = 220 };
+        var add = Ui.FlatButton(Strings.Get(R.Settings_TagsAdd));
+        add.IsEnabled = false;
+        var newHint = Typo.Body(string.Empty, 12.5, Brushes.IndianRed);
+        var newTag = string.Empty;
+        newName.TextChanged += (_, _) =>
         {
-            confirmPanel.IsVisible = false;
-            var problem = model.Check(Selected(), name.Text ?? string.Empty, out normalized);
-            hint.Text = problem ?? string.Empty;
-            rename.IsEnabled = problem is null;
-        }
-
-        async Task ReloadAsync()
-        {
-            var keep = Selected()?.Tag;
-            await model.LoadAsync();
-            tags.ItemsSource = model.Tags.Select(TagRenameModel.Display).ToList();
-            var index = keep is null ? -1 : model.Tags.ToList().FindIndex(t => TagName.Comparer.Equals(t.Tag, keep));
-            tags.SelectedIndex = model.Tags.Count == 0 ? -1 : Math.Max(0, index);
-            tags.IsEnabled = name.IsEnabled = model.Tags.Count > 0;
-            empty.IsVisible = model.Tags.Count == 0;
-            Validate();
-        }
-
-        tags.SelectionChanged += (_, _) => Validate();
-        name.TextChanged += (_, _) => Validate();
-        rename.Click += (_, _) =>
-        {
-            if (Selected() is not { } old)
-            {
-                return;
-            }
-
-            warning.Text = model.Warning(old, normalized);
-            confirm.Content = model.ConfirmText(old, normalized);
-            status.Text = string.Empty;
-            confirmPanel.IsVisible = true;
+            var problem = model.CheckNew(newName.Text ?? string.Empty, out newTag);
+            newHint.Text = problem ?? string.Empty;
+            add.IsEnabled = problem is null;
         };
-        cancel.Click += (_, _) => confirmPanel.IsVisible = false;
-        confirm.Click += async (_, _) =>
-        {
-            if (Selected() is not { } old)
-            {
-                return;
-            }
 
-            tags.IsEnabled = name.IsEnabled = rename.IsEnabled = confirm.IsEnabled = cancel.IsEnabled = false;
-            var progress = new Progress<int>(n => status.Text = Strings.Format(R.Settings_TagsProgress, n));
+        var list = new StackPanel { Spacing = 2 };
+        var busy = false;
+
+        async Task RunAsync(Func<IProgress<int>, Task<string>> work)
+        {
+            busy = true;
+            list.IsHitTestVisible = false;
+            list.Opacity = 0.6;
             try
             {
-                status.Text = await model.RenameAsync(old, normalized, progress);
-                name.Text = string.Empty;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                status.Text = Strings.Format(R.Settings_TagsFailed, ex.Message); // finding the notes failed – nothing renamed
+                status.Text = await work(new Progress<int>(n => status.Text = Strings.Format(R.Settings_TagsProgress, n)));
             }
             finally
             {
-                confirm.IsEnabled = cancel.IsEnabled = true;
-                confirmPanel.IsVisible = false;
-                await ReloadAsync();
+                busy = false;
+                list.IsHitTestVisible = true;
+                list.Opacity = 1;
+                Render();
+            }
+        }
+
+        async Task AddAsync()
+        {
+            if (busy || !add.IsEnabled)
+            {
+                return;
+            }
+
+            var tag = newTag;
+            newName.Text = string.Empty;
+            await RunAsync(_ => model.AddAsync(tag));
+        }
+
+        add.Click += async (_, _) => await AddAsync();
+        newName.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Enter)
+            {
+                e.Handled = true;
+                await AddAsync();
             }
         };
-        _ = ReloadAsync();
 
-        return Ui.VStack(
-            10,
-            intro,
-            empty,
-            Field(Strings.Get(R.Settings_TagsTag), tags),
-            Field(Strings.Get(R.Settings_TagsNewName), name),
-            hint,
-            Ui.HStack(8, rename),
-            confirmPanel,
-            status);
+        void Render()
+        {
+            list.Children.Clear();
+            foreach (var t in model.Tags)
+            {
+                list.Children.Add(TagRow(model, t, RunAsync, showNotes));
+            }
+
+            if (model.Tags.Count == 0)
+            {
+                list.Children.Add(Typo.Body(Strings.Get(R.Settings_TagsNone), 13, Palette.InkTertiary));
+            }
+        }
+
+        _ = LoadAsync();
+
+        async Task LoadAsync()
+        {
+            await model.LoadAsync();
+            Render();
+        }
+
+        return Ui.VStack(10, intro, Ui.HStack(8, newName, add), newHint, list, status, mergeNote);
+    }
+
+    /// <summary>One tag: colour square, name, count and the arrow that opens its flyout.</summary>
+    private static Grid TagRow(TagManagerModel model, TagUsage t, Func<Func<IProgress<int>, Task<string>>, Task> run, Action showNotes)
+    {
+        var square = new Border
+        {
+            Width = 12,
+            Height = 12,
+            Background = new SolidColorBrush(Palette.ToColor(model.ColorOf(t))),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 10, 0),
+        };
+        var flyout = new Flyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        var arrow = Ui.IconButton(Icons.Create(Icons.ChevronDown, 16, Palette.InkSecondary), Strings.Get(R.Settings_TagsMenu), () => { });
+        arrow.Flyout = flyout;
+        flyout.Opening += (_, _) => flyout.Content = TagFlyout(model, t, flyout, square, run, showNotes);
+        var name = Typo.Body("#" + t.Tag, 13.5);
+        name.VerticalAlignment = VerticalAlignment.Center;
+        var count = Typo.Body(model.CountText(t), 12.5, Palette.InkTertiary);
+        count.VerticalAlignment = VerticalAlignment.Center;
+        count.Margin = new Thickness(0, 0, 8, 0);
+        var row = Ui.Columns((Ui.Auto, square), (Ui.Star, name), (Ui.Auto, count), (Ui.Auto, arrow));
+        row.Margin = new Thickness(4, 0, 0, 0);
+        return row;
+    }
+
+    /// <summary>The tag's flyout: colour, calendar labels, show notes, rename, remove (the last two confirm inside).</summary>
+    private static StackPanel TagFlyout(TagManagerModel model, TagUsage t, Flyout flyout, Border square, Func<Func<IProgress<int>, Task<string>>, Task> run, Action showNotes)
+    {
+        var panel = new StackPanel { Spacing = 8, Width = 280 };
+        panel.Children.Add(Typo.Caps(Strings.Get(R.Tag_Color) + " · #" + t.Tag));
+        var current = model.ColorOf(t);
+        var swatches = new WrapPanel { MaxWidth = 7 * 34 };
+        foreach (var color in TagPalette.Colors)
+        {
+            var c = color;
+            var swatch = new Button
+            {
+                Width = 28,
+                Height = 28,
+                Margin = new Thickness(3),
+                Background = new SolidColorBrush(Palette.ToColor(c)),
+                BorderThickness = new Thickness(c == current ? 3 : 0),
+                BorderBrush = Palette.Ink,
+                CornerRadius = new CornerRadius(4),
+            };
+            swatch.Click += async (_, _) =>
+            {
+                flyout.Hide();
+                square.Background = new SolidColorBrush(Palette.ToColor(c));
+                await model.SetColorAsync(t, c);
+            };
+            swatches.Children.Add(swatch);
+        }
+
+        panel.Children.Add(swatches);
+        var labels = new CheckBox { Content = Strings.Get(R.Tag_ShowLabels), IsChecked = model.ShowsLabels(t) };
+        labels.Click += async (_, _) => await model.SetLabelsAsync(t, labels.IsChecked == true);
+        panel.Children.Add(labels);
+        panel.Children.Add(new Border { Height = 1, Background = Palette.Divider });
+
+        var actions = new StackPanel { Spacing = 4 };
+        var confirm = new StackPanel { Spacing = 8, IsVisible = false };
+        Button Action(string text, Action onClick)
+        {
+            var b = Ui.FlatButton(text);
+            b.HorizontalAlignment = HorizontalAlignment.Stretch;
+            b.HorizontalContentAlignment = HorizontalAlignment.Left;
+            b.Click += (_, _) => onClick();
+            return b;
+        }
+
+        void ShowConfirm(Control[] texts, Button ok)
+        {
+            confirm.Children.Clear();
+            foreach (var text in texts)
+            {
+                confirm.Children.Add(text);
+            }
+
+            var cancel = Ui.FlatButton(Strings.Get(R.Common_Cancel), Palette.Transparent);
+            cancel.Click += (_, _) =>
+            {
+                confirm.IsVisible = false;
+                actions.IsVisible = true;
+            };
+            confirm.Children.Add(Ui.HStack(8, ok, cancel));
+            actions.IsVisible = false;
+            confirm.IsVisible = true;
+        }
+
+        actions.Children.Add(Action(Strings.Get(R.Settings_TagsShowNotes), () =>
+        {
+            flyout.Hide();
+            _ = model.ShowNotesAsync(t);
+            showNotes();
+        }));
+        if (!TagManagerModel.IsReserved(t))
+        {
+            actions.Children.Add(Action(Strings.Get(R.Settings_TagsRenameAction), () =>
+            {
+                var name = new TextBox { Text = t.Tag };
+                var hint = Typo.Body(string.Empty, 12.5, Brushes.IndianRed);
+                hint.TextWrapping = TextWrapping.Wrap;
+                var warning = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
+                warning.TextWrapping = TextWrapping.Wrap;
+                var ok = Ui.FlatButton(Strings.Get(R.Settings_TagsConfirmRename));
+                ok.IsEnabled = false;
+                var target = string.Empty;
+                name.TextChanged += (_, _) =>
+                {
+                    var problem = TagManagerModel.CheckRename(t, name.Text ?? string.Empty, out target);
+                    hint.Text = problem ?? string.Empty;
+                    warning.Text = problem is null ? model.RenameWarning(t, target) : string.Empty;
+                    ok.Content = problem is null ? model.RenameConfirmText(t, target) : Strings.Get(R.Settings_TagsConfirmRename);
+                    ok.IsEnabled = problem is null;
+                };
+                ok.Click += async (_, _) =>
+                {
+                    flyout.Hide();
+                    var to = target;
+                    await run(progress => model.RenameAsync(t, to, progress));
+                };
+                ShowConfirm([name, hint, warning], ok);
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    name.Focus();
+                    name.SelectAll();
+                });
+            }));
+            actions.Children.Add(Action(Strings.Get(R.Settings_TagsDelete), () =>
+            {
+                var warning = Typo.Body(TagManagerModel.DeleteWarning(t), 12.5, Palette.InkSecondary);
+                warning.TextWrapping = TextWrapping.Wrap;
+                var ok = Ui.FlatButton(Strings.Get(R.Settings_TagsConfirmDelete));
+                ok.Click += async (_, _) =>
+                {
+                    flyout.Hide();
+                    await run(progress => model.DeleteAsync(t, progress));
+                };
+                ShowConfirm([warning], ok);
+            }));
+        }
+
+        panel.Children.Add(actions);
+        panel.Children.Add(confirm);
+        return panel;
     }
 
     /// <summary>The category last shown – the window opens on it again while the app runs.</summary>
