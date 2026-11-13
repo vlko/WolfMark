@@ -277,7 +277,15 @@ public sealed partial class MarkdownEditor
                 RunCommand(EditorCommand.Link); // without a selection Ctrl+K bubbles up to open search
                 break;
             case VirtualKey.L when ctrl && shift && !_readOnly:
-                Edit(MarkdownEditing.ToggleTask(_doc.GetText(), _caret));
+                if (MarkdownEditing.SpansLines(_doc.GetText(), Selection.Start, Selection.End - Selection.Start))
+                {
+                    RunCommand(EditorCommand.Task); // every selected line
+                }
+                else
+                {
+                    Edit(MarkdownEditing.ToggleTask(_doc.GetText(), _caret));
+                }
+
                 break;
             default:
                 handled = false;

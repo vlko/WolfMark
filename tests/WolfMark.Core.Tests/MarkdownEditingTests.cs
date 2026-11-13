@@ -181,6 +181,81 @@ public sealed class BlockEditingTests
     [InlineData("* a", BlockKind.Bullet)]
     public void Detects_block(string line, BlockKind kind) => Assert.Equal(kind, MarkdownEditing.GetBlock(line, 1));
 
+    [Theory]
+    [InlineData("a\nb\nc", BlockKind.Bullet, "- a\n- b\n- c")]
+    [InlineData("a\nb\nc", BlockKind.Quote, "> a\n> b\n> c")]
+    [InlineData("a\nb\nc", BlockKind.Task, "- [ ] a\n- [ ] b\n- [ ] c")]
+    [InlineData("a\nb\nc", BlockKind.Numbered, "1. a\n2. b\n3. c")]
+    [InlineData("- a\n- b\n- c", BlockKind.Bullet, "a\nb\nc")]
+    [InlineData("> a\n> b\n> c", BlockKind.Quote, "a\nb\nc")]
+    [InlineData("- a\nb\n- c", BlockKind.Bullet, "- a\n- b\n- c")]
+    [InlineData("- [x] a\nb\n- [ ] c", BlockKind.Task, "- [x] a\n- [ ] b\n- [ ] c")]
+    [InlineData("a\n\nb\n  \nc", BlockKind.Bullet, "- a\n\n- b\n  \n- c")]
+    [InlineData("- a\n  - b\n  - c\n- d", BlockKind.Numbered, "1. a\n  1. b\n  2. c\n2. d")]
+    [InlineData("1. a\n1. b", BlockKind.Numbered, "a\nb")]
+    [InlineData("- a\n> b", BlockKind.Paragraph, "a\nb")]
+    public void Toggle_block_applies_to_every_selected_line(string text, BlockKind kind, string expected)
+    {
+        var edit = MarkdownEditing.ToggleBlock(text, 0, text.Length, kind);
+        Assert.Equal(expected, Apply(text, edit));
+        Assert.Equal((0, expected.Length), (edit.SelectionStart, edit.SelectionLength));
+    }
+
+    [Fact]
+    public void Toggle_block_takes_lines_touched_by_the_selection()
+    {
+        // From the middle of "one" to the middle of "two"; "zero" and "three" stay.
+        var text = "zero\none\ntwo\nthree";
+        Assert.Equal("zero\n- one\n- two\nthree", Apply(text, MarkdownEditing.ToggleBlock(text, 6, 6, BlockKind.Bullet)));
+    }
+
+    [Fact]
+    public void Toggle_block_ignores_line_where_whole_line_selection_ends()
+    {
+        // "one\ntwo\n" selected whole: the caret ends at the start of "three", which is not part of it.
+        var text = "one\ntwo\nthree";
+        Assert.Equal("- one\n- two\nthree", Apply(text, MarkdownEditing.ToggleBlock(text, 0, 8, BlockKind.Bullet)));
+        Assert.False(MarkdownEditing.SpansLines(text, 0, 4));
+        Assert.True(MarkdownEditing.SpansLines(text, 0, 5));
+    }
+
+    [Theory]
+    [InlineData("text", BlockKind.Quote, "> text")]
+    [InlineData("> text", BlockKind.Quote, "text")]
+    [InlineData("- text", BlockKind.Numbered, "1. text")]
+    [InlineData("- [x] text", BlockKind.Task, "text")]
+    [InlineData("# text", BlockKind.Paragraph, "text")]
+    public void Toggle_block_on_one_line_toggles_it(string line, BlockKind kind, string expected)
+    {
+        Assert.Equal(expected, Apply(line, MarkdownEditing.ToggleBlock(line, 2, 0, kind)));
+    }
+
+    [Fact]
+    public void Code_over_lines_makes_a_fenced_block_and_back()
+    {
+        var text = "a\nx = 1\ny = 2\nb";
+        var edit = MarkdownEditing.ToggleCode(text, 3, 9); // from inside "x = 1" to inside "y = 2"
+        var wrapped = Apply(text, edit);
+        Assert.Equal("a\n```\nx = 1\ny = 2\n```\nb", wrapped);
+        Assert.Equal("x = 1\ny = 2", wrapped.Substring(edit.SelectionStart, edit.SelectionLength));
+
+        // Again with the lines inside selected: the fences go.
+        Assert.Equal(text, Apply(wrapped, MarkdownEditing.ToggleCode(wrapped, edit.SelectionStart, edit.SelectionLength)));
+    }
+
+    [Fact]
+    public void Code_with_fences_selected_removes_them()
+    {
+        var text = "```cs\nx = 1\n```";
+        Assert.Equal("x = 1", Apply(text, MarkdownEditing.ToggleCode(text, 0, text.Length)));
+    }
+
+    [Fact]
+    public void Code_within_one_line_stays_inline()
+    {
+        Assert.Equal("a `b` c", Apply("a b c", MarkdownEditing.ToggleCode("a b c", 2, 1)));
+    }
+
     [Fact]
     public void Heading_toggle_and_caret()
     {

@@ -231,16 +231,18 @@ internal sealed class MarkdownTextEditor : UserControl
             FormatCommand.Bold => MarkdownEditing.ToggleWrap(_text, start, length, "**"),
             FormatCommand.Italic => MarkdownEditing.ToggleWrap(_text, start, length, "*"),
             FormatCommand.Strikethrough => MarkdownEditing.ToggleWrap(_text, start, length, "~~"),
-            FormatCommand.Code => MarkdownEditing.ToggleWrap(_text, start, length, "`"),
+            FormatCommand.Code => MarkdownEditing.ToggleCode(_text, start, length),
             FormatCommand.Link => MarkdownEditing.InsertLink(_text, start, length),
-            FormatCommand.Task => MarkdownEditing.ToggleTask(_text, caret),
+            FormatCommand.Task => MarkdownEditing.SpansLines(_text, start, length)
+                ? MarkdownEditing.ToggleBlock(_text, start, length, BlockKind.Task)
+                : MarkdownEditing.ToggleTask(_text, caret),
             FormatCommand.Heading1 => MarkdownEditing.ToggleHeading(_text, caret, 1),
             FormatCommand.Heading2 => MarkdownEditing.ToggleHeading(_text, caret, 2),
             FormatCommand.Heading3 => MarkdownEditing.ToggleHeading(_text, caret, 3),
-            FormatCommand.Quote => MarkdownEditing.SetBlock(_text, caret, BlockKind.Quote),
-            FormatCommand.Bullet => MarkdownEditing.SetBlock(_text, caret, BlockKind.Bullet),
-            FormatCommand.Numbered => MarkdownEditing.SetBlock(_text, caret, BlockKind.Numbered),
-            _ => MarkdownEditing.SetBlock(_text, caret, BlockKind.Paragraph),
+            FormatCommand.Quote => MarkdownEditing.ToggleBlock(_text, start, length, BlockKind.Quote),
+            FormatCommand.Bullet => MarkdownEditing.ToggleBlock(_text, start, length, BlockKind.Bullet),
+            FormatCommand.Numbered => MarkdownEditing.ToggleBlock(_text, start, length, BlockKind.Numbered),
+            _ => MarkdownEditing.ToggleBlock(_text, start, length, BlockKind.Paragraph),
         });
         _editor.Focus();
     }
@@ -712,7 +714,9 @@ internal sealed class MarkdownTextEditor : UserControl
             Key.B when ctrl && !shift => MarkdownEditing.ToggleWrap(text, start, length, "**"),
             Key.I when ctrl && !shift => MarkdownEditing.ToggleWrap(text, start, length, "*"),
             Key.K when ctrl && !shift && length > 0 => MarkdownEditing.InsertLink(text, start, length),
-            Key.L when ctrl && shift => MarkdownEditing.ToggleTask(text, start),
+            Key.L when ctrl && shift => MarkdownEditing.SpansLines(text, start, length)
+                ? MarkdownEditing.ToggleBlock(text, start, length, BlockKind.Task)
+                : MarkdownEditing.ToggleTask(text, start),
             Key.Enter when !ctrl && !shift && length == 0 => MarkdownEditing.ContinueList(text, start),
             Key.Tab when !ctrl => MarkdownEditing.Indent(text, start, length, outdent: shift),
             Key.Back when !ctrl && length == 0 && _mode == EditorMode.Formatted => MarkdownImageBlock.Backspace(text, start, IsImageBlock),

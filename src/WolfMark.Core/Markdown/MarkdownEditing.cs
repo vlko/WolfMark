@@ -244,6 +244,146 @@ public static class MarkdownEditing
         return new TextEdit(lineStart, prefix.Length, newPrefix, newCaret, 0);
     }
 
+    /// <summary>
+    /// Quote, lists, task and paragraph from the toolbar or the menu: on every selected line. When all of them already
+    /// are <paramref name="kind"/> they go back to paragraphs, otherwise they all become <paramref name="kind"/>
+    /// (lines that already are keep their prefix – a done task stays done). Blank lines between are left alone, a
+    /// numbered list counts 1, 2, 3 per indentation level. Within one line it is <see cref="SetBlock"/>.
+    /// </summary>
+    public static TextEdit ToggleBlock(string text, int selStart, int selLength, BlockKind kind)
+    {
+        var (blockStart, blockEnd) = SelectedLines(text, selStart, selLength);
+        if (blockEnd == LineAt(text, selStart).End)
+        {
+            var single = GetBlock(text, selStart) == kind && kind != BlockKind.Paragraph ? BlockKind.Paragraph : kind;
+            return SetBlock(text, selStart, single);
+        }
+
+        var lines = text[blockStart..blockEnd].Split('\n');
+        var prefixes = lines.Select(l => ParsePrefix(l)).ToArray();
+        var content = Enumerable.Range(0, lines.Length).Where(i => !string.IsNullOrWhiteSpace(lines[i])).ToArray();
+        var target = content.Length > 0 && content.All(i => prefixes[i].Kind == kind) ? BlockKind.Paragraph : kind;
+
+        var numbers = new List<(int Indent, int Next)>();
+        var sb = new System.Text.StringBuilder(blockEnd - blockStart + (lines.Length * 6));
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (i > 0)
+            {
+                sb.Append('\n');
+            }
+
+            var line = lines[i];
+            var prefix = prefixes[i];
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                sb.Append(line);
+                continue;
+            }
+
+            if (target == BlockKind.Numbered)
+            {
+                while (numbers.Count > 0 && numbers[^1].Indent > prefix.Indent)
+                {
+                    numbers.RemoveAt(numbers.Count - 1);
+                }
+
+                if (numbers.Count == 0 || numbers[^1].Indent < prefix.Indent)
+                {
+                    numbers.Add((prefix.Indent, 1));
+                }
+
+                var n = numbers[^1].Next;
+                numbers[^1] = (prefix.Indent, n + 1);
+                sb.Append(' ', prefix.Indent).Append(n.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(". ");
+                sb.Append(line.AsSpan(prefix.Length));
+                continue;
+            }
+
+            if (prefix.Kind == target && target != BlockKind.Paragraph)
+            {
+                sb.Append(line);
+                continue;
+            }
+
+            var edit = SetBlock(line, 0, target);
+            sb.Append(edit.ApplyTo(line));
+        }
+
+        var replaced = sb.ToString();
+        return new TextEdit(blockStart, blockEnd - blockStart, replaced, blockStart, replaced.Length);
+    }
+
+    /// <summary>
+    /// Code: inline <c>`code`</c> within one line; over more lines a fenced block around the selected lines (inline
+    /// code cannot span lines). Fences right around the lines – or selected as their first and last line – are removed
+    /// instead. The lines inside stay selected, so a second click undoes it.
+    /// </summary>
+    public static TextEdit ToggleCode(string text, int selStart, int selLength)
+    {
+        if (!SpansLines(text, selStart, selLength))
+        {
+            return ToggleWrap(text, selStart, selLength, "`");
+        }
+
+        var (start, end) = SelectedLines(text, selStart, selLength);
+        var (firstEnd, lastStart) = (LineAt(text, start).End, LineAt(text, end).Start);
+        if (IsFence(text.AsSpan(start, firstEnd - start), opening: true) && IsFence(text.AsSpan(lastStart, end - lastStart), opening: false))
+        {
+            var inner = text[(firstEnd + 1)..Math.Max(firstEnd + 1, lastStart - 1)];
+            return new TextEdit(start, end - start, inner, start, inner.Length);
+        }
+
+        if (start > 0 && end < text.Length)
+        {
+            var (aboveStart, aboveEnd) = LineAt(text, start - 1);
+            var (belowStart, belowEnd) = LineAt(text, end + 1);
+            if (IsFence(text.AsSpan(aboveStart, aboveEnd - aboveStart), opening: true) && IsFence(text.AsSpan(belowStart, belowEnd - belowStart), opening: false))
+            {
+                var lines = text[start..end];
+                return new TextEdit(aboveStart, belowEnd - aboveStart, lines, aboveStart, lines.Length);
+            }
+        }
+
+        var block = text[start..end];
+        return new TextEdit(start, end - start, "```\n" + block + "\n```", start + 4, block.Length);
+    }
+
+    /// <summary>A code fence line: <c>```lang</c> opening, a bare <c>```</c> closing (or <c>~~~</c>).</summary>
+    private static bool IsFence(ReadOnlySpan<char> line, bool opening)
+    {
+        var t = line.Trim();
+        if (t.Length < 3 || (t[0] != '`' && t[0] != '~'))
+        {
+            return false;
+        }
+
+        var run = 0;
+        while (run < t.Length && t[run] == t[0])
+        {
+            run++;
+        }
+
+        return run >= 3 && (opening || run == t.Length);
+    }
+
+    /// <summary>The selection covers more than one line (then line commands work on all of them).</summary>
+    public static bool SpansLines(string text, int selStart, int selLength) =>
+        SelectedLines(text, selStart, selLength).End != LineAt(text, selStart).End;
+
+    /// <summary>From the start of the selection's first line to the end of its last one.</summary>
+    private static (int Start, int End) SelectedLines(string text, int selStart, int selLength)
+    {
+        var (start, firstEnd) = LineAt(text, selStart);
+        var selEnd = Math.Min(selStart + selLength, text.Length);
+        if (selLength > 0 && selEnd > firstEnd && text[selEnd - 1] == '\n')
+        {
+            selEnd--; // lines selected whole end at the start of the next line – that line is not part of it
+        }
+
+        return (start, LineAt(text, selEnd).End);
+    }
+
     /// <summary>H1–H3 toolbar buttons: set the heading level, or back to a paragraph if it is already that level.</summary>
     public static TextEdit ToggleHeading(string text, int caret, int level)
     {
