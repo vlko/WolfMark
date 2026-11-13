@@ -288,7 +288,7 @@ git push origin v0.2.0
 
 ## Building from source
 
-Requirements: the .NET 11 SDK from [`global.json`](global.json) (currently 11.0.100-rc.3); for the Windows app
+Requirements: the .NET 11 SDK from [`global.json`](global.json) (currently 11.0.100); for the Windows app
 Windows 11 22H2 or later (build 22621) and optionally Visual Studio 2026.
 
 ```powershell

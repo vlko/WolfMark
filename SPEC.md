@@ -23,7 +23,7 @@ Rýchly, natívny denný zápisník pre Windows. Otvorím aplikáciu → okamži
 
 | Oblasť | Voľba | Poznámka |
 |---|---|---|
-| Runtime | **.NET 11** (`net11.0-windows10.0.22621.0` alebo novší TFM) | .NET 11 GA je plánované na 10. 11. 2026, RC1 má go-live licenciu. Do GA pracovať na RC, `global.json` s `rollForward: latestFeature`. |
+| Runtime | **.NET 11** (`net11.0-windows10.0.22621.0` alebo novší TFM) | .NET 11 GA vyšlo 10. 11. 2026 (SDK 11.0.100, STS). `global.json` s `rollForward: latestFeature`. |
 | Jazyk | C# 15 | Union typy a uzavreté hierarchie sú vhodné na doménové udalosti (`NoteEvent`). |
 | UI | **WinUI 3 / Windows App SDK** (posledná stabilná 1.x / 2.x) | Najnatívnejšia moderná UI vrstva pre Windows, podporuje Native AOT. Mica/Acrylic backdrop, Fluent. |
 | Kompilácia | **Native AOT** (`PublishAot=true`) od prvého commitu | AOT/trim analyzéry zapnuté v každom builde, warningy = errory. |

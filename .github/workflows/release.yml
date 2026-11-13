@@ -139,7 +139,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           prerelease=""
-          # A suffix (v0.2.0-rc.1) or the .NET 11 release candidate SDK means pre-release.
+          # A suffix (v0.2.0-rc.1) or a pre-release .NET SDK in global.json means pre-release.
           if [[ "$TAG" == *-* ]] || grep -q '"version": *"[0-9.]*-' global.json; then prerelease="--prerelease"; fi
           # Release notes written for the tag (docs/release-notes/v0.3.1.md) win over the generated commit list.
           notes=(--generate-notes)

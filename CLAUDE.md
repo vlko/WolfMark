@@ -40,5 +40,5 @@ typovo skontroluje aj WinUI projekty (PRI/manifest kroky sú mimo Windows vypnut
   volania služieb obaľ do `Task.Run`.
 
 ## Pri neistote
-- Ak sa API Windows App SDK / .NET 11 líši od tvojich predpokladov, over v dokumentácii (odkazy v `SPEC.md` §10) – .NET 11 bolo v čase písania špecifikácie vo fáze RC.
+- Ak sa API Windows App SDK / .NET 11 líši od tvojich predpokladov, over v dokumentácii (odkazy v `SPEC.md` §10) – špecifikácia vznikla počas RC verzií .NET 11 (GA 11.0.100 je od 10. 11. 2026).
 - Ak niečo nejde pod AOT, zastav sa, zapíš problém a navrhni alternatívu namiesto obchádzania analyzérov.
