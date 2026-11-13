@@ -462,21 +462,11 @@ public sealed partial class NoteIndexer
             del.ExecuteNonQuery();
         }
 
-        var allTags = new List<string>();
+        // Only the tag of the file name (ADR 0010) – #words in the text are not tags.
         if (tag is not null)
         {
-            allTags.Add(tag);
-        }
-
-        if (info is not null)
-        {
-            allTags.AddRange(info.Tags);
-        }
-
-        foreach (var t in allTags.DistinctBy(TagName.ToKey))
-        {
             using var ins = c.Command("INSERT OR IGNORE INTO note_tags (note_id, tag, tag_key) VALUES ($id, $t, $k);", tx)
-                .With("$id", id).With("$t", t).With("$k", TagName.ToKey(t));
+                .With("$id", id).With("$t", tag).With("$k", TagName.ToKey(tag));
             ins.ExecuteNonQuery();
         }
 
@@ -489,7 +479,7 @@ public sealed partial class NoteIndexer
         if (info is not null)
         {
             using var fts = c.Command("INSERT INTO notes_fts (rowid, title, body, tags) VALUES ($id, $title, $body, $tags);", tx)
-                .With("$id", id).With("$title", info.Title).With("$body", info.Body).With("$tags", string.Join(' ', allTags));
+                .With("$id", id).With("$title", info.Title).With("$body", info.Body).With("$tags", tag ?? string.Empty);
             fts.ExecuteNonQuery();
 
             // Content changed → embeddings are stale.

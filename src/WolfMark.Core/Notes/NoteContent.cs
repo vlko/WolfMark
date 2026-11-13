@@ -1,6 +1,5 @@
 using System.Text;
 using WolfMark.Core.Markdown;
-using WolfMark.Core.Tags;
 using WolfMark.Core.Text;
 
 namespace WolfMark.Core.Notes;
@@ -9,7 +8,6 @@ namespace WolfMark.Core.Notes;
 public sealed record NoteContentInfo(
     string Title,
     string Preview,
-    IReadOnlyList<string> Tags,
     int WordCount,
     int OpenTasks,
     int DoneTasks,
@@ -17,7 +15,10 @@ public sealed record NoteContentInfo(
     string? SessionId,
     string Body);
 
-/// <summary>Extracts title, preview, tags (#tag + front matter), word and task counts (SPEC §3.4, §4.2).</summary>
+/// <summary>
+/// Extracts title, preview, word and task counts (SPEC §4.2). Tags are not read from the content: a note's tag is the
+/// one in its file name (SPEC §3.4, ADR 0010).
+/// </summary>
 public static class NoteContentAnalyzer
 {
     public const int PreviewLength = 200;
@@ -27,18 +28,6 @@ public static class NoteContentAnalyzer
     {
         var lines = content.Replace("\r\n", "\n").Split('\n');
         var frontMatter = FrontMatter.Parse(lines);
-
-        var tags = new List<string>();
-        var seenTags = new HashSet<string>(TagName.Comparer);
-        foreach (var t in frontMatter.GetList("tags"))
-        {
-            AddTag(t);
-        }
-
-        if (frontMatter.Get("tag") is { } single)
-        {
-            AddTag(single);
-        }
 
         string? title = null;
         var preview = new StringBuilder();
@@ -85,9 +74,6 @@ public static class NoteContentAnalyzer
                     case MarkdownTokenKind.TaskDone:
                         done++;
                         break;
-                    case MarkdownTokenKind.Hashtag:
-                        AddTag(line.Substring(token.Start + 1, token.Length - 1));
-                        break;
                 }
             }
 
@@ -116,21 +102,12 @@ public static class NoteContentAnalyzer
         return new NoteContentInfo(
             title ?? string.Empty,
             Truncate(preview.ToString(), PreviewLength),
-            tags,
             words,
             open,
             done,
             frontMatter.Get("source"),
             frontMatter.Get("session"),
             body.ToString());
-
-        void AddTag(string raw)
-        {
-            if (TagName.TryNormalize(raw, out var tag) && seenTags.Add(tag))
-            {
-                tags.Add(tag);
-            }
-        }
     }
 
     /// <summary>A table row as its cells' text, separated by " · " (empty cells left out).</summary>

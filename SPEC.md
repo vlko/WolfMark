@@ -99,17 +99,12 @@ Gramatika (`NotePath` parser v `WolfMark.Core`, pokrytý testami):
 - **Povolené znaky tagu:** písmená vrátane diakritiky, číslice, `-`. Zakázané znaky Windows súborového systému (`\/:*?"<>|`) a `_` (oddeľovač). Tag sa normalizuje na NFC; porovnanie bez ohľadu na veľkosť písmen, zobrazenie podľa prvého výskytu.
 - Súbory, ktoré nevyhovujú gramatike, sa **neignorujú**: indexujú sa ako poznámka bez tagu s časom = čas vytvorenia súboru a v UI majú indikátor „neštandardný názov“.
 
-### 3.4 Viac tagov (rozšírenie)
+### 3.4 Jeden tag – v názve súboru
 
-Názov súboru nesie **primárny** tag (farba v kalendári). Ďalšie tagy môžu byť v tele poznámky ako `#tag` alebo vo voliteľnom YAML front matter:
-
-```markdown
----
-tags: [praca, finstat]
----
-```
-
-Indexer ich zozbiera; kalendár farbí podľa primárneho tagu, vyhľadávanie a filtre podľa všetkých.
+Poznámka má **najviac jeden tag, a to v názve súboru** (ADR 0010). `#slovo` v texte ani `tags:` vo front matter tagom
+nie sú: v texte často znamená niečo iné (`PR #39`, `#TODO`, číslo týždňa) a tag by sa nedal zmeniť bez úpravy obsahu.
+Kalendár, lišta tagov, filter histórie, výber tagu aj filter `#tag` vo vyhľadávaní pracujú len s tagom v názve.
+`#slovo` v texte editor farebne zvýrazní ako značku v rámci poznámky – na orientáciu, nie ako tag.
 
 ### 3.5 Farby tagov
 

@@ -273,6 +273,9 @@ public sealed partial class IndexDatabase : IAsyncDisposable
         var hasNotes = connection.Scalar("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'notes';") == "1";
         if (hasNotes)
         {
+            // Indexes from before ADR 0010 also hold #tags of the text; a note's tag is the one in its file name only.
+            // A cheap delete instead of a schema bump, which would rebuild everything (embeddings too).
+            connection.Execute("DELETE FROM note_tags WHERE tag_key IS NOT (SELECT n.primary_tag_key FROM notes n WHERE n.id = note_tags.note_id);");
             return;
         }
 

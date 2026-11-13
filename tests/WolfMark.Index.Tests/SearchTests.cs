@@ -34,7 +34,8 @@ public sealed class SearchTests
         var search = new SearchService(f.Db);
 
         var hits = await search.SearchAsync("deploy #praca @2026-10", 10, Ct);
-        Assert.Equal(["2026/10/15/1500.md", "2026/10/15/praca_1403.md"], hits.Select(h => h.Note.RelativePath).Order());
+        // 1500.md has #praca only in its text – not a tag (ADR 0010).
+        Assert.Equal(["2026/10/15/praca_1403.md"], hits.Select(h => h.Note.RelativePath));
 
         var onlyFilters = await search.SearchAsync("#rodina", 10, Ct);
         Assert.Equal("2026/10/15/rodina_1600.md", Assert.Single(onlyFilters).Note.RelativePath);

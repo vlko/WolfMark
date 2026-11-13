@@ -22,11 +22,12 @@ public sealed class MarkdownLexerTests
     }
 
     [Fact]
-    public void Hash_without_space_is_a_tag_not_a_heading()
+    public void Hash_without_space_is_a_marker_not_a_heading()
     {
-        var line = "#praca a #ďalší-tag";
+        // Highlighted in the editor; numbers too (week numbers, issues). Not tags – those are in file names only.
+        var line = "#praca a #ďalší-tag #39";
         var tags = Lex(line).Where(t => t.Kind == MarkdownTokenKind.Hashtag).Select(t => Text(line, t)).ToList();
-        Assert.Equal(["#praca", "#ďalší-tag"], tags);
+        Assert.Equal(["#praca", "#ďalší-tag", "#39"], tags);
     }
 
     [Fact]

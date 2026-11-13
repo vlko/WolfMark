@@ -46,7 +46,6 @@ public sealed class NoteContentAnalyzerTests
         var info = NoteContentAnalyzer.Analyze(content);
         Assert.Equal("Hotfix pre export", info.Title);
         Assert.StartsWith("Riešil som #deploy a #praca. dopísať testy", info.Preview);
-        Assert.Equal(["finstat", "Praca", "deploy"], info.Tags);
         Assert.Equal(1, info.OpenTasks);
         Assert.Equal(1, info.DoneTasks);
         Assert.Equal("claudecode", info.Source);

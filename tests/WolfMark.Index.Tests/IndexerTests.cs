@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using WolfMark.Core.Events;
 using WolfMark.Core.Notes;
+using WolfMark.Index.Database;
 using WolfMark.Index.Indexing;
 using WolfMark.Index.Queries;
 
@@ -30,6 +31,21 @@ public sealed class IndexerTests
     }
 
     [Fact]
+    public async Task Reopening_drops_text_tags_of_an_older_index()
+    {
+        await using var f = await IndexFixture.CreateAsync();
+        f.Write("2026/10/15/praca_1403.md", "# A #39");
+        await f.Indexer.FullScanAsync(null, Ct);
+        // As indexed before ADR 0010: the #tag of the text next to the file-name tag.
+        await f.Db.WriteAsync(c => c.Execute("INSERT INTO note_tags (note_id, tag, tag_key) SELECT id, '39', '39' FROM notes;"), Ct);
+
+        await f.ReopenAsync();
+
+        Assert.False(f.Db.WasRebuilt);
+        Assert.Equal(["praca"], (await f.History.GetAllTagsAsync(Ct)).Select(t => t.Tag));
+    }
+
+    [Fact]
     public async Task Reopening_database_does_not_reindex()
     {
         await using var f = await IndexFixture.CreateAsync();
@@ -43,7 +59,7 @@ public sealed class IndexerTests
     }
 
     [Fact]
-    public async Task Extracts_metadata_and_tags()
+    public async Task Extracts_metadata_and_takes_the_tag_from_the_file_name_only()
     {
         await using var f = await IndexFixture.CreateAsync();
         f.Write("2026/10/15/praca_1403.md", "# Hotfix pre export\nDetail #finstat\n- [ ] a\n- [x] b");
@@ -57,11 +73,12 @@ public sealed class IndexerTests
         Assert.Equal(1, note.OpenTasks);
         Assert.Equal(1, note.DoneTasks);
 
+        // #finstat in the text is not a tag (ADR 0010).
         var tags = await f.History.GetAllTagsAsync(Ct);
-        Assert.Equal(["finstat", "praca"], tags.Select(t => t.Tag).Order());
+        Assert.Equal(["praca"], tags.Select(t => t.Tag));
 
         var byInlineTag = await f.History.GetPageAsync(new HistoryQuery(Tag: "FINSTAT"), Ct);
-        Assert.Single(byInlineTag.Items);
+        Assert.Empty(byInlineTag.Items);
     }
 
     [Fact]

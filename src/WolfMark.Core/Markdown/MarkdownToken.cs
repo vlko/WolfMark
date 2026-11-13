@@ -27,6 +27,11 @@ public enum MarkdownTokenKind : byte
     CodeFence,
     CodeBlock,
     HorizontalRule,
+
+    /// <summary>
+    /// <c>#slovo</c> or <c>#39</c> in the text: highlighted in the editor as a marker within the note, but not a tag –
+    /// a note's tag is only in its file name (ADR 0010).
+    /// </summary>
     Hashtag,
     FrontMatter,
 }

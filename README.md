@@ -60,7 +60,7 @@ notebook unless I ask.
 | **Markdown editor** | Formatted (live preview) and raw mode over one text model, `Ctrl+E` to switch; headings, lists, tasks, quotes, code, links, tables; toolbar and context menu; native spell check (Windows); font size with `Ctrl` `+`/`−`; colour emoji |
 | **Tables & images** | GFM pipe tables as a grid with aligned, wrapped columns; pasted or dropped images copied next to the note and previewed inline |
 | **Calendar** | Week strip with per-tag counts and hatched tag bands, full month view with labels between weeks, keyboard navigation |
-| **Tags** | Primary tag in the file name (`work_1403.md`), extra tags inline (`#idea`) or in front matter; colours travel with the notes |
+| **Tags** | One tag per note, in the file name (`work_1403.md`); rename or merge tags in Settings; colours travel with the notes |
 | **History** | All notes ordered by last edit, filter by tag, day or open tasks; Markdown files opened from elsewhere appear there too |
 | **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters; optional semantic search |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
