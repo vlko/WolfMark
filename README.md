@@ -60,7 +60,7 @@ notebook unless I ask.
 | **Markdown editor** | Formatted (live preview) and raw mode over one text model, `Ctrl+E` to switch; headings, lists, tasks, quotes, code, links, tables; toolbar and context menu; native spell check (Windows); font size with `Ctrl` `+`/`−`; colour emoji |
 | **Tables & images** | GFM pipe tables as a grid with aligned, wrapped columns; pasted or dropped images copied next to the note and previewed inline |
 | **Calendar** | Week strip with per-tag counts and hatched tag bands, full month view with labels between weeks, keyboard navigation |
-| **Tags** | One tag per note, in the file name (`work_1403.md`); rename or merge tags in Settings; colours travel with the notes |
+| **Tags** | One tag per note, in the file name (`work_1403.md`); add, rename, merge, recolour or remove tags in Settings; colours travel with the notes |
 | **History** | All notes ordered by last edit, filter by tag, day or open tasks; Markdown files opened from elsewhere appear there too |
 | **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters; optional semantic search |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
@@ -140,6 +140,13 @@ OneDrive\WolfMark\
 `<tag>_<HHmm>[ss][-n].md` or `<HHmm>.md`. Changing a note's tag renames the file; the creation time never changes.
 Files that do not follow the convention are still indexed and marked as non-standard.
 
+**A note has one tag – the one in its file name** ([ADR 0010](docs/adr/0010-tag-only-in-file-name.md)). `#word` or
+`#39` in the text is highlighted in the editor as a marker within the note, but it is not a tag: it does not show in
+the tag picker, the rail, the filters or the calendar. Settings → *Tags* lists every tag with its note count; the arrow
+next to a tag changes its colour and calendar labels, shows its notes, renames it (renaming to an existing tag merges
+the two) or removes it (the notes stay, untagged). These rename files only – note contents never change – and a
+rename that fails part-way renames the files back.
+
 **Safe by design.**
 - Every save is **atomic** – written to a hidden temp file next to the note and swapped in, so OneDrive never
   uploads half a file.
@@ -185,7 +192,8 @@ it had before, without the changes made while portable. Details are in
   similarity. With text selected in the editor, picking a result inserts a link to it.
 - **Editor**: formatted mode hides Markdown markers outside the current line, checkboxes are clickable; raw mode
   keeps the markers visible but muted. Highlighting runs incrementally in the background and never blocks typing.
-  Copy as Markdown, plain text or HTML. Optional line numbers (an image counts as one line). Font size with
+  Quote, lists, task and code apply to every selected line (code over several lines becomes a fenced block).
+  Inline code shows in the monospaced font on a soft chip. Copy as Markdown, plain text or HTML. Optional line numbers (an image counts as one line). Font size with
   `Ctrl` `+` / `Ctrl` `−` (or `Ctrl`+wheel); colour emoji. Links are not clickable – a click places the caret – but
   right-click on a web link offers *Open link in browser* (only `http`, `https` and `mailto`).
 - **Tables**: GFM pipe tables show as a grid – bold header, columns sized to their text and aligned as the
@@ -228,7 +236,7 @@ it had before, without the changes made while portable. Details are in
 </table>
 
 - **Settings** are grouped on the left: *General* (notes folder, language, start-up, Markdown files, portable mode), *Appearance*,
-  *Editor*, *Claude Code* and *Index & diagnostics*.
+  *Editor*, *Tags*, *Claude Code* and *Index & diagnostics*.
 - **Windows**: Mica-backed flat design with Barlow typography, light and dark theme, a choice of app icons.
   Optionally WolfMark starts with Windows and keeps running in the notification area when the window is closed
   (left click shows it; the menu has *Show*, *Settings…* and *Exit*). Launching it again brings the existing window

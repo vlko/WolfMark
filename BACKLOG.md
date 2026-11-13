@@ -172,7 +172,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
   *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu, skratka rýchleho zápisu (M8-01).
-- 🟨 **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).
+- ✅ **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).
   Nastavenia → Tagy: zoznam tagov (aj bez poznámok, z `tags.json`), pridanie nového; pri každom tagu vyskakovacie okno
   s farbou, titulkami v kalendári, „Zobraziť poznámky“, premenovaním (na existujúci tag = zlúčenie) a odstránením
   (poznámky stratia tag). Výber tagu v hlavičke ponúka farbu a titulky len pri vytváraní nového tagu.
@@ -181,7 +181,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   pri zlúčení ostane farba cieľa. `#ClaudeCode` sa premenovať nedá (patrí synchronizácii).
   *AK:* po premenovaní majú všetky poznámky nový tag v názve, kalendár a lišta ukazujú nový tag s pôvodnou farbou; otvorená
   poznámka sa ďalej ukladá do premenovaného súboru; zlúčenie v rovnakej minúte nestratí ani jednu poznámku; chyba
-  pri premenovaní vráti súbory späť. *Stav:* Implementované a otestované (`TagRenamerTests`), čaká na overenie na Windows.
+  pri premenovaní vráti súbory späť. *Stav:* Hotové, otestované (`TagRenamerTests`) a overené na Windows (2026-11-13).
 - 🟨 **M8-06 – Lokalizácia** sk/en.
   *Stav:* `.resw` sk/en generované z jednej tabuľky (`tools/gen-strings.py`).
 - 🟨 **M8-07 – Indikátor OneDrive stavu** a UI pre konflikty.
