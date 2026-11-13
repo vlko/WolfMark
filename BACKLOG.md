@@ -107,8 +107,11 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M4-04 – Formátovaný (live preview) režim.** Skrývanie značiek mimo aktívneho riadku, klikateľné checkboxy, inline obrázky, tabuľky.
   *Stav:* Skrývanie značiek (na riadku s kurzorom ako čipy), checkbox klikom, obrázky ako blok, prepnutie `Ctrl+E` drží pohľad. Tabuľky (GFM, `MarkdownTable`): mimo kurzora mriežka (hlavička, zarovnanie stĺpcov, zalomenie buniek, čísla prvého a posledného riadku s bodkami), s kurzorom vnútri Markdown zdroj so stlmenými `|`; klik na bunku dá kurzor do jej zdroja; kopírovanie ako HTML tabuľka / text oddelený tabulátormi; vzdialené mriežky sa stavajú, keď je UI voľné. Overené na Windows aj Avalonia (2026-10-21, `tools/gen-table-note.py`).
   *AK:* Prepnutie `Ctrl+E` zachová kurzor a scroll; text sa nemení (round-trip bez strát).
-- 🟨 **M4-05 – Autosave a stav ukladania.** Debounce, uloženie pri strate fokusu/zatvorení, indikátor stavu.
-  *Stav:* Debounce 800 ms, flush pri strate fokusu/deaktivácii/zatvorení, indikátor stavu. Test „zabitie procesu“ nespravený.
+- ✅ **M4-05 – Autosave a stav ukladania.** Debounce, uloženie pri strate fokusu/zatvorení, indikátor stavu.
+  *Stav:* Debounce 800 ms, flush pri strate fokusu/deaktivácii/zatvorení, indikátor stavu. Test „zabitie procesu“
+  (`AutosaveKillTests`): testovací exe spustí sám seba ako podproces, ten píše do `NoteEditorViewModel` (spoločný
+  pre Windows aj Avalonia), po 1 s nečinnosti ho rodič zabije bez flushu – text je na disku. Overené, že pri
+  dlhšom debounce (5 s) test padne; pod záťažou CPU 12/12 behov zelených.
   *AK:* Zabitie procesu po 1 s nečinnosti nestratí text.
 - ✅ **M4-06 – Editovacie skratky.** Bold/italic/link, checkbox, odsadenie, pokračovanie zoznamu.
   *Stav:* Logika v `MarkdownEditing` + testy; v editore overené na Windows, kontextové menu s typom riadku a formátmi.
