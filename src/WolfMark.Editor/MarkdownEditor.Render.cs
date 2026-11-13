@@ -134,9 +134,13 @@ public sealed partial class MarkdownEditor
 
             foreach (var run in CodeRuns(presentation))
             {
+                // Inline code as a rounded chip a little wider than its text, so it reads as code even when the
+                // whole editor uses the monospaced font (then the font alone shows no difference).
+                var pad = run.Kind == MarkdownTokenKind.InlineCode ? 2f : 0f;
                 foreach (var r in layout.GetCharacterRegions(run.Start, run.Length))
                 {
-                    ds.FillRectangle(Offset(r.LayoutBounds, x, y), _theme.CodeBackground);
+                    var b = Offset(r.LayoutBounds, x, y);
+                    ds.FillRoundedRectangle((float)b.X - pad, (float)b.Y, (float)b.Width + (2 * pad), (float)b.Height, 3, 3, _theme.CodeBackground);
                 }
             }
 
