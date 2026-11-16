@@ -5,7 +5,8 @@ namespace WolfMark.App.Infrastructure;
 /// <c>-StartupExperiment name</c> alternates starts with and without it, so both see the same machine state.
 /// Tried: "win2d-warmup" (Win2D device + DirectWrite on a pool thread from Main) – −35 ms in the editor, +22 ms in
 /// the title bar and Activate (contention), net −17 ms = noise; removed 2026-11-16.
-/// Open: "editor-defer-layout" (<c>MarkdownEditor.DeferInitialLayout</c>).
+/// "editor-defer-layout" (no layout in the editor's constructor) – −30 ms: the first Direct3D initialisation (~100 ms)
+/// moves to WinUI's title bar, Win2D's device then costs ~35 ms instead of ~119 ms; made the default 2026-11-16.
 /// </summary>
 internal static class StartupExperiment
 {

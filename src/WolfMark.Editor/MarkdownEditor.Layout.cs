@@ -126,7 +126,7 @@ public sealed partial class MarkdownEditor
     {
         if (_layoutDeferred)
         {
-            return; // nothing loaded yet (DeferInitialLayout) – the first Load lays out
+            return; // nothing loaded yet (see the constructor) – the first Load lays out
         }
 
         var started = System.Diagnostics.Stopwatch.GetTimestamp();

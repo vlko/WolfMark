@@ -88,23 +88,14 @@ public sealed partial class MarkdownEditor : UserControl
         InitIme();
         StartupTimeline.Mark("editor: IME edit context");
         InitCaretBlink();
-        if (DeferInitialLayout)
-        {
-            // No text layout before the first Load (the host loads a note right away): Win2D's device and DirectWrite
-            // are then first used after the window's first frame, when WinUI already initialised Direct3D.
-            _layoutDeferred = true;
-            ResetLines();
-        }
-        else
-        {
-            Load(string.Empty, caretToEnd: false, readOnly: false);
-        }
 
+        // No text layout before the first Load (every host loads a document right after creating the editor). The
+        // editor used to lay out an empty document here – the process's first Direct3D use, ~120 ms on the way to the
+        // first frame; now WinUI initialises Direct3D first and Win2D's device costs ~35 ms (M4-09, A/B −30 ms).
+        _layoutDeferred = true;
+        ResetLines();
         StartupTimeline.Mark("editor: caret, empty document");
     }
-
-    /// <summary>Startup experiment (M4-09, <c>editor-defer-layout</c>): skip laying out the empty document in the constructor.</summary>
-    public static bool DeferInitialLayout { get; set; }
 
     public event EventHandler<string>? TextEdited;
 
