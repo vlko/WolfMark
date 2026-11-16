@@ -51,7 +51,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
         try
         {
+            var launched = StartupTimeline.Now();
             var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory, freshDemo: LaunchOptions.Current.ScreenshotDirectory is not null);
+            var hostReady = StartupTimeline.Now();
             var logger = host.Loggers.CreateLogger<App>();
             _logger = logger;
             if (LaunchOptions.Current.TraceEditor)
@@ -68,18 +70,21 @@ public sealed partial class App : Application, IXamlMetadataProvider
             UiCulture.Apply(host.Settings.Current.Language, host.Settings.Current.DateFormatsFromLanguage);
 
             var brushes = new TagBrushes(host.Tags);
-            TimeSpan? firstFrame = null;
+            long? firstFrame = null;
             var vm = new MainViewModel(host);
             _window = new MainWindow(vm, brushes);
+            var windowBuilt = StartupTimeline.Now();
             WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: window built");
             if (!(StartupRegistration.LaunchedAtStartup && host.Settings.Current.CloseToTray))
             {
                 _window.Activate();
+                var activated = StartupTimeline.Now();
                 // The shell (title bar, calendar, empty history) is drawn before the note loads – loading a long
                 // note keeps the UI thread busy, and until then the window stayed blank.
                 await NextFrameAsync();
                 WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: first frame");
-                firstFrame = SinceProcessStart();
+                firstFrame = StartupTimeline.Now();
+                LogStartupPhases(logger, StartupTimeline.MainMs, launched, hostReady, windowBuilt, activated, firstFrame.Value);
             }
 
             // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
@@ -89,7 +94,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             if (firstFrame is { } shown)
             {
                 // M4-09 (start to typing < 300 ms): the last note is loaded and the editor has the focus.
-                LogReadyToType(logger, (long)SinceProcessStart().TotalMilliseconds, (long)shown.TotalMilliseconds);
+                LogReadyToType(logger, StartupTimeline.Now(), shown);
             }
 
             if (LaunchOptions.Current.OpenFile is { } file)
@@ -170,17 +175,25 @@ public sealed partial class App : Application, IXamlMetadataProvider
     }
 
     /// <summary>The next rendered frame, or 500 ms – a hidden or minimized window may not render.</summary>
-    private static Task NextFrameAsync()
+    /// <summary>
+    /// The next rendered frame, at most 500 ms. No exception on the timeout: a WaitAsync(…).ContinueWith(_ => …) left
+    /// the TimeoutException unobserved, and the finalizer reported it as an unhandled error (smoke test, 2026-11-16).
+    /// </summary>
+    private static async Task NextFrameAsync()
     {
-        var drawn = new TaskCompletionSource();
-        EventHandler<object>? handler = null;
-        handler = (_, _) =>
-        {
-            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= handler;
-            drawn.TrySetResult();
-        };
+        var drawn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler<object> handler = (_, _) => drawn.TrySetResult();
         Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += handler;
-        return drawn.Task.WaitAsync(TimeSpan.FromMilliseconds(500)).ContinueWith(_ => { }, TaskScheduler.Default);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var expire = timeout.Token.Register(() => drawn.TrySetResult());
+        try
+        {
+            await drawn.Task;
+        }
+        finally
+        {
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= handler; // back on the UI thread
+        }
     }
 
     /// <summary>
@@ -304,12 +317,8 @@ public sealed partial class App : Application, IXamlMetadataProvider
         }
     }
 
-    /// <summary>From the OS creating the process – includes loading the binary, unlike a stopwatch started in Main.</summary>
-    private static TimeSpan SinceProcessStart()
-    {
-        using var process = System.Diagnostics.Process.GetCurrentProcess();
-        return DateTime.Now - process.StartTime;
-    }
+    [LoggerMessage(Level = LogLevel.Information, Message = "Startup (ms since the process started): Main {MainMs}, OnLaunched {LaunchedMs}, data and index open {HostMs}, window built {WindowMs}, activated {ActivatedMs}, first frame {FirstFrameMs}")]
+    private static partial void LogStartupPhases(ILogger logger, long mainMs, long launchedMs, long hostMs, long windowMs, long activatedMs, long firstFrameMs);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Ready to type {ReadyMs} ms after the process started (first frame {FirstFrameMs} ms)")]
     private static partial void LogReadyToType(ILogger logger, long readyMs, long firstFrameMs);

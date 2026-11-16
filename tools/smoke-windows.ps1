@@ -350,7 +350,10 @@ function Test-Startup {
 
     $median = ($times | Sort-Object Ready)[1]
     $list = ($times | ForEach-Object { "$($_.Ready) ms (first frame $($_.FirstFrame) ms)" }) -join ', '
-    Report 'startup: ready to type' ($median.Ready -le $StartupBudgetMs) "median $($median.Ready) ms, budget $StartupBudgetMs ms – $list"
+    # Where the time goes (logged since 2026-11-16): Main, OnLaunched, data and index open, window built, activated, first frame.
+    $phases = @([regex]::Matches((Get-Log $demo), 'Startup \(ms since the process started\): ([^\r\n]+)') | Select-Object -Last 3 |
+        ForEach-Object { $_.Groups[1].Value })
+    Report 'startup: ready to type' ($median.Ready -le $StartupBudgetMs) "median $($median.Ready) ms, budget $StartupBudgetMs ms – $list$(if ($phases) { "`n" + ($phases -join "`n") })"
 }
 
 if ($Checks -contains 'deps') { Test-Dependencies }

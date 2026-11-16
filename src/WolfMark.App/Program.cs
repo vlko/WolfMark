@@ -16,6 +16,7 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        Infrastructure.StartupTimeline.MainEntered();
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Infrastructure.Strings.Source = Infrastructure.MrtStrings.Get;
 
