@@ -182,7 +182,7 @@ S = {
  "Icon_WolfMark": ("Wolf + Mark", "Wolf + Mark"),
  "Error_Title": ("Something went wrong", "Niečo sa pokazilo"),
  "Error_Settings": ("Settings could not be opened: {0}", "Nastavenia sa nepodarilo otvoriť: {0}"),
- "Week_NoTag": ("No tag", "No tag"),
+ "Week_NoTag": ("No tag", "Bez tagu"),
  "Settings_System": ("Windows", "Windows"),
  "Settings_StartWithWindows": ("Start with Windows", "Spustiť pri štarte Windows"),
  "Settings_CloseToTray": ("Closing the window keeps WolfMark running in the notification area", "Zatvorenie okna nechá WolfMark bežať v oblasti oznámení"),

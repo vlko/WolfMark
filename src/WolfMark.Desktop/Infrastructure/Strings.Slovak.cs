@@ -185,7 +185,7 @@ internal static partial class DesktopStrings
         [R.Icon_WolfMark] = "Wolf + Mark",
         [R.Error_Title] = "Niečo sa pokazilo",
         [R.Error_Settings] = "Nastavenia sa nepodarilo otvoriť: {0}",
-        [R.Week_NoTag] = "No tag",
+        [R.Week_NoTag] = "Bez tagu",
         [R.Settings_System] = "Windows",
         [R.Settings_StartWithWindows] = "Spustiť pri štarte Windows",
         [R.Settings_CloseToTray] = "Zatvorenie okna nechá WolfMark bežať v oblasti oznámení",

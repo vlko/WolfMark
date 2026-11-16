@@ -550,7 +550,7 @@
     <value>Nastavenia sa nepodarilo otvoriť: {0}</value>
   </data>
   <data name="Week_NoTag" xml:space="preserve">
-    <value>No tag</value>
+    <value>Bez tagu</value>
   </data>
   <data name="Settings_System" xml:space="preserve">
     <value>Windows</value>
