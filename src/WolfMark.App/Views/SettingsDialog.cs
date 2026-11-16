@@ -181,6 +181,7 @@ internal static class SettingsDialog
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
         var languages = new[] { (string?)null, "sk-SK", "en-US" };
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Array.IndexOf(languages, s.Language) is var li and >= 0 ? li : 0);
+        var dateFormats = new ToggleSwitch { IsOn = s.DateFormatsFromLanguage, Header = Strings.Get(R.Settings_DateFormatsFromLanguage) };
 
         // App icon: thumbnails, click = live preview of the window/taskbar icon; OK keeps it, Cancel reverts.
         var chosenIcon = s.AppIcon ?? AppIcons.Default;
@@ -322,6 +323,7 @@ internal static class SettingsDialog
                 Ui.Ui.HStack(12, browse, rootText),
                 movePanel,
                 Field(Strings.Get(R.Settings_Language), language),
+                dateFormats,
                 Section(Strings.Get(R.Settings_System)),
                 startWithWindows,
                 PortableUnavailable(),
@@ -397,8 +399,10 @@ internal static class SettingsDialog
         s.Theme = (AppTheme)theme.SelectedIndex;
         s.AppIcon = chosenIcon == AppIcons.Default ? null : chosenIcon;
         var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
-        restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal);
+        restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal)
+                         || s.DateFormatsFromLanguage != dateFormats.IsOn;
         s.Language = newLanguage;
+        s.DateFormatsFromLanguage = dateFormats.IsOn;
         s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
         s.EditorMonospace = monospace.IsOn;
         s.EditorMonoFontFamily = monoFont.Selected;

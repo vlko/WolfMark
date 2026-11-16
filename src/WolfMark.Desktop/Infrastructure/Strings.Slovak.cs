@@ -197,6 +197,7 @@ internal static partial class DesktopStrings
         [R.Menu_Open] = "Otvoriť",
         [R.Menu_OpenLink] = "Otvoriť odkaz v prehliadači",
         [R.Menu_OpenFolder] = "Otvoriť priečinok",
+        [R.Settings_DateFormatsFromLanguage] = "Dátumy a čas v jazyku aplikácie (vypnuté: podľa regiónu systému)",
         [R.Menu_RemoveFromHistory] = "Odstrániť z histórie",
         [R.ExtFile_Created] = "Vytvorený {0}",
         [R.ExtFile_Modified] = "Zmenený {0}",

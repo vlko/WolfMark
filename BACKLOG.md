@@ -209,8 +209,10 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *AK:* po premenovaní majú všetky poznámky nový tag v názve, kalendár a lišta ukazujú nový tag s pôvodnou farbou; otvorená
   poznámka sa ďalej ukladá do premenovaného súboru; zlúčenie v rovnakej minúte nestratí ani jednu poznámku; chyba
   pri premenovaní vráti súbory späť. *Stav:* Hotové, otestované (`TagRenamerTests`) a overené na Windows (2026-11-13).
-- 🟨 **M8-06 – Lokalizácia** sk/en.
-  *Stav:* `.resw` sk/en generované z jednej tabuľky (`tools/gen-strings.py`).
+- ✅ **M8-06 – Lokalizácia** sk/en.
+  *Stav:* `.resw` sk/en generované z jednej tabuľky (`tools/gen-strings.py`). Kontrola 2026-11-16: chýbal len
+  „Bez tagu“ v legende; natvrdo písané texty v UI žiadne. Nastavenie „Dátumy a čas v jazyku aplikácie“ (inak podľa
+  regiónu systému) v oboch aplikáciách – predtým Windows vždy región, Avalonia vždy jazyk (`UiCulture`).
 - 🟨 **M8-07 – Indikátor OneDrive stavu** a UI pre konflikty.
   *Stav:* Čiastočne: konflikty v UI, ikona pre placeholdery; stav synchronizácie OneDrive nie.
 - 🟨 **M8-08 – WolfMark ako predvolený editor `.md`** (Windows, macOS, Linux), ADR 0008.

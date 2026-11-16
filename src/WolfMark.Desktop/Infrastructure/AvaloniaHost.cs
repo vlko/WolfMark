@@ -24,23 +24,5 @@ internal static partial class DesktopStrings
 {
     public static string? Get(string key) =>
         CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "sk" ? Slovak.GetValueOrDefault(key) : null;
-
-    /// <summary>"sk-SK", "en-US" or null (system) from the settings.</summary>
-    public static void ApplyLanguage(string? language)
-    {
-        if (string.IsNullOrWhiteSpace(language))
-        {
-            return;
-        }
-
-        try
-        {
-            var culture = CultureInfo.GetCultureInfo(language);
-            CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = culture;
-            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.DefaultThreadCurrentCulture = culture;
-        }
-        catch (CultureNotFoundException)
-        {
-        }
-    }
 }
+

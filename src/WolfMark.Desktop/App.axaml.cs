@@ -67,7 +67,7 @@ public sealed partial class App : Application
             var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory);
             var logger = host.Loggers.CreateLogger<App>();
             _logger = logger;
-            DesktopStrings.ApplyLanguage(host.Settings.Current.Language);
+            UiCulture.Apply(host.Settings.Current.Language, host.Settings.Current.DateFormatsFromLanguage);
             RequestedThemeVariant = host.Settings.Current.Theme switch
             {
                 AppTheme.Light => ThemeVariant.Light,

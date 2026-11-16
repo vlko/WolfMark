@@ -57,6 +57,12 @@ public sealed class LocalSettings
     /// <summary>"sk-SK", "en-US" or null for system.</summary>
     public string? Language { get; set; }
 
+    /// <summary>
+    /// Day/month names and the time format in the app's <see cref="Language"/>; false = as in the system's region
+    /// settings. Only matters when a language is chosen.
+    /// </summary>
+    public bool DateFormatsFromLanguage { get; set; } = true;
+
     public double HistoryPaneHeight { get; set; } = 260;
 
     /// <summary>App icon variant (Assets/IconProposals id); null = default.</summary>

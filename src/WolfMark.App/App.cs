@@ -64,6 +64,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
             }
 
+            // Day/month names and the time format: the language's or the region's (Settings), as in the Avalonia app.
+            UiCulture.Apply(host.Settings.Current.Language, host.Settings.Current.DateFormatsFromLanguage);
+
             var brushes = new TagBrushes(host.Tags);
             TimeSpan? firstFrame = null;
             var vm = new MainViewModel(host);

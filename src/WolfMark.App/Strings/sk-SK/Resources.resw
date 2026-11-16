@@ -585,6 +585,9 @@
   <data name="Menu_OpenFolder" xml:space="preserve">
     <value>Otvoriť priečinok</value>
   </data>
+  <data name="Settings_DateFormatsFromLanguage" xml:space="preserve">
+    <value>Dátumy a čas v jazyku aplikácie (vypnuté: podľa regiónu systému)</value>
+  </data>
   <data name="Menu_RemoveFromHistory" xml:space="preserve">
     <value>Odstrániť z histórie</value>
   </data>

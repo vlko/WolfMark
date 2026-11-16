@@ -585,6 +585,9 @@
   <data name="Menu_OpenFolder" xml:space="preserve">
     <value>Open folder</value>
   </data>
+  <data name="Settings_DateFormatsFromLanguage" xml:space="preserve">
+    <value>Dates and times in the app's language (off: system region)</value>
+  </data>
   <data name="Menu_RemoveFromHistory" xml:space="preserve">
     <value>Remove from history</value>
   </data>
