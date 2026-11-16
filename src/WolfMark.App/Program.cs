@@ -17,7 +17,6 @@ public static class Program
     public static int Main(string[] args)
     {
         WolfMark.Core.Diagnostics.StartupTimeline.MainEntered();
-        Infrastructure.Win2DWarmUp.Start();
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Infrastructure.Strings.Source = Infrastructure.MrtStrings.Get;
 

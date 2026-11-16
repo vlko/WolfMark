@@ -13,13 +13,6 @@ public static class StartupTimeline
     private static long s_mainTimestamp;
     private static double s_mainMs;
     private static bool s_done = true;
-    private static long s_warmUpMs = -1;
-
-    /// <summary>When the background warm-up (Win2D device, DirectWrite) finished, -1 = not yet / none.</summary>
-    public static long WarmUpMs => Interlocked.Read(ref s_warmUpMs);
-
-    /// <summary>From any thread.</summary>
-    public static void WarmUpFinished() => Interlocked.Exchange(ref s_warmUpMs, Now());
 
     public static long MainMs => (long)s_mainMs;
 
