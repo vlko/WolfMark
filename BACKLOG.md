@@ -183,8 +183,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 ## M8 – Pohodlie a integrácia s Windows 🟡
 
 - ⬜ **M8-01 – Globálna skratka rýchleho zápisu** (malé okno, Enter uloží a skryje).
-- 🟨 **M8-02 – Tray ikona**, minimalizácia do tray, štart s Windows.
-  *Stav:* Implementované, čaká na overenie na Windows: Nastavenia → Windows (štart = HKCU `Run` s `--autostart`;
+- ✅ **M8-02 – Tray ikona**, minimalizácia do tray, štart s Windows.
+  *Stav:* Hotové, ručne overené na Windows (2026-11-16): Nastavenia → Windows (štart = HKCU `Run` s `--autostart`;
   pri zapnutom tray štartuje skryto), zatvorenie okna skryje do oblasti oznámení (`Infrastructure/TrayIcon.cs`,
   Shell_NotifyIcon + subclass okna), menu Zobraziť / Nastavenia… / Ukončiť.
 - ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
@@ -210,8 +210,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   zatvorení, zmena na disku, kópia do dnešných poznámok, stavový riadok), externé súbory v histórii,
   registrácia v Nastaveniach (Windows HKCU + Predvolené aplikácie, macOS Launch Services, Linux xdg-mime).
   Smoke test (`-Checks files`): súbor mimo poznámok = vlastné okno, druhé spustenie ho odovzdá bežiacej inštancii,
-  ten istý súbor znova = to isté okno, poznámka zo stromu = hlavný editor. Registráciu (HKCU) smoke test nemení –
-  tú, macOS a Linux treba vyskúšať ručne.
+  ten istý súbor znova = to isté okno, poznámka zo stromu = hlavný editor – na Windows 5/5 (2026-11-16).
+  Registrácia na Windows (HKCU + Predvolené aplikácie) ručne overená 2026-11-16. **Zostáva:** macOS a Linux.
 - ✅ **M8-09 – Prenosný režim** (ADR 0009): značka `WolfMark.portable.json` vedľa exe, dáta v `WolfMarkData`
   (`local/`, `notes/` – relatívne cesty), zapnutie (Kopírovať/Presunúť) a vypnutie (kopírovať späť) v Nastaveniach
   s upozornením, integrácia so systémom v prenosnom režime vypnutá.
