@@ -209,6 +209,9 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   na dátový priečinok), súbor zo stromu prepne poznámku, mimo stromu vlastné okno (Uložiť, otázka pri
   zatvorení, zmena na disku, kópia do dnešných poznámok, stavový riadok), externé súbory v histórii,
   registrácia v Nastaveniach (Windows HKCU + Predvolené aplikácie, macOS Launch Services, Linux xdg-mime).
+  Smoke test (`-Checks files`): súbor mimo poznámok = vlastné okno, druhé spustenie ho odovzdá bežiacej inštancii,
+  ten istý súbor znova = to isté okno, poznámka zo stromu = hlavný editor. Registráciu (HKCU) smoke test nemení –
+  tú, macOS a Linux treba vyskúšať ručne.
 - ✅ **M8-09 – Prenosný režim** (ADR 0009): značka `WolfMark.portable.json` vedľa exe, dáta v `WolfMarkData`
   (`local/`, `notes/` – relatívne cesty), zapnutie (Kopírovať/Presunúť) a vypnutie (kopírovať späť) v Nastaveniach
   s upozornením, integrácia so systémom v prenosnom režime vypnutá.

@@ -8,6 +8,8 @@
     deps        M0-02  every DLL the binaries import is in the output or part of Windows (no .NET, no VC++ redist)
     screenshots M10-04 --screenshots renders the README images and exits (they are kept in <WorkDir>\screenshots)
     instance    M0-05  a second launch on the same data hands over to the first and exits; other data = own instance
+    files       M8-08  a .md file as argument: outside the notes its own window (also handed over by a second
+                       launch, never twice), inside the notes the main editor – the registry is not touched
 
   Runs in CI after the AOT publish and locally:
     dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64 -o publish/win-x64
@@ -19,7 +21,7 @@
 param(
     [Parameter(Mandatory)] [string] $PublishDir,
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
-    [ValidateSet('deps', 'screenshots', 'instance')] [string[]] $Checks = @('deps', 'screenshots', 'instance')
+    [ValidateSet('deps', 'screenshots', 'instance', 'files')] [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -72,6 +74,62 @@ function Wait-Window([System.Diagnostics.Process] $process, [int] $seconds) {
         if ($process.HasExited) { return $false }
         $process.Refresh()
         if ($process.MainWindowHandle -ne [IntPtr]::Zero) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
+# Visible top-level window titles of a process (Process.MainWindowTitle knows only one window).
+if (-not ('WolfMarkSmokeWindows' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class WolfMarkSmokeWindows
+{
+    private delegate bool EnumProc(IntPtr hwnd, IntPtr lParam);
+
+    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int max);
+
+    public static string[] Titles(int processId)
+    {
+        var titles = new List<string>();
+        EnumWindows((hwnd, _) =>
+        {
+            uint owner;
+            GetWindowThreadProcessId(hwnd, out owner);
+            if (owner == (uint)processId && IsWindowVisible(hwnd))
+            {
+                var text = new StringBuilder(512);
+                if (GetWindowText(hwnd, text, text.Capacity) > 0)
+                {
+                    titles.Add(text.ToString());
+                }
+            }
+
+            return true;
+        }, IntPtr.Zero);
+        return titles.ToArray();
+    }
+}
+'@
+}
+
+# Windows of the process for this file: the external window's title is "<file name> – WolfMark" ("• " when unsaved).
+function Get-FileWindows([System.Diagnostics.Process] $process, [string] $fileName) {
+    @([WolfMarkSmokeWindows]::Titles($process.Id) | Where-Object { $_.TrimStart('•', ' ').StartsWith("$fileName ", [StringComparison]::OrdinalIgnoreCase) })
+}
+
+function Wait-FileWindow([System.Diagnostics.Process] $process, [string] $fileName, [int] $seconds) {
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {
+        if ($process.HasExited) { return $false }
+        if ((Get-FileWindows $process $fileName).Count -gt 0) { return $true }
         Start-Sleep -Milliseconds 200
     }
     return $false
@@ -199,9 +257,63 @@ function Test-SingleInstance {
     }
 }
 
+# ---------------------------------------------------------------------------------------------------------------
+# files (M8-08): what Explorer does once WolfMark is the .md editor – start it with the file. The registration
+# itself (HKCU, Settings → Windows) is left alone: a smoke test must not change the machine.
+# ---------------------------------------------------------------------------------------------------------------
+function Test-OpenFiles {
+    $demo = Join-Path $WorkDir 'demo-files'
+    $outside = Join-Path $WorkDir 'outside'
+    New-Item -ItemType Directory $outside -Force | Out-Null
+    $one = Join-Path $outside 'outside-one.md'
+    $two = Join-Path $outside 'outside-two.md'
+    Set-Content $one "# Outside one`n`nA README somewhere in a repository." -Encoding utf8
+    Set-Content $two "# Outside two" -Encoding utf8
+    $main = $null
+    $launches = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
+    try {
+        $main = Start-WolfMark @('--demo', $demo, $one)
+        $ok = Wait-FileWindow $main 'outside-one.md' 90
+        Report 'files: file outside the notes opens its own window' $ok `
+            $(if ($ok) { "windows: $([WolfMarkSmokeWindows]::Titles($main.Id) -join ' | ')" } else { "no window for outside-one.md (exited: $($main.HasExited))`n$(Get-Problems (Get-Log $demo))" })
+        if (-not $ok) { return }
+
+        # Explorer opening another file while the app runs: the second process hands it over and exits.
+        $p = Start-WolfMark @('--demo', $demo, $two); $launches.Add($p)
+        $exited = $p.WaitForExit(30000)
+        $opened = Wait-FileWindow $main 'outside-two.md' 30
+        $logged = (Get-Log $demo) -match 'Activation redirected from another launch \(with file: True\)'
+        Report 'files: second launch opens its file in the running app' ($exited -and $opened -and $logged) `
+            "second exited: $exited, window in the first: $opened, redirect with file logged: $logged"
+
+        # The same file again: the existing window comes forward, no second one.
+        $p = Start-WolfMark @('--demo', $demo, $two); $launches.Add($p)
+        $exited = $p.WaitForExit(30000)
+        Start-Sleep -Seconds 2
+        $count = (Get-FileWindows $main 'outside-two.md').Count
+        Report 'files: the same file again reuses its window' ($exited -and $count -eq 1) "second exited: $exited, windows for outside-two.md: $count"
+
+        # A note of the notes tree opens in the main editor, not in a window of its own.
+        $note = Get-ChildItem (Join-Path $demo 'notes') -Recurse -Filter '*.md' | Where-Object { $_.FullName -notmatch '\\\.wolfmark\\' } | Select-Object -First 1
+        $p = Start-WolfMark @('--demo', $demo, $note.FullName); $launches.Add($p)
+        $exited = $p.WaitForExit(30000)
+        Start-Sleep -Seconds 2
+        $own = (Get-FileWindows $main $note.Name).Count
+        Report 'files: a note of the notes tree opens in the main editor' ($exited -and $own -eq 0 -and -not $main.HasExited) `
+            "$($note.Name): second exited: $exited, own windows: $own, app running: $(-not $main.HasExited)"
+
+        $problems = Get-Problems (Get-Log $demo)
+        Report 'files: no errors logged' (-not $problems) $(if ($problems) { $problems } else { 'clean log' })
+    }
+    finally {
+        Stop-WolfMark (@($main) + $launches.ToArray())
+    }
+}
+
 if ($Checks -contains 'deps') { Test-Dependencies }
 if ($Checks -contains 'screenshots') { Test-Screenshots }
 if ($Checks -contains 'instance') { Test-SingleInstance }
+if ($Checks -contains 'files') { Test-OpenFiles }
 
 $failed = @($script:results | Where-Object { -not $_.Ok })
 if ($env:GITHUB_STEP_SUMMARY) {
