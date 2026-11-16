@@ -128,15 +128,12 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *Stav:* Schránka (bitmapa aj súbory), drag & drop (alt text = názov súboru s príponou), náhľad; riadok len s obrázkom je blok (kurzor pred/za, šípky ho preskočia, text vedľa ide na nový riadok), dvojklik otvorí originál, hover nápoveda; len relatívne cesty v koreni poznámok. Overené na Windows.
 - 🟨 **M4-08 – Externé zmeny otvoreného súboru** (tichý reload / porovnanie pri konflikte).
   *Stav:* Tichý reload / InfoBar „Načítať z disku | Ponechať moje“; diff/merge UI nie.
-- 🟨 **M4-09 – Hlavné okno v1.** Hlavička poznámky (výber tagu s farbou, čas, prepínač režimu, `+`), `Ctrl+N`, otvorenie poslednej poznámky pri štarte, vytvorenie súboru až po prvom znaku.
-  *Stav:* Hotové; okno sa ukáže hneď, posledná poznámka sa načíta potom (~0,1 s). Obe aplikácie logujú
-  „Ready to type <n> ms after the process started“ aj fázy štartu, smoke test (`-Checks startup`) berie medián
-  3 štartov. **Zmerané 2026-11-16 (AOT, Windows): medián 1,6 s – AK nesplnené.** Fázy (ms od štartu procesu):
-  Main ~40, OnLaunched ~110, dáta a index ~10 ms, **okno postavené +540–900 ms** (`MainWindow` stavia celé UI
-  naraz), **Activate +280–550 ms**, prvá snímka +270–490 ms, editor pripravený +~70 ms.
-  Ďalší krok: zmerať časti konštruktora `MainWindow`, stavať skryté časti (vyhľadávanie, mesačná mriežka, …)
-  až pri prvom použití; reálnosť 300 ms pri WinUI 3 posúdiť po tom.
-  *AK:* Od spustenia po písanie < 300 ms (AOT, SSD).
+- ✅ **M4-09 – Hlavné okno v1.** Hlavička poznámky (výber tagu s farbou, čas, prepínač režimu, `+`), `Ctrl+N`, otvorenie poslednej poznámky pri štarte, vytvorenie súboru až po prvom znaku.
+  *Stav:* Hotové. Štart do písania meraný (log + `tools/smoke-windows.ps1 -Checks startup`): **~545–565 ms**
+  vo vyváženom režime napájania (2026-11-16; úsporný 1,2–1,6 s). Optimalizácie a merania v ADR 0011: editor bez
+  rozloženia v konštruktore, fokus hneď po otvorení poznámky, vyhľadávanie pri prvom otvorení; réžia WinUI 3
+  ~360 ms, preto pôvodných 300 ms nereálnych.
+  *AK:* Od spustenia po písanie < 600 ms (AOT, vyvážený režim napájania; pôvodne 300 ms – ADR 0011).
 - ✅ **M4-10 – Veľkosť písma a farebné emotikony.** `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+koliesko (podľa znaku na rozložení), uloží sa do nastavení; farebné emotikony v Nastaveniach (Windows).
   *Stav:* Windows aj Avalonia (v0.3.2). Rýchly zoom kolieskom padal (natívny pád WinUI); obídené – zoom sa sčíta na jeden relayout, chyby kreslenia sa logujú („Editor drawing failed“). Skutočná príčina neznáma, čaká na záznam v logu.
 - ✅ **M4-11 – Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, tlačidlo pred `+`): len dátum, riadok s časmi a `×`, formátovanie a editor.

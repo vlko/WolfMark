@@ -11,7 +11,7 @@
     files       M8-08  a .md file as argument: outside the notes its own window (also handed over by a second
                        launch, never twice), inside the notes the main editor – the registry is not touched
     startup     M4-09  process start to typing (last note loaded, editor focused), median of 3 warm starts on
-                       existing demo data, against -StartupBudgetMs (300 = the acceptance criterion)
+                       existing demo data, against -StartupBudgetMs (600 = the acceptance criterion, ADR 0011)
 
   Runs in CI after the AOT publish and locally:
     dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64 -o publish/win-x64
@@ -25,7 +25,7 @@ param(
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
     # "startup,files" or startup, files – run as a script file (pwsh tools/smoke-windows.ps1 …) a list arrives as one string.
     [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'startup'),
-    [int] $StartupBudgetMs = 300,
+    [int] $StartupBudgetMs = 600,
     # A/B: alternate 3 starts with WOLFMARK_EXPERIMENT=<name> and 3 without (StartupExperiment in the app).
     [string] $StartupExperiment
 )

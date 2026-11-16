@@ -13,7 +13,7 @@ Rýchly, natívny denný zápisník pre Windows. Otvorím aplikáciu → okamži
 
 1. **Súbory sú zdroj pravdy.** SQLite databáza je len index/cache. Kedykoľvek sa musí dať zmazať a znovu postaviť z adresára.
 2. **Editor sa nikdy nesekne.** Žiadne I/O, indexovanie, embedding ani synchronizácia na UI vlákne. UI vlákno len renderuje a prijíma vstup.
-3. **Natívne a rýchlo.** .NET 11, WinUI 3 (Windows App SDK), Native AOT. Cieľ: studený štart < 300 ms do momentu, keď sa dá písať.
+3. **Natívne a rýchlo.** .NET 11, WinUI 3 (Windows App SDK), Native AOT. Cieľ: štart < 600 ms do momentu, keď sa dá písať (pôvodne 300 ms – nedosiahnuteľné s WinUI 3, ADR 0011).
 4. **Bez straty dát.** Autosave, atomické zápisy, tolerancia voči OneDrive konfliktom a zmenám zvonka.
 5. **Jednoduchosť pred funkciami.** Primárne rozhranie je editor; všetko ostatné je sekundárne a dá sa skryť.
 
@@ -288,7 +288,7 @@ Inšpirácia: aplikácia **Finalist 4** (referenčné screenshoty: ročný plán
 - **Žiadne `.Result` / `.Wait()`**, všetky I/O API asynchrónne, `CancellationToken` všade, kde operácia môže byť zrušená (prepnutie dňa zruší načítavanie predchádzajúceho).
 - **Štart:** okno sa zobrazí okamžite s poslednou poznámkou (cesta uložená v lokálnych nastaveniach → priame načítanie jedného súboru). Index, kalendár a história sa načítajú paralelne; plný scan a sync bežia až po zobrazení.
 - **Výkonnostné ciele:**
-  - studený štart do editovateľného editora < 300 ms (AOT),
+  - štart do editovateľného editora < 600 ms (AOT, vyvážený režim napájania; ADR 0011 – réžia WinUI 3 je ~360 ms),
   - latencia písania < 16 ms aj pri 5 000-riadkovom dokumente,
   - prepnutie dňa v kalendári < 50 ms,
   - vyhľadávanie (FTS) < 50 ms na 10 000 poznámkach, hybridné < 200 ms,

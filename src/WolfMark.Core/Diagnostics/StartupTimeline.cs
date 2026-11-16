@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace WolfMark.Core.Diagnostics;
 
 /// <summary>
-/// Milliseconds since the OS created the process (M4-09: start to typing &lt; 300 ms) – the offset to Main once from
+/// Milliseconds since the OS created the process (M4-09: start to typing &lt; 600 ms, ADR 0011) – the offset to Main once from
 /// <see cref="Process.StartTime"/>, every later point from a stopwatch. Marks come from the UI thread; nothing is
 /// recorded unless <see cref="MainEntered"/> ran (the Windows app's Main), so the editor library can mark freely.
 /// </summary>
