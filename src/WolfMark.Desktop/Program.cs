@@ -16,11 +16,11 @@ internal static class Program
     public static int Main(string[] args)
     {
         var options = LaunchOptions.Current;
-        var request = options.OpenFile ?? (options.QuickNote ? LaunchOptions.QuickNoteSwitch : null);
+        var request = options.OpenFile ?? options.Link?.ToString() ?? options.InvalidLink;
         Instance = SingleInstance.TryAcquire(InstanceIdentity.DataDirectory(options), request);
         if (Instance is null)
         {
-            return 0; // the running instance opens the file or the quick note, or its window comes forward
+            return 0; // the running instance opens the file or the link, or its window comes forward
         }
 
         Strings.Source = DesktopStrings.Get;

@@ -285,6 +285,13 @@ internal static class SettingsDialog
             return t;
         }
 
+        // wolfmark:// links (M8-03): the protocol key of this exe (registry is the truth).
+        var linksWas = await Task.Run(() => LinkProtocol.IsEnabled);
+        var links = new ToggleSwitch { IsOn = linksWas, Header = Strings.Get(R.Settings_LinkProtocol), IsEnabled = !isPortable };
+        var linksHint = Typo.Body(Strings.Get(R.Settings_LinkProtocolHint), 12.5, Palette.InkTertiary);
+        linksHint.TextWrapping = TextWrapping.Wrap;
+        linksHint.Visibility = isPortable ? Visibility.Collapsed : Visibility.Visible;
+
         var associationHint = Typo.Body(Strings.Get(R.Settings_FileAssociationHint), 12.5, Palette.InkTertiary);
         associationHint.TextWrapping = TextWrapping.Wrap;
         associationHint.Visibility = isPortable ? Visibility.Collapsed : Visibility.Visible;
@@ -338,6 +345,8 @@ internal static class SettingsDialog
                 associationHint,
                 PortableUnavailable(),
                 defaultApps,
+                links,
+                linksHint,
                 Section(Strings.Get(R.Settings_Portable)),
                 portableStatus,
                 portableButton,
@@ -448,6 +457,19 @@ internal static class SettingsDialog
             catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
             {
                 vm.ErrorNotice = Strings.Format(R.Settings_FileAssociationFailed, ex.Message);
+            }
+        }
+
+        if (!isPortable && links.IsOn != linksWas)
+        {
+            var on = links.IsOn;
+            try
+            {
+                await Task.Run(() => LinkProtocol.Set(on));
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+            {
+                vm.ErrorNotice = Strings.Format(R.Settings_LinkProtocolFailed, ex.Message);
             }
         }
 

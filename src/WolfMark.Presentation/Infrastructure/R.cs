@@ -201,6 +201,16 @@ internal static class R
     public const string Settings_QuickNoteTaken = nameof(Settings_QuickNoteTaken);
     public const string Settings_QuickNoteCommand = nameof(Settings_QuickNoteCommand);
     public const string Settings_QuickNoteCopy = nameof(Settings_QuickNoteCopy);
+    public const string Link_New = nameof(Link_New);
+    public const string Link_Today = nameof(Link_Today);
+    public const string Link_Search = nameof(Link_Search);
+    public const string Link_NoteMissing = nameof(Link_NoteMissing);
+    public const string Link_Invalid = nameof(Link_Invalid);
+    public const string Menu_CopyAppLink = nameof(Menu_CopyAppLink);
+    public const string Settings_LinkProtocol = nameof(Settings_LinkProtocol);
+    public const string Settings_LinkProtocolHint = nameof(Settings_LinkProtocolHint);
+    public const string Settings_LinkProtocolMac = nameof(Settings_LinkProtocolMac);
+    public const string Settings_LinkProtocolFailed = nameof(Settings_LinkProtocolFailed);
     public const string History_External = nameof(History_External);
     public const string Menu_Open = nameof(Menu_Open);
     public const string Menu_OpenLink = nameof(Menu_OpenLink);

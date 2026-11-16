@@ -606,6 +606,36 @@
   <data name="Settings_QuickNoteCopy" xml:space="preserve">
     <value>Kopírovať príkaz</value>
   </data>
+  <data name="Link_New" xml:space="preserve">
+    <value>Nová poznámka</value>
+  </data>
+  <data name="Link_Today" xml:space="preserve">
+    <value>Dnes</value>
+  </data>
+  <data name="Link_Search" xml:space="preserve">
+    <value>Hľadať</value>
+  </data>
+  <data name="Link_NoteMissing" xml:space="preserve">
+    <value>Odkazovaná poznámka neexistuje: {0}</value>
+  </data>
+  <data name="Link_Invalid" xml:space="preserve">
+    <value>Toto nie je odkaz WolfMarku: {0}</value>
+  </data>
+  <data name="Menu_CopyAppLink" xml:space="preserve">
+    <value>Kopírovať odkaz wolfmark://</value>
+  </data>
+  <data name="Settings_LinkProtocol" xml:space="preserve">
+    <value>Odkazy wolfmark:// otvárajú WolfMark</value>
+  </data>
+  <data name="Settings_LinkProtocolHint" xml:space="preserve">
+    <value>Odkazy na deň alebo poznámku z iných aplikácií – prehliadača, Outlooku, OneNote. Skopíruješ ho z ponuky v histórii. Patriť môžu len jednej kópii WolfMarku: tej, ktorá ich zapla posledná.</value>
+  </data>
+  <data name="Settings_LinkProtocolMac" xml:space="preserve">
+    <value>Na macOS odkazy wolfmark:// registruje aplikácia sama.</value>
+  </data>
+  <data name="Settings_LinkProtocolFailed" xml:space="preserve">
+    <value>Odkazy wolfmark:// sa nepodarilo zmeniť: {0}</value>
+  </data>
   <data name="History_External" xml:space="preserve">
     <value>externý</value>
   </data>

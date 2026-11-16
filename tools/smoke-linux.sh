@@ -7,6 +7,8 @@
 #                    never twice), inside the notes the main editor – xdg-mime is not touched
 #   quicknote M8-01  --quick-note: a later launch opens the quick note window in the running app (once, however often
 #                    it is asked for), a first launch with it starts the app with that window
+#   links     M8-03  wolfmark:// links on the command line (what the protocol handler and the launcher actions
+#                    run): a later launch hands its link to the running app, a first launch opens it
 #   startup   M4-09  process start to typing, median of 3 warm starts, against --budget-ms (report only by default)
 #
 # Usage: tools/smoke-linux.sh <WolfMark executable> [work dir] [--budget-ms N]
@@ -193,6 +195,39 @@ demo="$work/demo-quicknote-first"
 launch "$demo" --quick-note
 ok=0; wait_for 90 bash -c "python3 -I '$titles_py' | grep -qE '$quick_title'" && ok=1
 report "quicknote: a first launch with it starts the app with the window" $ok "windows: $(titles | paste -sd'|')"
+stop_all
+
+# --- links (M8-03) --------------------------------------------------------------------------------------------
+link_count() { log_of "$1" | grep -c -- "Link opened: $2"; }
+demo="$work/demo-links"
+launch "$demo"
+if wait_for 90 has_log "$demo" "Ready to type"; then
+    for pair in "wolfmark://day/2026-11-10 Day" "wolfmark://search?q=release Search" "wolfmark://today Today"; do
+        link=${pair% *}; kind=${pair#* }
+        launch "$demo" "$link"; p=$launched
+        if wait_exit "$p" 30; then exited=1; else exited=0; fi
+        opened=0; wait_for 10 bash -c "[[ \$(cat '$demo'/local/logs/wolfmark-*.log 2>/dev/null | grep -c 'Link opened: $kind') -ge 1 ]]" && opened=1
+        ok=0; [[ $exited == 1 && $opened == 1 ]] && ok=1
+        report "links: $link in the running app" $ok "second exited: $exited, opened: $opened"
+    done
+    note=$(find "$demo/notes" -name '*.md' -not -path '*/.wolfmark/*' | head -1)
+    rel=${note#"$demo/notes/"}; rel=${rel%.md}
+    launch "$demo" "wolfmark://note/$rel"; p=$launched
+    wait_exit "$p" 30
+    ok=0; wait_for 10 has_log "$demo" "Link opened: Note" && ok=1
+    report "links: a note link opens the note" $ok "wolfmark://note/$rel"
+    p=$(problems "$demo")
+    ok=0; [[ -z "$p" ]] && ok=1
+    report "links: no errors logged" $ok "${p:-clean log}"
+else
+    report "links: wolfmark://day/2026-11-10 in the running app" 0 "no 'Ready to type' within 90 s"
+fi
+stop_all
+
+demo="$work/demo-links-first"
+launch "$demo" "wolfmark://today"
+ok=0; wait_for 90 has_log "$demo" "Link opened: Today" && ok=1
+report "links: a first launch opens its link" $ok "$(log_of "$demo" | grep -o 'Link opened: [A-Za-z]*' | paste -sd' ')"
 stop_all
 
 # --- startup (M4-09) -------------------------------------------------------------------------------------------

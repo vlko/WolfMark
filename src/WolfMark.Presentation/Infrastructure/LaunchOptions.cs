@@ -1,3 +1,5 @@
+using WolfMark.Core.Links;
+
 namespace WolfMark.App.Infrastructure;
 
 /// <summary>
@@ -6,11 +8,13 @@ namespace WolfMark.App.Infrastructure;
 /// <c>--screenshots &lt;dir&gt;</c> additionally captures the README screenshots there and exits;
 /// <c>--trace-editor</c> times the editor's hot paths into <c>logs/editor-trace.txt</c>;
 /// <c>--quick-note</c> opens the quick note window (M8-01) – in the running instance if there is one; this is what a
-/// system keyboard shortcut runs on macOS and Linux.
+/// system keyboard shortcut runs on macOS and Linux (the same as <c>wolfmark://new</c>).
+/// A <c>wolfmark://</c> link (M8-03: the registered protocol, the jump list) opens its day, note or search; one that
+/// cannot be parsed is kept in <see cref="InvalidLink"/> to be reported, never taken for a file.
 /// A file path (the first argument that is not a switch) opens that Markdown file: a note of the notes tree in
 /// the main window, any other file in its own window – this is what the file association runs.
 /// </summary>
-internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDirectory, bool TraceEditor = false, string? OpenFile = null, bool QuickNote = false)
+internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDirectory, bool TraceEditor = false, string? OpenFile = null, AppLink? Link = null, string? InvalidLink = null)
 {
     public static LaunchOptions Current { get; } = Parse(Environment.GetCommandLineArgs());
 
@@ -18,10 +22,14 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
 
     public bool IsDemo => DemoDirectory is not null;
 
+    /// <summary>The quick note window: <c>--quick-note</c> or <c>wolfmark://new</c>.</summary>
+    public bool QuickNote => Link?.Kind == AppLinkKind.New;
+
     public static LaunchOptions Parse(IReadOnlyList<string> args)
     {
-        string? demo = null, shots = null, file = null;
-        bool trace = false, quickNote = false;
+        string? demo = null, shots = null, file = null, invalid = null;
+        var trace = false;
+        AppLink? link = null;
         // args[0] is the program itself.
         for (var i = 1; i < args.Count; i++)
         {
@@ -41,7 +49,18 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
             }
             else if (string.Equals(arg, QuickNoteSwitch, StringComparison.OrdinalIgnoreCase))
             {
-                quickNote = true;
+                link = AppLink.New;
+            }
+            else if (AppLink.LooksLikeLink(arg))
+            {
+                if (AppLink.TryParse(arg, out var parsed))
+                {
+                    link = parsed;
+                }
+                else
+                {
+                    invalid = arg;
+                }
             }
             else if (file is null && !arg.StartsWith('-') && arg.Trim().Length > 0) // not a switch (nor macOS's old -psn_…)
             {
@@ -55,6 +74,6 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
             demo = Path.Combine(Path.GetTempPath(), "WolfMarkDemo");
         }
 
-        return new LaunchOptions(demo, shots, trace, file, quickNote);
+        return new LaunchOptions(demo, shots, trace, file, link, invalid);
     }
 }

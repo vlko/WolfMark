@@ -44,3 +44,13 @@ WM_HOTKEY
 HOT_KEY_MODIFIERS
 MonitorFromPoint
 GetDpiForMonitor
+ICustomDestinationList
+IObjectCollection
+IObjectArray
+IShellLinkW
+IPropertyStore
+PKEY_Title
+CoCreateInstance
+CoInitializeEx
+CoUninitialize
+PropVariantClear

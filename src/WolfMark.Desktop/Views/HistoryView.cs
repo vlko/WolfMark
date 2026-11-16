@@ -167,6 +167,14 @@ internal sealed class HistoryView : UserControl
                     await clipboard.SetTextAsync(MainViewModel.NoteLink(note.RelativePath));
                 }
             };
+            var copyAppLink = new MenuItem { Header = Strings.Get(R.Menu_CopyAppLink) };
+            copyAppLink.Click += async (_, _) =>
+            {
+                if (WolfMark.Core.Notes.NotePath.TryParse(note.RelativePath, out var path) && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                {
+                    await clipboard.SetTextAsync(WolfMark.Core.Links.AppLink.ForNote(path).ToString());
+                }
+            };
             var delete = new MenuItem { Header = Strings.Get(R.Menu_Delete) };
             delete.Click += async (_, _) =>
             {
@@ -176,7 +184,7 @@ internal sealed class HistoryView : UserControl
                 }
             };
 
-            var menu = new ContextMenu { Items = { tagMenu, folder, copy, new Separator(), delete } };
+            var menu = new ContextMenu { Items = { tagMenu, folder, copy, copyAppLink, new Separator(), delete } };
             menu.Opening += async (_, _) =>
             {
                 // The tags of the moment: "no tag" first, then the most used ones.

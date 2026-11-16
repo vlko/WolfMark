@@ -606,6 +606,36 @@
   <data name="Settings_QuickNoteCopy" xml:space="preserve">
     <value>Copy command</value>
   </data>
+  <data name="Link_New" xml:space="preserve">
+    <value>New note</value>
+  </data>
+  <data name="Link_Today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="Link_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Link_NoteMissing" xml:space="preserve">
+    <value>The linked note does not exist: {0}</value>
+  </data>
+  <data name="Link_Invalid" xml:space="preserve">
+    <value>This is not a WolfMark link: {0}</value>
+  </data>
+  <data name="Menu_CopyAppLink" xml:space="preserve">
+    <value>Copy wolfmark:// link</value>
+  </data>
+  <data name="Settings_LinkProtocol" xml:space="preserve">
+    <value>wolfmark:// links open WolfMark</value>
+  </data>
+  <data name="Settings_LinkProtocolHint" xml:space="preserve">
+    <value>Links to a day or a note from other apps – a browser, Outlook, OneNote. Copy one from the history's menu. Only one copy of WolfMark can own them: the one switched on last.</value>
+  </data>
+  <data name="Settings_LinkProtocolMac" xml:space="preserve">
+    <value>On macOS the app registers wolfmark:// links itself.</value>
+  </data>
+  <data name="Settings_LinkProtocolFailed" xml:space="preserve">
+    <value>wolfmark:// links could not be changed: {0}</value>
+  </data>
   <data name="History_External" xml:space="preserve">
     <value>external</value>
   </data>

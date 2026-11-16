@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using WolfMark.App;
 using WolfMark.App.Infrastructure;
 using WolfMark.App.ViewModels;
+using WolfMark.Core.Links;
 using WolfMark.Core.Settings;
 using WolfMark.Desktop.Infrastructure;
 using WolfMark.Desktop.Theming;
@@ -18,6 +19,8 @@ namespace WolfMark.Desktop;
 public sealed partial class App : Application
 {
     private readonly List<string> _pendingFiles = [];
+    private readonly List<string> _pendingLinks = [];
+    private MainWindow? _window;
     private ILogger? _logger;
     private MainViewModel? _vm;
 
@@ -38,7 +41,13 @@ public sealed partial class App : Application
         {
             activatable.Activated += (_, e) =>
             {
-                if (e is FileActivatedEventArgs files)
+                if (e is ProtocolActivatedEventArgs protocol)
+                {
+                    // wolfmark:// on macOS (CFBundleURLTypes): an Apple Event like a file from Finder.
+                    var link = protocol.Uri.OriginalString;
+                    UiThread.Post(() => OpenRequest(link));
+                }
+                else if (e is FileActivatedEventArgs files)
                 {
                     foreach (var file in files.Files)
                     {
@@ -79,18 +88,19 @@ public sealed partial class App : Application
 
             var vm = new MainViewModel(host);
             var window = new MainWindow(vm);
+            _window = window;
             desktop.MainWindow = window;
             window.Show();
             if (Program.Instance is { } instance)
             {
                 instance.Activated += (_, request) => UiThread.Post(() =>
                 {
-                    var quickNote = request == LaunchOptions.QuickNoteSwitch;
-                    var file = quickNote ? null : request;
+                    var isLink = request is not null && AppLink.LooksLikeLink(request);
+                    var file = isLink ? null : request;
                     LogRedirectedActivation(logger, file is not null); // tools/smoke-linux.sh checks for it
-                    if (quickNote)
+                    if (isLink)
                     {
-                        _ = ShowQuickNoteAsync(window, logger);
+                        OpenRequest(request!);
                     }
                     else if (file is null)
                     {
@@ -118,10 +128,18 @@ public sealed partial class App : Application
             }
 
             _pendingFiles.Clear();
-            if (LaunchOptions.Current.QuickNote && LaunchOptions.Current.OpenFile is null)
+            if ((LaunchOptions.Current.Link?.ToString() ?? LaunchOptions.Current.InvalidLink) is { } startLink)
             {
-                await ShowQuickNoteAsync(window, logger);
+                _pendingLinks.Insert(0, startLink);
             }
+
+            foreach (var pending in _pendingLinks.ToList())
+            {
+                await OpenLinkAsync(pending);
+            }
+
+            _pendingLinks.Clear();
+            SetDockMenu();
         }
         catch (Exception ex)
         {
@@ -131,18 +149,76 @@ public sealed partial class App : Application
         }
     }
 
-    /// <summary>The quick note window (M8-01): <c>--quick-note</c> on this start or from a later one.</summary>
-    private static async Task ShowQuickNoteAsync(MainWindow window, ILogger logger)
+    /// <summary>A link from another start or from macOS; kept until the window and the last note are there.</summary>
+    private void OpenRequest(string link)
     {
+        if (_vm is null)
+        {
+            _pendingLinks.Add(link);
+        }
+        else
+        {
+            _ = OpenLinkAsync(link);
+        }
+    }
+
+    /// <summary>
+    /// A <c>wolfmark://</c> link (M8-03) or <c>--quick-note</c>: the quick note window, or the main window on its day,
+    /// note or search. One that cannot be parsed is reported.
+    /// </summary>
+    private async Task OpenLinkAsync(string text)
+    {
+        if (_window is null || _vm is null || _logger is null)
+        {
+            return;
+        }
+
         try
         {
-            await window.ShowQuickNoteAsync();
-            LogQuickNoteShown(logger); // tools/smoke-linux.sh checks for it
+            if (!AppLink.TryParse(text, out var link))
+            {
+                _window.BringToFront();
+                _vm.ErrorNotice = Strings.Format(R.Link_Invalid, text);
+                return;
+            }
+
+            await _window.OpenLinkAsync(link);
+            LogLinkOpened(_logger, link.Kind.ToString()); // tools/smoke-linux.sh checks for it
+            if (link.Kind == AppLinkKind.New)
+            {
+                LogQuickNoteShown(_logger);
+            }
         }
         catch (Exception ex)
         {
-            LogQuickNoteFailed(logger, ex);
+            LogLinkFailed(_logger, ex);
+            _vm.ErrorNotice = ex.Message;
         }
+    }
+
+    /// <summary>
+    /// macOS: New note, Today and Search in the Dock icon's menu – the jump list of the Windows app (M8-03). Linux has
+    /// the same as actions of the desktop entry (Infrastructure/DefaultHandler.cs, tools/package-desktop.sh).
+    /// </summary>
+    private void SetDockMenu()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        NativeMenuItem Item(string text, AppLink link)
+        {
+            var item = new NativeMenuItem(text);
+            item.Click += (_, _) => _ = OpenLinkAsync(link.ToString());
+            return item;
+        }
+
+        NativeDock.SetMenu(this, [
+            Item(Strings.Get(R.Link_New), AppLink.New),
+            Item(Strings.Get(R.Link_Today), AppLink.Today),
+            Item(Strings.Get(R.Link_Search), AppLink.ForSearch(null)),
+        ]);
     }
 
     /// <summary>A file from another start or from Finder; kept until the window and the last note are there.</summary>
@@ -197,8 +273,11 @@ public sealed partial class App : Application
     [LoggerMessage(Level = LogLevel.Information, Message = "Quick note shown")]
     private static partial void LogQuickNoteShown(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Opening the quick note failed")]
-    private static partial void LogQuickNoteFailed(ILogger logger, Exception ex);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Link opened: {Kind}")]
+    private static partial void LogLinkOpened(ILogger logger, string kind);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Opening a link failed")]
+    private static partial void LogLinkFailed(ILogger logger, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception ({Source})")]
     private static partial void LogUnhandled(ILogger logger, string source, Exception ex);

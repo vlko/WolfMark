@@ -98,6 +98,13 @@ internal sealed class SearchPalette : UserControl
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _input.Focus(), Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
+    /// <summary>A search opened with its text (<c>wolfmark://search?q=…</c>): the text, the caret after it.</summary>
+    public void SetText(string text)
+    {
+        _input.Text = text;
+        _input.CaretIndex = text.Length;
+    }
+
     private void BringSelectedIntoView()
     {
         if (_vm.Search.SelectedIndex is var index and >= 0 && _results.ContainerFromIndex(index) is { } container)

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using WolfMark.App.Infrastructure;
 using WolfMark.Core.Calendar;
 using WolfMark.Core.Events;
+using WolfMark.Core.Links;
 using WolfMark.Core.Notes;
 using WolfMark.Core.Settings;
 using WolfMark.Core.Tags;
@@ -298,6 +299,38 @@ internal sealed partial class MainViewModel : ObservableObject
         {
             _externalSave.Schedule(_ => _host.SaveSettingsAsync());
             _ = History.ReloadAsync();
+        }
+    }
+
+    /// <summary>
+    /// A <c>wolfmark://</c> link to a day, a note or today (M8-03) – the whole app is shown (no full view, no
+    /// search). The quick note and the search with its text are the view's (<see cref="AppLinkKind.New"/>,
+    /// <see cref="AppLinkKind.Search"/>). A note that does not exist is reported, nothing is created.
+    /// </summary>
+    public async Task OpenLinkAsync(AppLink link)
+    {
+        IsFullView = false;
+        IsSearchOpen = false;
+        switch (link.Kind)
+        {
+            case AppLinkKind.Today:
+                await GoToTodayAsync();
+                break;
+            case AppLinkKind.Day:
+                await SelectDayAsync(link.Day!.Value);
+                break;
+            case AppLinkKind.Note:
+                var path = link.Note!;
+                if (await Task.Run(() => File.Exists(_host.Engine.GetFullPath(path))))
+                {
+                    await OpenNoteAsync(path.RelativePath);
+                }
+                else
+                {
+                    ErrorNotice = Strings.Format(R.Link_NoteMissing, path.RelativePath);
+                }
+
+                break;
         }
     }
 

@@ -32,6 +32,19 @@ Icon=wolfmark
 Categories=Office;Utility;
 MimeType=text/markdown;text/x-markdown;
 StartupWMClass=WolfMark.Desktop
+Actions=new-note;today;search;
+
+[Desktop Action new-note]
+Name=New note
+Exec=wolfmark wolfmark://new
+
+[Desktop Action today]
+Name=Today
+Exec=wolfmark wolfmark://today
+
+[Desktop Action search]
+Name=Search
+Exec=wolfmark wolfmark://search
 DESKTOP
     cat > "$dir/INSTALL.txt" <<'TXT'
 WolfMark for Linux (preview)
@@ -43,6 +56,7 @@ Run ./wolfmark from this folder. To get a menu entry:
   cp wolfmark.desktop ~/.local/share/applications/
 
 Open .md files in WolfMark: Settings → Markdown files (or: xdg-mime default wolfmark.desktop text/markdown).
+wolfmark:// links (a day or a note from other apps): Settings → General → Markdown files → wolfmark:// links.
 TXT
     tar -C "$stage" -czf "$out/WolfMark-$version-$rid.tar.gz" "WolfMark-$version"
     ;;
@@ -89,6 +103,17 @@ TXT
       <array>
         <string>md</string>
         <string>markdown</string>
+      </array>
+    </dict>
+  </array>
+  <!-- wolfmark:// links (M8-03): Launch Services hands them to the app as a GetURL Apple Event. -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>net.vlko.wolfmark.link</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>wolfmark</string>
       </array>
     </dict>
   </array>

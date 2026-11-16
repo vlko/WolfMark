@@ -206,7 +206,15 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *Stav:* Hotové, ručne overené na Windows (2026-11-16): Nastavenia → Windows (štart = HKCU `Run` s `--autostart`;
   pri zapnutom tray štartuje skryto), zatvorenie okna skryje do oblasti oznámení (`Infrastructure/TrayIcon.cs`,
   Shell_NotifyIcon + subclass okna), menu Zobraziť / Nastavenia… / Ukončiť.
-- ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
+- ✅ **M8-03 – Jump list** a protokol `wolfmark://`. ADR 0013.
+  *Stav:* Hotové, ručne overené na Windows (protokol aj v demo režime, jump list mimo dema; 2026-11-16): odkazy `wolfmark://today|day/…|note/…|new|search?q=…`
+  (len navigujú; cesta musí ostať v strome poznámok), jump list Nová poznámka / Dnes / Hľadať (`ICustomDestinationList`
+  cez CsWin32; nie v deme a prenosnom režime), protokol prepínačom v Nastaveniach → Markdown súbory, „Kopírovať odkaz
+  wolfmark://“ v histórii. Linux: akcie desktop entry + `x-scheme-handler/wolfmark`; macOS: `CFBundleURLTypes`
+  + ponuka v Docku. Testy `AppLinkTests`, smoke `links` (Linux 6/6 vo WSL, 2026-11-16).
+  *AK:* jump list ukazuje tri úlohy a každá funguje so spustenou aj nespustenou aplikáciou; po zapnutí protokolu
+  otvorí `wolfmark://…` z prehliadača/Win+R správny deň, poznámku či vyhľadávanie; neplatný odkaz sa ohlási; vypnutie
+  protokol odstráni.
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
   *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu. Skratka rýchleho zápisu: M8-01.
 - ✅ **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).

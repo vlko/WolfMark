@@ -169,6 +169,11 @@ internal sealed class SettingsWindow : Window
                             {
                                 DefaultHandler.Set(false);
                             }
+
+                            if (DefaultHandler.LinksEnabled)
+                            {
+                                DefaultHandler.SetLinks(false);
+                            }
                         }
                         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                         {
@@ -245,6 +250,24 @@ internal sealed class SettingsWindow : Window
                 TaskScheduler.FromCurrentSynchronizationContext());
         }
 
+        // wolfmark:// links (M8-03): Linux switches its handler here; macOS registers them with the app bundle.
+        bool? linksWas = null;
+        var links = new ToggleSwitch { Content = Strings.Get(R.Settings_LinkProtocol), IsEnabled = false, IsVisible = DefaultHandler.LinksSupported };
+        var linksHint = Typo.Body(Strings.Get(DefaultHandler.LinksSupported ? R.Settings_LinkProtocolHint : R.Settings_LinkProtocolMac), 12.5, Palette.InkTertiary);
+        linksHint.TextWrapping = TextWrapping.Wrap;
+        linksHint.IsVisible = !isPortable;
+        if (DefaultHandler.LinksSupported && !isPortable)
+        {
+            _ = Task.Run(() => DefaultHandler.LinksEnabled).ContinueWith(
+                t =>
+                {
+                    linksWas = t.IsCompletedSuccessfully && t.Result;
+                    links.IsChecked = linksWas;
+                    links.IsEnabled = true;
+                },
+                TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
         var lineNumbers = new ToggleSwitch { IsChecked = s.EditorLineNumbers, Content = Strings.Get(R.Settings_LineNumbers) };
         var monospace = new ToggleSwitch { IsChecked = s.EditorMonospace, Content = Strings.Get(R.Settings_Monospace) };
         var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260 };
@@ -315,6 +338,19 @@ internal sealed class SettingsWindow : Window
                 }
             }
 
+            if (linksWas is { } linksBefore && (links.IsChecked == true) != linksBefore)
+            {
+                var on = links.IsChecked == true;
+                try
+                {
+                    await Task.Run(() => DefaultHandler.SetLinks(on));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _vm.ErrorNotice = Strings.Format(R.Settings_LinkProtocolFailed, ex.Message);
+                }
+            }
+
             await SaveAsync();
             _applyAppearance();
             if (_restartNeeded)
@@ -345,6 +381,8 @@ internal sealed class SettingsWindow : Window
                 fileAssociation,
                 associationHint,
                 associationPortable,
+                links,
+                linksHint,
                 Section(Strings.Get(R.Settings_Portable)),
                 portableStatus,
                 Ui.HStack(8, portableButton),

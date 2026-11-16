@@ -12,6 +12,8 @@
                        launch, never twice), inside the notes the main editor – the registry is not touched
     quicknote   M8-01  --quick-note: a later launch opens the quick note window in the running app (once, however
                        often it is asked for), a first launch with it starts the app with that window
+    links       M8-03  wolfmark:// links on the command line (what the protocol and the jump list run): a later
+                       launch hands its link to the running app, a first launch opens it – the registry is not touched
     startup     M4-09  process start to typing (last note loaded, editor focused), median of 3 warm starts on
                        existing demo data, against -StartupBudgetMs (600 = the acceptance criterion, ADR 0011)
 
@@ -26,14 +28,14 @@ param(
     [Parameter(Mandatory)] [string] $PublishDir,
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
     # "startup,files" or startup, files – run as a script file (pwsh tools/smoke-windows.ps1 …) a list arrives as one string.
-    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'quicknote', 'startup'),
+    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'quicknote', 'links', 'startup'),
     [int] $StartupBudgetMs = 600,
     # A/B: alternate 3 starts with WOLFMARK_EXPERIMENT=<name> and 3 without (StartupExperiment in the app).
     [string] $StartupExperiment
 )
 
 $ErrorActionPreference = 'Stop'
-$known = 'deps', 'screenshots', 'instance', 'files', 'quicknote', 'startup'
+$known = 'deps', 'screenshots', 'instance', 'files', 'quicknote', 'links', 'startup'
 $Checks = @($Checks | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $unknown = @($Checks | Where-Object { $known -notcontains $_ })
 if ($unknown) { throw "Unknown check(s): $($unknown -join ', '). Known: $($known -join ', ')" }
@@ -380,6 +382,56 @@ function Test-QuickNote {
     }
 }
 
+# ---------------------------------------------------------------------------------------------------------------
+# links (M8-03): what the wolfmark:// protocol and the jump list run – the exe with a link. The protocol
+# registration (HKCU, Settings) and the jump list itself are left alone: a smoke test must not change the machine.
+# ---------------------------------------------------------------------------------------------------------------
+function Wait-Log([string] $demoDir, [string] $pattern, [int] $seconds) {
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {
+        if ((Get-Log $demoDir) -match $pattern) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
+function Test-Links {
+    $demo = Join-Path $WorkDir 'demo-links'
+    $first = Join-Path $WorkDir 'demo-links-first'
+    $main = $null; $direct = $null; $others = @()
+    try {
+        $main = Start-WolfMark @('--demo', $demo)
+        if (-not (Wait-Window $main 90)) {
+            Report 'links: a later launch hands its link over' $false "no main window within 90 s (exited: $($main.HasExited))"
+            return
+        }
+
+        $note = Get-ChildItem (Join-Path $demo 'notes') -Recurse -Filter '*.md' | Where-Object { $_.FullName -notmatch '\\\.wolfmark\\' } | Select-Object -First 1
+        $rel = [IO.Path]::GetRelativePath((Join-Path $demo 'notes'), $note.FullName).Replace('\', '/') -replace '\.md$', ''
+        foreach ($case in @(
+                @('wolfmark://day/2026-11-10', 'Day'),
+                @('wolfmark://search?q=release', 'Search'),
+                @("wolfmark://note/$rel", 'Note'),
+                @('wolfmark://today', 'Today'))) {
+            $p = Start-WolfMark @('--demo', $demo, $case[0])
+            $others += $p
+            $exited = $p.WaitForExit(30000)
+            $opened = Wait-Log $demo "Link opened: $($case[1])" 10
+            Report "links: $($case[0]) in the running app" ($exited -and $opened) "second exited: $exited, opened: $opened"
+        }
+
+        $problems = Get-Problems (Get-Log $demo)
+        Report 'links: no errors logged' (-not $problems) $(if ($problems) { $problems -join "`n" } else { 'clean log' })
+
+        $direct = Start-WolfMark @('--demo', $first, 'wolfmark://today')
+        $ok = Wait-Log $first 'Link opened: Today' 90
+        Report 'links: a first launch opens its link' $ok $(if ($ok) { 'Link opened: Today' } else { "not logged (exited: $($direct.HasExited))" })
+    }
+    finally {
+        Stop-WolfMark (@($main, $direct) + $others)
+    }
+}
+
 function Get-ReadyTimes([string] $demoDir) {
     [regex]::Matches((Get-Log $demoDir), 'Ready to type (\d+) ms after the process started \(first frame (\d+) ms\)') |
         ForEach-Object { [pscustomobject]@{ Ready = [int]$_.Groups[1].Value; FirstFrame = [int]$_.Groups[2].Value } }
@@ -437,6 +489,7 @@ if ($Checks -contains 'screenshots') { Test-Screenshots }
 if ($Checks -contains 'instance') { Test-SingleInstance }
 if ($Checks -contains 'files') { Test-OpenFiles }
 if ($Checks -contains 'quicknote') { Test-QuickNote }
+if ($Checks -contains 'links') { Test-Links }
 if ($Checks -contains 'startup') { Test-Startup }
 
 $failed = @($script:results | Where-Object { -not $_.Ok })

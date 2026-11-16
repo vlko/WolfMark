@@ -108,6 +108,13 @@ internal sealed partial class SearchPalette : UserControl
         _input.Focus(FocusState.Programmatic);
     }
 
+    /// <summary>A search opened with its text (<c>wolfmark://search?q=…</c>): the text, the caret after it.</summary>
+    public void SetText(string text)
+    {
+        _input.Text = text;
+        _input.Select(text.Length, 0);
+    }
+
     private void BringSelectedIntoView()
     {
         var index = _vm.Search.SelectedIndex;

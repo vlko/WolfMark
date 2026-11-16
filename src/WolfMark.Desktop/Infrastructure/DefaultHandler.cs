@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using WolfMark.App.Infrastructure;
+using WolfMark.Core.Links;
 
 namespace WolfMark.Desktop.Infrastructure;
 
@@ -11,6 +12,8 @@ namespace WolfMark.Desktop.Infrastructure;
 /// makes it the default handler – only a bundled app (WolfMark.app) can be one. Linux: a desktop entry of this copy
 /// of the app (its own name per folder, so a development build does not replace the installed one) set as the
 /// default for text/markdown with xdg-mime. The system's state is the truth. Call off the UI thread.
+/// Also wolfmark:// links (M8-03, ADR 0013): on Linux a hidden desktop entry for x-scheme-handler/wolfmark; on macOS
+/// the app bundle declares the scheme (CFBundleURLTypes) and Launch Services hands links to it on its own.
 /// </summary>
 internal static partial class DefaultHandler
 {
@@ -18,6 +21,7 @@ internal static partial class DefaultHandler
     private const string TextEditBundleId = "com.apple.TextEdit";
     private static readonly string[] ContentTypes = ["net.daringfireball.markdown", "public.markdown"];
     private static readonly string[] MimeTypes = ["text/markdown", "text/x-markdown"];
+    private const string LinkMimeType = "x-scheme-handler/" + AppLink.Scheme;
 
     /// <summary>False when this run cannot be a default handler (macOS outside an app bundle).</summary>
     public static bool IsSupported => OperatingSystem.IsLinux() || (OperatingSystem.IsMacOS() && AppContext.BaseDirectory.Contains(".app/Contents/", StringComparison.Ordinal));
@@ -68,6 +72,48 @@ internal static partial class DefaultHandler
         }
     }
 
+    /// <summary>Links can be switched in the settings (Linux); macOS registers them with the bundle.</summary>
+    public static bool LinksSupported => OperatingSystem.IsLinux();
+
+    public static bool LinksEnabled =>
+        OperatingSystem.IsLinux()
+        && File.Exists(LinkDesktopFile)
+        && string.Equals(Run("xdg-mime", "query", "default", LinkMimeType)?.Trim(), LinkDesktopFileName, StringComparison.Ordinal);
+
+    /// <summary>Makes this copy the handler of wolfmark:// links, or removes it (Linux).</summary>
+    public static void SetLinks(bool enabled)
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
+        if (!enabled)
+        {
+            File.Delete(LinkDesktopFile);
+            Run("update-desktop-database", ApplicationsDirectory);
+            RemoveFromMimeApps(LinkDesktopFileName);
+            return;
+        }
+
+        var entry = new StringBuilder()
+            .AppendLine("[Desktop Entry]")
+            .AppendLine("Type=Application")
+            .AppendLine("Name=WolfMark (links)")
+            .AppendLine($"Exec=\"{Exe}\"{DemoArguments} %u")
+            .AppendLine("NoDisplay=true")
+            .AppendLine("Terminal=false")
+            .AppendLine("MimeType=" + LinkMimeType + ";")
+            .ToString();
+        Directory.CreateDirectory(ApplicationsDirectory);
+        File.WriteAllText(LinkDesktopFile, entry);
+        Run("update-desktop-database", ApplicationsDirectory);
+        if (Run("xdg-mime", "default", LinkDesktopFileName, LinkMimeType) is null)
+        {
+            throw new IOException("xdg-mime is not available (package xdg-utils).");
+        }
+    }
+
     // ---------------------------------------------------------------- Linux
 
     private static string Exe => Environment.ProcessPath ?? throw new InvalidOperationException("No process path.");
@@ -83,11 +129,18 @@ internal static partial class DefaultHandler
 
     private static string DesktopFile => Path.Combine(ApplicationsDirectory, DesktopFileName);
 
+    /// <summary>"wolfmark-3f2a…-links.desktop": the hidden entry of wolfmark:// links (%u, not %f – a link is no file).</summary>
+    private static string LinkDesktopFileName => "wolfmark-" + InstanceIdentity.Hash(Path.GetDirectoryName(Exe)!) + "-links.desktop";
+
+    private static string LinkDesktopFile => Path.Combine(ApplicationsDirectory, LinkDesktopFileName);
+
+    private static string DemoArguments => LaunchOptions.Current.DemoDirectory is { } d ? $" --demo \"{d}\"" : string.Empty;
+
     private static void LinuxRegister()
     {
         var folder = Path.GetDirectoryName(Exe)!;
         var icon = Path.Combine(folder, "wolfmark.png");
-        var demo = LaunchOptions.Current.DemoDirectory is { } d ? $" --demo \"{d}\"" : string.Empty;
+        var demo = DemoArguments;
         var entry = new StringBuilder()
             .AppendLine("[Desktop Entry]")
             .AppendLine("Type=Application")
@@ -99,6 +152,20 @@ internal static partial class DefaultHandler
             .AppendLine("Categories=Office;Utility;")
             .AppendLine("MimeType=" + string.Join(';', MimeTypes) + ";")
             .AppendLine("StartupWMClass=WolfMark.Desktop")
+            // New note, Today, Search in the launcher's menu of the icon – the jump list of the Windows app (M8-03).
+            .AppendLine("Actions=new-note;today;search;")
+            .AppendLine()
+            .AppendLine("[Desktop Action new-note]")
+            .AppendLine("Name=" + Strings.Get(R.Link_New))
+            .AppendLine($"Exec=\"{Exe}\"{demo} {AppLink.New}")
+            .AppendLine()
+            .AppendLine("[Desktop Action today]")
+            .AppendLine("Name=" + Strings.Get(R.Link_Today))
+            .AppendLine($"Exec=\"{Exe}\"{demo} {AppLink.Today}")
+            .AppendLine()
+            .AppendLine("[Desktop Action search]")
+            .AppendLine("Name=" + Strings.Get(R.Link_Search))
+            .AppendLine($"Exec=\"{Exe}\"{demo} {AppLink.ForSearch(null)}")
             .ToString();
         Directory.CreateDirectory(ApplicationsDirectory);
         File.WriteAllText(DesktopFile, entry);
@@ -117,13 +184,19 @@ internal static partial class DefaultHandler
     {
         File.Delete(DesktopFile);
         Run("update-desktop-database", ApplicationsDirectory);
+        RemoveFromMimeApps(DesktopFileName);
+    }
+
+    /// <summary>The lines of <paramref name="desktopFileName"/> out of mimeapps.list; the desktop picks another handler.</summary>
+    private static void RemoveFromMimeApps(string desktopFileName)
+    {
         var config = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } c
             ? c
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
         var list = Path.Combine(config, "mimeapps.list");
         if (File.Exists(list))
         {
-            var lines = File.ReadAllLines(list).Where(l => !l.EndsWith("=" + DesktopFileName, StringComparison.Ordinal) && !l.EndsWith("=" + DesktopFileName + ";", StringComparison.Ordinal));
+            var lines = File.ReadAllLines(list).Where(l => !l.EndsWith("=" + desktopFileName, StringComparison.Ordinal) && !l.EndsWith("=" + desktopFileName + ";", StringComparison.Ordinal));
             File.WriteAllLines(list, lines);
         }
     }

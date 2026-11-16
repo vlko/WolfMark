@@ -12,6 +12,7 @@ using WolfMark.Core.Diagnostics;
 using WolfMark.App.Theming;
 using WolfMark.App.Ui;
 using WolfMark.App.ViewModels;
+using WolfMark.Core.Links;
 using WolfMark.Core.Settings;
 using WolfMark.Editor;
 
@@ -254,6 +255,34 @@ internal sealed partial class MainWindow : Window
             LogHotkeyTaken(_host.Loggers.CreateLogger(nameof(MainWindow)), chord.ToString());
             _vm.ErrorNotice = Strings.Format(R.Settings_QuickNoteTaken, chord.ToString());
         }
+    }
+
+    /// <summary>
+    /// A <c>wolfmark://</c> link (M8-03) from the protocol, the jump list or another launch: the quick note window,
+    /// or the main window on its day, note or search.
+    /// </summary>
+    public async Task OpenLinkAsync(AppLink link)
+    {
+        if (link.Kind == AppLinkKind.New)
+        {
+            await ShowQuickNoteAsync();
+            return;
+        }
+
+        BringToFront();
+        if (link.Kind == AppLinkKind.Search)
+        {
+            _vm.IsFullView = false;
+            _vm.OpenSearch();
+            if (link.Query is { } query)
+            {
+                EnsureSearch().SetText(query);
+            }
+
+            return;
+        }
+
+        await _vm.OpenLinkAsync(link);
     }
 
     /// <summary>The quick note window with a new note (global shortcut, <c>--quick-note</c>); built on first use.</summary>

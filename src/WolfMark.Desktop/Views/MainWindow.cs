@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using WolfMark.App;
 using WolfMark.App.Infrastructure;
 using WolfMark.App.ViewModels;
+using WolfMark.Core.Links;
 using WolfMark.Core.Settings;
 using WolfMark.Desktop.Editor;
 using WolfMark.Desktop.Theming;
@@ -131,6 +132,34 @@ internal sealed class MainWindow : Window
         window.Closed += (_, _) => _externalWindows.Remove(fullPath);
         window.Show();
         _ = window.LoadAsync();
+    }
+
+    /// <summary>
+    /// A <c>wolfmark://</c> link (M8-03) from the protocol, the jump list or another launch: the quick note window,
+    /// or the main window on its day, note or search.
+    /// </summary>
+    public async Task OpenLinkAsync(AppLink link)
+    {
+        if (link.Kind == AppLinkKind.New)
+        {
+            await ShowQuickNoteAsync();
+            return;
+        }
+
+        BringToFront();
+        if (link.Kind == AppLinkKind.Search)
+        {
+            _vm.IsFullView = false;
+            _vm.OpenSearch();
+            if (link.Query is { } query)
+            {
+                _search.SetText(query);
+            }
+
+            return;
+        }
+
+        await _vm.OpenLinkAsync(link);
     }
 
     /// <summary>The quick note window with a new note (<c>--quick-note</c>, M8-01); built on first use.</summary>

@@ -8,7 +8,10 @@ namespace WolfMark.App.Infrastructure;
 /// </summary>
 internal static class SystemIntegration
 {
-    /// <summary>Removes start at sign-in and the .md association of this exe; best effort, the mode switch already happened.</summary>
+    /// <summary>
+    /// Removes start at sign-in, the .md association, the wolfmark:// protocol and the jump list of this exe; best
+    /// effort, the mode switch already happened.
+    /// </summary>
     public static void Remove()
     {
         try
@@ -30,6 +33,22 @@ internal static class SystemIntegration
             }
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or SecurityException or IOException)
+        {
+        }
+
+        try
+        {
+            LinkProtocol.Set(false);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or SecurityException or IOException)
+        {
+        }
+
+        try
+        {
+            TaskbarJumpList.Clear();
+        }
+        catch (IOException)
         {
         }
     }

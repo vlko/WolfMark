@@ -49,6 +49,22 @@ public sealed class LaunchOptionsTests
         Assert.True(options.QuickNote);
         Assert.Null(options.OpenFile);
         Assert.False(LaunchOptions.Parse(["WolfMark"]).QuickNote);
+        Assert.True(LaunchOptions.Parse(["WolfMark", "wolfmark://new"]).QuickNote);
+    }
+
+    [Fact]
+    public void A_link_is_not_a_file()
+    {
+        var options = LaunchOptions.Parse(["WolfMark", "--demo", "demo", "wolfmark://day/2026-11-16"]);
+
+        Assert.Equal(WolfMark.Core.Links.AppLinkKind.Day, options.Link?.Kind);
+        Assert.Null(options.OpenFile);
+        Assert.Null(options.InvalidLink);
+
+        var bad = LaunchOptions.Parse(["WolfMark", "wolfmark://note/../../secret"]);
+        Assert.Null(bad.Link);
+        Assert.Null(bad.OpenFile);
+        Assert.Equal("wolfmark://note/../../secret", bad.InvalidLink);
     }
 }
 

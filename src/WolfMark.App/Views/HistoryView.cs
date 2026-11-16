@@ -137,6 +137,17 @@ internal sealed partial class HistoryView : UserControl
             Clipboard.SetContent(data);
         };
 
+        var copyAppLink = new MenuFlyoutItem { Text = Strings.Get(R.Menu_CopyAppLink), Icon = new FontIcon { Glyph = Glyphs.Link } };
+        copyAppLink.Click += (_, _) =>
+        {
+            if (WolfMark.Core.Notes.NotePath.TryParse(note.RelativePath, out var path))
+            {
+                var data = new DataPackage();
+                data.SetText(WolfMark.Core.Links.AppLink.ForNote(path).ToString());
+                Clipboard.SetContent(data);
+            }
+        };
+
         var tagMenu = new MenuFlyoutSubItem { Text = Strings.Get(R.Menu_ChangeTag), Icon = new FontIcon { Glyph = Glyphs.Tag } };
         tagMenu.IsEnabled = note.IsStandard && !note.IsClaudeCode;
         tagMenu.Items.Add(TagItem(null));
@@ -174,6 +185,7 @@ internal sealed partial class HistoryView : UserControl
         menu.Items.Add(tagMenu);
         menu.Items.Add(open);
         menu.Items.Add(copy);
+        menu.Items.Add(copyAppLink);
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(delete);
         return menu;

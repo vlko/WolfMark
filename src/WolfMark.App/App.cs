@@ -99,6 +99,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
 
             host.StartBackground();
+            UpdateJumpList(host, logger);
             await _window.InitializeAsync(() =>
             {
                 if (firstFrame is { } shown)
@@ -118,9 +119,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 await vm.OpenFileAsync(file);
             }
 
-            if (LaunchOptions.Current.QuickNote && LaunchOptions.Current.ScreenshotDirectory is null)
+            if (LaunchOptions.Current.ScreenshotDirectory is null)
             {
-                await _window.ShowQuickNoteAsync();
+                await OpenLinkAsync(_window, LaunchOptions.Current);
             }
 
             if (LaunchOptions.Current.ScreenshotDirectory is { } shots)
@@ -219,7 +220,8 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
     /// <summary>
     /// A later start (another command line, or Explorer opening a <c>.md</c> file): its file opens here, with
-    /// <c>--quick-note</c> the quick note window, otherwise the window just comes to the front. Runs on a background thread.
+    /// a link (<c>wolfmark://…</c>, <c>--quick-note</c>) its day, note, search or the quick note window, otherwise the
+    /// window just comes to the front. Runs on a background thread.
     /// </summary>
     internal void OnRedirectedActivation(AppActivationArguments e)
     {
@@ -237,9 +239,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 return;
             }
 
-            if (options is { QuickNote: true, OpenFile: null })
+            if (options is { OpenFile: null } && (options.Link is not null || options.InvalidLink is not null))
             {
-                _ = _window.ShowQuickNoteAsync();
+                _ = OpenLinkAsync(_window, options);
             }
             else if (file is null)
             {
@@ -253,6 +255,62 @@ public sealed partial class App : Application, IXamlMetadataProvider
     }
 
     /// <summary>
+    /// Jump list tasks (M8-03) in the current language, rewritten on every start (the exe may have moved). Not in
+    /// demo or portable mode: nothing of this copy stays in the system (ADR 0009).
+    /// </summary>
+    private static void UpdateJumpList(AppHost host, ILogger logger)
+    {
+        if (LaunchOptions.Current.IsDemo || host.PortableDataDirectory is not null)
+        {
+            return;
+        }
+
+        (string, string)[] tasks =
+        [
+            (Strings.Get(R.Link_New), WolfMark.Core.Links.AppLink.New.ToString()),
+            (Strings.Get(R.Link_Today), WolfMark.Core.Links.AppLink.Today.ToString()),
+            (Strings.Get(R.Link_Search), WolfMark.Core.Links.AppLink.ForSearch(null).ToString()),
+        ];
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                TaskbarJumpList.Update(tasks, string.Empty);
+            }
+            catch (IOException ex)
+            {
+                LogJumpListFailed(logger, ex);
+            }
+        });
+    }
+
+    /// <summary>The link of a launch or a redirected activation (M8-03); one that could not be parsed is reported.</summary>
+    private async Task OpenLinkAsync(MainWindow window, LaunchOptions options)
+    {
+        try
+        {
+            if (options.Link is { } link)
+            {
+                await window.OpenLinkAsync(link);
+                if (_logger is not null)
+                {
+                    LogLinkOpened(_logger, link.Kind.ToString()); // tools/smoke-windows.ps1 checks for it
+                }
+            }
+            else if (options.InvalidLink is { } invalid)
+            {
+                window.BringToFront();
+                window.ViewModel.ErrorNotice = Strings.Format(R.Link_Invalid, invalid);
+            }
+        }
+        catch (Exception ex) when (_logger is not null)
+        {
+            LogLinkFailed(_logger, ex);
+            window.ViewModel.ErrorNotice = ex.Message;
+        }
+    }
+
+    /// <summary>
     /// The command line of a redirected activation (a file activation as its file). A launch carries the second process's command line as one string – with
     /// or without the program in front, so a first word that is not an .exe is taken as an argument already.
     /// </summary>
@@ -260,6 +318,8 @@ public sealed partial class App : Application, IXamlMetadataProvider
     {
         switch (e.Data)
         {
+            case Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocol:
+                return LaunchOptions.Parse(new[] { "WolfMark.exe", protocol.Uri.OriginalString });
             case Windows.ApplicationModel.Activation.IFileActivatedEventArgs files:
                 return files.Files.Count > 0 ? new LaunchOptions(null, null, OpenFile: files.Files[0].Path) : null;
             case Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch when !string.IsNullOrWhiteSpace(launch.Arguments):
@@ -354,6 +414,15 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Activation redirected from another launch (with file: {WithFile})")]
     private static partial void LogRedirectedActivation(ILogger logger, bool withFile);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Jump list not updated")]
+    private static partial void LogJumpListFailed(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Opening a link failed")]
+    private static partial void LogLinkFailed(ILogger logger, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Link opened: {Kind}")]
+    private static partial void LogLinkOpened(ILogger logger, string kind);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception ({Source}) {Detail}")]
     private static partial void LogUnhandled(ILogger logger, string source, string detail, Exception ex);
