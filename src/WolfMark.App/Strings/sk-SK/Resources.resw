@@ -315,6 +315,18 @@
   <data name="Settings_ColorEmoji" xml:space="preserve">
     <value>Farebné emotikony</value>
   </data>
+  <data name="Settings_TextWidth" xml:space="preserve">
+    <value>Šírka textu</value>
+  </data>
+  <data name="Settings_TextWidthFull" xml:space="preserve">
+    <value>Celé okno</value>
+  </data>
+  <data name="Settings_TextWidthChars" xml:space="preserve">
+    <value>Približne {0} znakov</value>
+  </data>
+  <data name="Settings_TextWidthHint" xml:space="preserve">
+    <value>Pre široké monitory: dlhé riadky sa zalomia na zvolenú dĺžku a text sa vycentruje v okne, takže sa ľahšie číta.</value>
+  </data>
   <data name="Settings_DefaultMode" xml:space="preserve">
     <value>Predvolený režim</value>
   </data>

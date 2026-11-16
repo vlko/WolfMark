@@ -46,6 +46,15 @@ public sealed class LocalSettings
     public static double ZoomFontSize(double size, int steps) =>
         Math.Clamp(Math.Round(size) + steps, EditorFontSizeMin, EditorFontSizeMax);
 
+    /// <summary>
+    /// Lines wrap at about this many characters and the text is centred in a wider window (readability);
+    /// 0 = the lines span the whole editor.
+    /// </summary>
+    public int EditorMaxLineLength { get; set; }
+
+    /// <summary>Choices offered in the settings for <see cref="EditorMaxLineLength"/>.</summary>
+    public static IReadOnlyList<int> EditorMaxLineLengthChoices { get; } = [0, 60, 80, 100, 120];
+
     /// <summary>Emoji drawn in colour (Windows editor) instead of in the text colour.</summary>
     public bool EditorColorEmoji { get; set; } = true;
 

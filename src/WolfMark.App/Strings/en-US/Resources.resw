@@ -315,6 +315,18 @@
   <data name="Settings_ColorEmoji" xml:space="preserve">
     <value>Colour emoji</value>
   </data>
+  <data name="Settings_TextWidth" xml:space="preserve">
+    <value>Text width</value>
+  </data>
+  <data name="Settings_TextWidthFull" xml:space="preserve">
+    <value>Whole window</value>
+  </data>
+  <data name="Settings_TextWidthChars" xml:space="preserve">
+    <value>About {0} characters</value>
+  </data>
+  <data name="Settings_TextWidthHint" xml:space="preserve">
+    <value>For wide monitors: long lines wrap at the chosen length and the text sits centred in the window, which is easier to read.</value>
+  </data>
   <data name="Settings_DefaultMode" xml:space="preserve">
     <value>Default mode</value>
   </data>

@@ -236,6 +236,13 @@ internal static class SettingsDialog
         var colorEmoji = new ToggleSwitch { IsOn = s.EditorColorEmoji, Header = Strings.Get(R.Settings_ColorEmoji) };
         var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = LocalSettings.EditorFontSizeMin, Maximum = LocalSettings.EditorFontSizeMax, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
+        // Text width: the offered lengths, plus a value written into settings.json by hand.
+        var widths = LocalSettings.EditorMaxLineLengthChoices.Append(Math.Max(0, s.EditorMaxLineLength)).Distinct().Order().ToArray();
+        var textWidth = Combo(
+            [.. widths.Select(n => n == 0 ? Strings.Get(R.Settings_TextWidthFull) : Strings.Format(R.Settings_TextWidthChars, n))],
+            Array.IndexOf(widths, Math.Max(0, s.EditorMaxLineLength)));
+        var textWidthHint = Typo.Body(Strings.Get(R.Settings_TextWidthHint), 12.5, Palette.InkTertiary);
+        textWidthHint.TextWrapping = TextWrapping.Wrap;
 
         // Claude Code
         var cc = s.ClaudeCode;
@@ -364,6 +371,8 @@ internal static class SettingsDialog
                 Field(Strings.Get(R.Settings_MonoFont), monoFont.Element),
                 Field(Strings.Get(R.Settings_FontFamily), font),
                 Field(Strings.Get(R.Settings_FontSize), fontSize),
+                Field(Strings.Get(R.Settings_TextWidth), textWidth),
+                textWidthHint,
                 Field(Strings.Get(R.Settings_DefaultMode), mode))),
             (Glyphs.Tag, Strings.Get(R.Settings_Tags), TagsPage(vm, () => { showNotesClose = true; dialogRef?.Hide(); })),
             (Glyphs.Code, Strings.Get(R.Settings_ClaudeCode), Ui.Ui.VStack(
@@ -425,6 +434,7 @@ internal static class SettingsDialog
         s.EditorLineNumbers = lineNumbers.IsOn;
         s.EditorColorEmoji = colorEmoji.IsOn;
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
+        s.EditorMaxLineLength = widths[Math.Max(0, textWidth.SelectedIndex)];
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
         s.CloseToTray = closeToTray.IsOn;
         s.QuickNote.HotkeyEnabled = quickNote.Enabled.IsOn;

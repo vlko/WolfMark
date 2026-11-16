@@ -140,7 +140,27 @@ public sealed partial class MarkdownEditor : UserControl
             _numberFormat?.Dispose();
             _numberFormat = null; // size follows the theme; the number layouts go with it
             RecreateFormat();
+            _layoutWidth = TextWidth(); // the font size moves the gutter and a MaxLineLength width
             RelayoutAll();
+        }
+    }
+
+    /// <summary>
+    /// Lines wrap at about this many characters of running text (it follows the font and its size); a wider view
+    /// centres the text. 0 = the lines span the whole width.
+    /// </summary>
+    public int MaxLineLength
+    {
+        get => _maxLineLength;
+        set
+        {
+            value = Math.Max(0, value);
+            if (_maxLineLength != value)
+            {
+                _maxLineLength = value;
+                OnViewportResized();
+                _canvas.Invalidate();
+            }
         }
     }
 

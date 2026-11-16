@@ -25,7 +25,19 @@ public sealed partial class MarkdownEditor
     private CanvasTextFormat? _format;
     private double _emptyLineHeight = 20;
 
-    private double PadLeft => (AlignLeft ? 18 : 24) + Gutter;
+    private int _maxLineLength;
+    private float _charWidth = 8; // average width of a character of running text, for MaxLineLength
+
+    /// <summary>Left of the text without centring: the margin and the line numbers.</summary>
+    private double TextLeft => (AlignLeft ? 18 : 24) + Gutter;
+
+    /// <summary>
+    /// Left edge of the text. With a <see cref="MaxLineLength"/> narrower than the view the column (line numbers
+    /// included) is centred: the spare room goes half left, half right.
+    /// </summary>
+    private double PadLeft => _maxLineLength > 0 && _scroll.ViewportWidth > 0
+        ? TextLeft + Math.Max(0, Math.Floor((_scroll.ViewportWidth - TextLeft - PadRight - _layoutWidth) / 2))
+        : TextLeft;
 
     private const double PadTop = 12;
     private const double PadRight = 24;
@@ -114,6 +126,8 @@ public sealed partial class MarkdownEditor
         };
         using var probe = new CanvasTextLayout(CanvasDevice.GetSharedDevice(), "Xg", _format, 1000, 0);
         _emptyLineHeight = probe.LayoutBounds.Height;
+        using var sample = new CanvasTextLayout(CanvasDevice.GetSharedDevice(), LineLengthSample, _format, 100_000, 0);
+        _charWidth = (float)Math.Max(1, sample.LayoutBounds.Width / LineLengthSample.Length);
     }
 
     /// <summary>
@@ -487,8 +501,25 @@ public sealed partial class MarkdownEditor
         _canvas.Height = Math.Min(16_000_000, Math.Max(_scroll.ViewportHeight, PadTop + _totalHeight + PadBottom));
     }
 
+    /// <summary>Running text whose average character width turns <see cref="MaxLineLength"/> into a width.</summary>
+    private const string LineLengthSample = "the quick brown fox jumps over the lazy dog. The Quick Brown Fox, 1234567890";
+
     /// <summary>Width the lines wrap at (before the first layout pass the last known one).</summary>
-    private float TextWidth() => _scroll.ViewportWidth > 0 ? (float)Math.Max(50, _scroll.ViewportWidth - PadLeft - PadRight) : _layoutWidth;
+    private float TextWidth()
+    {
+        if (_scroll.ViewportWidth <= 0)
+        {
+            return _layoutWidth;
+        }
+
+        var width = _scroll.ViewportWidth - TextLeft - PadRight;
+        if (_maxLineLength > 0)
+        {
+            width = Math.Min(width, Math.Ceiling(_maxLineLength * _charWidth));
+        }
+
+        return (float)Math.Max(50, width);
+    }
 
     private void OnViewportResized()
     {
@@ -501,6 +532,10 @@ public sealed partial class MarkdownEditor
         else
         {
             UpdateCanvasSize();
+            if (_maxLineLength > 0)
+            {
+                _canvas.Invalidate(); // same width, but the centred column moved
+            }
         }
 
         UpdateOverflow();

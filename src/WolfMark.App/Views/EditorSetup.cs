@@ -74,5 +74,6 @@ internal static class EditorSetup
             ColorFonts = s.EditorColorEmoji,
         };
         editor.ShowLineNumbers = s.EditorLineNumbers;
+        editor.MaxLineLength = s.EditorMaxLineLength;
     }
 }

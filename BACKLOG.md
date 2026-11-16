@@ -215,8 +215,17 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *AK:* jump list ukazuje tri úlohy a každá funguje so spustenou aj nespustenou aplikáciou; po zapnutí protokolu
   otvorí `wolfmark://…` z prehliadača/Win+R správny deň, poznámku či vyhľadávanie; neplatný odkaz sa ohlási; vypnutie
   protokol odstráni.
-- 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
-  *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu. Skratka rýchleho zápisu: M8-01.
+- ✅ **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
+  *Stav:* Hotové, šírka textu ručne overená na Windows (2026-11-16): priečinok (presun/prepnutie), téma, backdrop, jazyk, editor
+  (písmo, veľkosť, čísla riadkov, farebné emotikony, **šírka textu**), Claude Code, rebuild indexu; v titulku verzia,
+  Diagnostika s kopírovaním. Šírka textu (2026-11-16): Nastavenia → Editor → „Šírka textu“ = Celé okno (predvolené)
+  / ~60 / ~80 / ~100 / ~120 znakov (`EditorMaxLineLength`, popisok „pre široké monitory“); počet znakov podľa priemernej šírky znaku zvoleného písma
+  a veľkosti, širšie okno stĺpec textu (aj s číslami riadkov) vycentruje, posuvník ostáva pri okraji. V oboch
+  aplikáciách (`MarkdownEditor.MaxLineLength`, Avalonia `MarkdownTextEditor.MaxLineLength`). Voľba embedding modelu
+  presunutá do M2-05. Skratka rýchleho zápisu: M8-01.
+  *AK:* pri ~80 znakoch má riadok bežného textu v širokom okne ~80 znakov a je vycentrovaný; Ctrl +/− šírku stĺpca
+  prepočíta; užšie okno zalamuje na šírku okna; „Celé okno“ = správanie ako predtým; klik a výber v posunutom texte
+  trafí správny znak; obrázky a tabuľky sa zmestia do stĺpca.
 - ✅ **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).
   Nastavenia → Tagy: zoznam tagov (aj bez poznámok, z `tags.json`), pridanie nového; pri každom tagu vyskakovacie okno
   s farbou, titulkami v kalendári, „Zobraziť poznámky“, premenovaním (na existujúci tag = zlúčenie) a odstránením
@@ -260,6 +269,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M2-05 – 🟡 Embedding provider** (presunuté z M2 – odložené 2026-11-13, ID ostáva kvôli odkazom v kóde a ADR 0003).
   Rozhranie `IEmbeddingProvider`; implementácia ONNX Runtime + multilingválny model; stiahnutie modelu pri prvom použití s overením hashu; chunking; dávkové počítanie v pozadí s nízkou prioritou.
   *Stav:* Čiastočne: `IEmbeddingProvider`, chunking, `EmbeddingIndexer` (nízka priorita, zmena modelu = prepočet). **ONNX provider + model chýba.**
+  Patrí sem aj **voľba embedding modelu v Nastaveniach → Index** (SPEC §4.6, presunuté z M8-04) – má zmysel až s prvým modelom.
   *AK:* Indexovanie embeddingov nezvýši latenciu UI (merať); AOT build bez trim warningov. Ak ONNX pod AOT zlyhá, zdokumentovať a navrhnúť alternatívu.
   *Postup:* najprv spike – AOT publish s `Microsoft.ML.OnnxRuntime` (win-x64/arm64, linux-x64, osx-arm64), tokenizér bez reflexie, model (napr. `multilingual-e5-small`) → ADR.
 - ⬜ **M9-03 – 🟡 Podobné poznámky** pod editorom (vektory). *Závisí od M2-05.*

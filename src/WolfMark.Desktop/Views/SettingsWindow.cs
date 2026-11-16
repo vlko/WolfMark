@@ -282,6 +282,13 @@ internal sealed class SettingsWindow : Window
         monoFont.SelectedItem = monoFonts.First(f => string.Equals(f, s.EditorMonoFontFamily, StringComparison.OrdinalIgnoreCase));
         var fontSize = new NumericUpDown { Value = (decimal)s.EditorFontSize, Minimum = 10, Maximum = 28, Increment = 1, MinWidth = 140 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
+        // Text width: the offered lengths, plus a value written into settings.json by hand.
+        var widths = LocalSettings.EditorMaxLineLengthChoices.Append(Math.Max(0, s.EditorMaxLineLength)).Distinct().Order().ToArray();
+        var textWidth = Combo(
+            [.. widths.Select(n => n == 0 ? Strings.Get(R.Settings_TextWidthFull) : Strings.Format(R.Settings_TextWidthChars, n))],
+            Array.IndexOf(widths, Math.Max(0, s.EditorMaxLineLength)));
+        var textWidthHint = Typo.Body(Strings.Get(R.Settings_TextWidthHint), 12.5, Palette.InkTertiary);
+        textWidthHint.TextWrapping = TextWrapping.Wrap;
 
         var cc = s.ClaudeCode;
         var ccEnabled = new ToggleSwitch { IsChecked = cc.Enabled, Content = Strings.Get(R.Settings_ClaudeEnabled) };
@@ -321,6 +328,7 @@ internal sealed class SettingsWindow : Window
             s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
             s.EditorMonoFontFamily = monoFont.SelectedItem as string ?? s.EditorMonoFontFamily;
             s.EditorFontSize = (double)(fontSize.Value ?? (decimal)s.EditorFontSize);
+            s.EditorMaxLineLength = widths[Math.Max(0, textWidth.SelectedIndex)];
             s.DefaultEditorMode = (EditorMode)Math.Max(0, mode.SelectedIndex);
             cc.Enabled = ccEnabled.IsChecked == true;
             cc.ClaudeDirectory = string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim();
@@ -398,6 +406,8 @@ internal sealed class SettingsWindow : Window
                 Field(Strings.Get(R.Settings_MonoFont), monoFont),
                 Field(Strings.Get(R.Settings_FontFamily), font),
                 Field(Strings.Get(R.Settings_FontSize), fontSize),
+                Field(Strings.Get(R.Settings_TextWidth), textWidth),
+                textWidthHint,
                 Field(Strings.Get(R.Settings_DefaultMode), mode))),
             (Icons.Tag, Strings.Get(R.Settings_Tags), TagsPage(vm, () => save.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)))),
             (Icons.Code, Strings.Get(R.Settings_ClaudeCode), Ui.VStack(

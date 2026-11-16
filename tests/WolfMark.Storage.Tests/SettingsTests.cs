@@ -51,6 +51,16 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public void Text_width_is_the_whole_window_unless_set()
+    {
+        var older = System.Text.Json.JsonSerializer.Deserialize("""{ "theme": "Dark" }""", WolfMarkJsonContext.Default.LocalSettings);
+        Assert.Equal(0, older!.EditorMaxLineLength);
+        var json = System.Text.Json.JsonSerializer.Serialize(new LocalSettings { EditorMaxLineLength = 80 }, WolfMarkJsonContext.Default.LocalSettings);
+        Assert.Equal(80, System.Text.Json.JsonSerializer.Deserialize(json, WolfMarkJsonContext.Default.LocalSettings)!.EditorMaxLineLength);
+        Assert.Contains(0, LocalSettings.EditorMaxLineLengthChoices);
+    }
+
+    [Fact]
     public async Task Settings_round_trip()
     {
         using var dir = new TempDirectory();

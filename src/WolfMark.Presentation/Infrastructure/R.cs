@@ -104,6 +104,10 @@ internal static class R
     public const string MonoFont_Loading = nameof(MonoFont_Loading);
     public const string Settings_FontSize = nameof(Settings_FontSize);
     public const string Settings_ColorEmoji = nameof(Settings_ColorEmoji);
+    public const string Settings_TextWidth = nameof(Settings_TextWidth);
+    public const string Settings_TextWidthFull = nameof(Settings_TextWidthFull);
+    public const string Settings_TextWidthChars = nameof(Settings_TextWidthChars);
+    public const string Settings_TextWidthHint = nameof(Settings_TextWidthHint);
     public const string Settings_DefaultMode = nameof(Settings_DefaultMode);
     public const string Settings_ClaudeCode = nameof(Settings_ClaudeCode);
     public const string Settings_ClaudeEnabled = nameof(Settings_ClaudeEnabled);

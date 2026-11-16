@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -41,6 +42,10 @@ internal enum FormatCommand
 internal sealed class MarkdownTextEditor : UserControl
 {
     private const int PreviewRows = 5;
+    private const double PadLeft = 18, PadRight = 24;
+
+    /// <summary>Running text whose average character width turns <see cref="MaxLineLength"/> into a width.</summary>
+    private const string LineLengthSample = "the quick brown fox jumps over the lazy dog. The Quick Brown Fox, 1234567890";
 
     private readonly TextEditor _editor = new();
     private readonly MarkdownHighlighter _highlighter = new();
@@ -59,6 +64,8 @@ internal sealed class MarkdownTextEditor : UserControl
     private readonly LineNumberMargin _lineNumbers;
     private readonly MarkerChips _chips;
     private int _caretLine;
+    private int _maxLineLength;
+    private double _centring; // added to both sides of the padding to centre a MaxLineLength column
     private List<MarkdownTable> _tables = [];
     private int _activeTable = -1; // first line (0-based) of the table holding the caret
     private readonly Dictionary<int, CollapsedLineSection> _tableFolds = []; // by table's first line: lines under shown grids
@@ -68,7 +75,7 @@ internal sealed class MarkdownTextEditor : UserControl
     {
         _editor.WordWrap = true;
         _editor.Background = Brushes.Transparent;
-        _editor.Padding = new Thickness(18, 0, 24, 24);
+        _editor.Padding = new Thickness(PadLeft, 0, PadRight, 24);
         _editor.Options.EnableHyperlinks = false;
         _editor.Options.EnableEmailHyperlinks = false;
         _editor.Options.HighlightCurrentLine = false;
@@ -81,6 +88,7 @@ internal sealed class MarkdownTextEditor : UserControl
         _editor.ContextMenu = BuildContextMenu();
         _editor.TextArea.TextView.ScrollOffsetChanged += (_, _) => UpdateOverflow();
         _editor.TextArea.TextView.VisualLinesChanged += (_, _) => UpdateOverflow();
+        _editor.TextArea.TextView.SizeChanged += (_, _) => UpdateTextColumn();
         _editor.TextArea.TextView.LineTransformers.Add(new MarkdownColorizer(this));
         _editor.TextArea.TextView.ElementGenerators.Add(new TableElementGenerator(this)); // before the markup: a grid hides it all
         _editor.TextArea.TextView.ElementGenerators.Add(new MarkupElementGenerator(this));
@@ -138,6 +146,49 @@ internal sealed class MarkdownTextEditor : UserControl
             _editor.LineNumbersForeground = new SolidColorBrush(value.Muted);
             _previews.Clear(); // the preview height follows the font size
             Redraw();
+            UpdateTextColumn(); // the width of MaxLineLength characters follows the font
+        }
+    }
+
+    /// <summary>
+    /// Lines wrap at about this many characters of running text (it follows the font and its size); a wider view
+    /// centres the text. 0 = the lines span the whole width.
+    /// </summary>
+    public int MaxLineLength
+    {
+        get => _maxLineLength;
+        set
+        {
+            _maxLineLength = Math.Max(0, value);
+            UpdateTextColumn();
+        }
+    }
+
+    /// <summary>
+    /// The spare room beside a <see cref="MaxLineLength"/> column goes into the padding, half left (the line numbers
+    /// move with the text) and half right; the scroll bar stays at the edge.
+    /// </summary>
+    private void UpdateTextColumn()
+    {
+        var view = _editor.TextArea.TextView;
+        if (view.Bounds.Width <= 0)
+        {
+            return; // not laid out yet: SizeChanged comes back
+        }
+
+        var centring = 0.0;
+        if (_maxLineLength > 0)
+        {
+            var sample = new FormattedText(LineLengthSample, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(_theme.Font), _theme.FontSize, null);
+            var column = Math.Ceiling(_maxLineLength * sample.WidthIncludingTrailingWhitespace / LineLengthSample.Length);
+            var natural = view.Bounds.Width + (2 * _centring); // the text width without the present centring
+            centring = Math.Max(0, Math.Floor((natural - column) / 2));
+        }
+
+        if (Math.Abs(centring - _centring) > 0.5)
+        {
+            _centring = centring;
+            _editor.Padding = new Thickness(PadLeft + centring, 0, PadRight + centring, 24);
         }
     }
 

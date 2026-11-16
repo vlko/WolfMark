@@ -381,6 +381,7 @@ internal sealed class MainWindow : Window
             MonoFont = mono,
         };
         editor.ShowLineNumbers = s.EditorLineNumbers;
+        editor.MaxLineLength = s.EditorMaxLineLength;
     }
 
     private void WireEditor()
