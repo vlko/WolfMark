@@ -61,7 +61,7 @@ notebook unless I ask.
 | **Tables & images** | GFM pipe tables as a grid with aligned, wrapped columns; pasted or dropped images copied next to the note and previewed inline |
 | **Calendar** | Week strip with per-tag counts and hatched tag bands, full month view with labels between weeks, keyboard navigation |
 | **Tags** | One tag per note, in the file name (`work_1403.md`); add, rename, merge, recolour or remove tags in Settings; colours travel with the notes |
-| **History** | All notes ordered by last edit, filter by tag, day or open tasks; Markdown files opened from elsewhere appear there too |
+| **History** | All notes ordered by last edit, filter by tag, day or open tasks; right-click to change the tag, open the folder, copy a link or move to trash; Markdown files opened from elsewhere appear there too |
 | **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters; optional semantic search |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
 | **Markdown files anywhere** | WolfMark can open every `.md` file: notes switch the main window, other files open in their own window with *Save*, a status bar and *Copy to my notes* |
@@ -235,7 +235,8 @@ it had before, without the changes made while portable. Details are in
 </tr>
 </table>
 
-- **Settings** are grouped on the left: *General* (notes folder, language, start-up, Markdown files, portable mode), *Appearance*,
+- **Settings** are grouped on the left: *General* (notes folder, language, 24-hour time, dates in the app's language or the
+  system's region, start-up, Markdown files, portable mode), *Appearance*,
   *Editor*, *Tags*, *Claude Code* and *Index & diagnostics*.
 - **Windows**: Mica-backed flat design with Barlow typography, light and dark theme, a choice of app icons.
   Optionally WolfMark starts with Windows and keeps running in the notification area when the window is closed
@@ -309,6 +310,11 @@ dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64   # Native
 
 The domain libraries and all tests also build and run on Linux/WSL
 (`dotnet test --solution WolfMark.CrossPlatform.slnf`); the WinUI projects can be type-checked there but not run.
+
+Smoke tests run the published apps on isolated demo data (CI runs both): `pwsh tools/smoke-windows.ps1 -PublishDir
+publish/win-x64` checks the AOT build's dependencies, single instance, `.md` files as arguments, the screenshots and the
+startup time ([ADR 0011](docs/adr/0011-startup-time.md)); `tools/smoke-linux.sh <WolfMark.Desktop>` does the same for
+the macOS/Linux app on Linux (under Xvfb).
 
 The macOS/Linux app needs `clang` and `zlib1g-dev` (Linux) or Xcode command line tools (macOS) for Native AOT, and
 publishes in two steps – a direct `dotnet publish` loses the compiled XAML ([ADR 0005](docs/adr/0005-avalonia-port.md)):
