@@ -585,6 +585,9 @@
   <data name="Menu_OpenFolder" xml:space="preserve">
     <value>Open folder</value>
   </data>
+  <data name="Settings_Use24HourTime" xml:space="preserve">
+    <value>24-hour time</value>
+  </data>
   <data name="Settings_DateFormatsFromLanguage" xml:space="preserve">
     <value>Dates and times in the app's language (off: system region)</value>
   </data>

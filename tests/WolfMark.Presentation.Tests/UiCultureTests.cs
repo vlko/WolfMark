@@ -25,18 +25,18 @@ public sealed class UiCultureTests : IDisposable
     [Fact]
     public void Language_with_its_formats_gives_slovak_day_names_and_24_hours()
     {
-        Assert.True(UiCulture.Apply("sk-SK", formatsFromLanguage: true));
+        Assert.True(UiCulture.Apply("sk-SK", formatsFromLanguage: true, use24HourTime: false));
 
         Assert.Equal("sk", CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
         Assert.Equal("pondelok", new DateTime(2026, 11, 16).ToString("dddd", CultureInfo.CurrentCulture));
         Assert.DoesNotContain('h', CultureInfo.CurrentCulture.DateTimeFormat.ShortTimePattern);
-        Assert.Equal("sk-SK", CultureInfo.DefaultThreadCurrentCulture?.Name); // background threads too
+        Assert.Equal("sk", CultureInfo.DefaultThreadCurrentCulture?.TwoLetterISOLanguageName); // background threads too
     }
 
     [Fact]
     public void Language_without_its_formats_keeps_the_region()
     {
-        Assert.True(UiCulture.Apply("sk-SK", formatsFromLanguage: false));
+        Assert.True(UiCulture.Apply("sk-SK", formatsFromLanguage: false, use24HourTime: false));
 
         Assert.Equal("sk", CultureInfo.CurrentUICulture.TwoLetterISOLanguageName); // texts Slovak
         Assert.Equal("Monday", new DateTime(2026, 11, 16).ToString("dddd", CultureInfo.CurrentCulture));
@@ -49,10 +49,48 @@ public sealed class UiCultureTests : IDisposable
     [InlineData("not a culture!")] // malformed; ICU accepts any well-formed tag as a custom culture
     public void System_language_or_an_unknown_one_changes_nothing(string? language)
     {
-        Assert.False(UiCulture.Apply(language, formatsFromLanguage: true));
+        Assert.False(UiCulture.Apply(language, formatsFromLanguage: true, use24HourTime: false));
 
         Assert.Equal("en-US", CultureInfo.CurrentCulture.Name);
         Assert.Equal("en-US", CultureInfo.CurrentUICulture.Name);
+    }
+
+    [Fact]
+    public void Twenty_four_hour_time_is_the_default_also_for_an_english_language()
+    {
+        Assert.True(UiCulture.Apply("en-US", formatsFromLanguage: true, use24HourTime: true));
+
+        Assert.Equal("13:45", new DateTime(2026, 11, 16, 13, 45, 0).ToString("t", CultureInfo.CurrentCulture));
+        Assert.Equal("Monday", new DateTime(2026, 11, 16).ToString("dddd", CultureInfo.CurrentCulture)); // names stay
+        Assert.Equal("13:45", new DateTime(2026, 11, 16, 13, 45, 0).ToString("t", CultureInfo.DefaultThreadCurrentCulture));
+    }
+
+    [Fact]
+    public void Twenty_four_hour_time_applies_to_the_system_region_too()
+    {
+        // No language chosen (system) and a 12-hour region: the clock still goes 24-hour.
+        Assert.True(UiCulture.Apply(null, formatsFromLanguage: true, use24HourTime: true));
+
+        Assert.Equal("13:45", new DateTime(2026, 11, 16, 13, 45, 0).ToString("t", CultureInfo.CurrentCulture));
+        Assert.Equal("en-US", CultureInfo.CurrentUICulture.Name);
+    }
+
+    [Fact]
+    public void Twelve_hour_time_when_switched_off()
+    {
+        UiCulture.Apply("en-US", formatsFromLanguage: true, use24HourTime: false);
+
+        var time = new DateTime(2026, 11, 16, 13, 45, 0).ToString("t", CultureInfo.CurrentCulture);
+        Assert.StartsWith("1:45", time, StringComparison.Ordinal); // ICU puts a narrow no-break space before PM
+        Assert.EndsWith("PM", time, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_24_hour_culture_is_left_as_it_is()
+    {
+        var slovak = CultureInfo.GetCultureInfo("sk-SK");
+        Assert.True(UiCulture.Apply("sk-SK", formatsFromLanguage: true, use24HourTime: true));
+        Assert.Same(slovak, CultureInfo.CurrentCulture); // no copy needed – Slovak is 24-hour already
     }
 
     public void Dispose()

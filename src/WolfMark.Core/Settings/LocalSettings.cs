@@ -63,6 +63,9 @@ public sealed class LocalSettings
     /// </summary>
     public bool DateFormatsFromLanguage { get; set; } = true;
 
+    /// <summary>Times as 13:45 whatever the language or region would use (default); false = their own (1:45 PM).</summary>
+    public bool Use24HourTime { get; set; } = true;
+
     public double HistoryPaneHeight { get; set; } = 260;
 
     /// <summary>App icon variant (Assets/IconProposals id); null = default.</summary>

@@ -585,6 +585,9 @@
   <data name="Menu_OpenFolder" xml:space="preserve">
     <value>Otvoriť priečinok</value>
   </data>
+  <data name="Settings_Use24HourTime" xml:space="preserve">
+    <value>24-hodinový čas</value>
+  </data>
   <data name="Settings_DateFormatsFromLanguage" xml:space="preserve">
     <value>Dátumy a čas v jazyku aplikácie (vypnuté: podľa regiónu systému)</value>
   </data>

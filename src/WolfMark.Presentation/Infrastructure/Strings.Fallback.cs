@@ -195,6 +195,7 @@ internal static partial class Strings
         [R.Menu_Open] = "Open",
         [R.Menu_OpenLink] = "Open link in browser",
         [R.Menu_OpenFolder] = "Open folder",
+        [R.Settings_Use24HourTime] = "24-hour time",
         [R.Settings_DateFormatsFromLanguage] = "Dates and times in the app's language (off: system region)",
         [R.Menu_RemoveFromHistory] = "Remove from history",
         [R.ExtFile_Created] = "Created {0}",

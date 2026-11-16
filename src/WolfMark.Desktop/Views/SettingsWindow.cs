@@ -205,6 +205,7 @@ internal sealed class SettingsWindow : Window
         var languages = new[] { (string?)null, "sk-SK", "en-US" };
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Math.Max(0, Array.IndexOf(languages, s.Language)));
         var dateFormats = new ToggleSwitch { IsChecked = s.DateFormatsFromLanguage, Content = Strings.Get(R.Settings_DateFormatsFromLanguage) };
+        var time24 = new ToggleSwitch { IsChecked = s.Use24HourTime, Content = Strings.Get(R.Settings_Use24HourTime) };
         var closeToTray = new ToggleSwitch { IsChecked = s.CloseToTray, Content = Strings.Get(R.Settings_CloseToTray) };
 
         // .md files: the system's default handler is the truth – read off the UI thread (xdg-mime runs a process).
@@ -268,12 +269,14 @@ internal sealed class SettingsWindow : Window
             var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
             _restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal)
                               || s.DateFormatsFromLanguage != (dateFormats.IsChecked == true)
+                              || s.Use24HourTime != (time24.IsChecked == true)
                               || cc.Enabled != (ccEnabled.IsChecked == true)
                               || cc.RedactSecrets != (ccRedact.IsChecked == true)
                               || !string.Equals(cc.ClaudeDirectory, string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim(), StringComparison.Ordinal);
             s.Theme = (AppTheme)Math.Max(0, theme.SelectedIndex);
             s.Language = newLanguage;
             s.DateFormatsFromLanguage = dateFormats.IsChecked == true;
+            s.Use24HourTime = time24.IsChecked == true;
             s.CloseToTray = closeToTray.IsChecked == true;
             s.EditorLineNumbers = lineNumbers.IsChecked == true;
             s.EditorMonospace = monospace.IsChecked == true;
@@ -318,6 +321,7 @@ internal sealed class SettingsWindow : Window
                 movePanel,
                 Field(Strings.Get(R.Settings_Language), language),
                 dateFormats,
+                time24,
                 closeToTray,
                 Section(Strings.Get(R.Settings_Files)),
                 fileAssociation,

@@ -72,7 +72,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             }
 
             // Day/month names and the time format: the language's or the region's (Settings), as in the Avalonia app.
-            UiCulture.Apply(host.Settings.Current.Language, host.Settings.Current.DateFormatsFromLanguage);
+            UiCulture.Apply(host.Settings.Current.Language, host.Settings.Current.DateFormatsFromLanguage, host.Settings.Current.Use24HourTime);
 
             var brushes = new TagBrushes(host.Tags);
             long? firstFrame = null;

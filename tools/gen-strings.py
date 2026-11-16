@@ -194,6 +194,7 @@ S = {
  "Menu_Open": ("Open", "Otvoriť"),
  "Menu_OpenLink": ("Open link in browser", "Otvoriť odkaz v prehliadači"),
  "Menu_OpenFolder": ("Open folder", "Otvoriť priečinok"),
+ "Settings_Use24HourTime": ("24-hour time", "24-hodinový čas"),
  "Settings_DateFormatsFromLanguage": ("Dates and times in the app's language (off: system region)", "Dátumy a čas v jazyku aplikácie (vypnuté: podľa regiónu systému)"),
  "Menu_RemoveFromHistory": ("Remove from history", "Odstrániť z histórie"),
  "ExtFile_Created": ("Created {0}", "Vytvorený {0}"),

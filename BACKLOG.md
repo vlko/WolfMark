@@ -213,7 +213,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M8-06 – Lokalizácia** sk/en.
   *Stav:* `.resw` sk/en generované z jednej tabuľky (`tools/gen-strings.py`). Kontrola 2026-11-16: chýbal len
   „Bez tagu“ v legende; natvrdo písané texty v UI žiadne. Nastavenie „Dátumy a čas v jazyku aplikácie“ (inak podľa
-  regiónu systému) v oboch aplikáciách – predtým Windows vždy región, Avalonia vždy jazyk (`UiCulture`).
+  regiónu systému) v oboch aplikáciách – predtým Windows vždy región, Avalonia vždy jazyk (`UiCulture`); a
+  „24-hodinový čas“ (predvolene zapnutý, prebije 12-hodinový formát jazyka aj regiónu).
 - 🟨 **M8-07 – Indikátor OneDrive stavu** a UI pre konflikty.
   *Stav:* Čiastočne: konflikty v UI, ikona pre placeholdery; stav synchronizácie OneDrive nie.
 - 🟨 **M8-08 – WolfMark ako predvolený editor `.md`** (Windows, macOS, Linux), ADR 0008.

@@ -182,6 +182,7 @@ internal static class SettingsDialog
         var languages = new[] { (string?)null, "sk-SK", "en-US" };
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Array.IndexOf(languages, s.Language) is var li and >= 0 ? li : 0);
         var dateFormats = new ToggleSwitch { IsOn = s.DateFormatsFromLanguage, Header = Strings.Get(R.Settings_DateFormatsFromLanguage) };
+        var time24 = new ToggleSwitch { IsOn = s.Use24HourTime, Header = Strings.Get(R.Settings_Use24HourTime) };
 
         // App icon: thumbnails, click = live preview of the window/taskbar icon; OK keeps it, Cancel reverts.
         var chosenIcon = s.AppIcon ?? AppIcons.Default;
@@ -324,6 +325,7 @@ internal static class SettingsDialog
                 movePanel,
                 Field(Strings.Get(R.Settings_Language), language),
                 dateFormats,
+                time24,
                 Section(Strings.Get(R.Settings_System)),
                 startWithWindows,
                 PortableUnavailable(),
@@ -400,9 +402,11 @@ internal static class SettingsDialog
         s.AppIcon = chosenIcon == AppIcons.Default ? null : chosenIcon;
         var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
         restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal)
-                         || s.DateFormatsFromLanguage != dateFormats.IsOn;
+                         || s.DateFormatsFromLanguage != dateFormats.IsOn
+                         || s.Use24HourTime != time24.IsOn;
         s.Language = newLanguage;
         s.DateFormatsFromLanguage = dateFormats.IsOn;
+        s.Use24HourTime = time24.IsOn;
         s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
         s.EditorMonospace = monospace.IsOn;
         s.EditorMonoFontFamily = monoFont.Selected;
