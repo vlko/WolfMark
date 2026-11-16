@@ -54,6 +54,7 @@ internal sealed partial class MainWindow : Window
 
     public MainWindow(MainViewModel vm, TagBrushes brushes)
     {
+        StartupTimeline.Mark("window: fields (editor control)");
         _vm = vm;
         _brushes = brushes;
         _host = vm.Host;
@@ -65,13 +66,18 @@ internal sealed partial class MainWindow : Window
 
         // Palette first, so every view is built with the right colours.
         Palette.Apply(InitialTheme());
+        StartupTimeline.Mark("window: title bar options, icon, palette");
 
         _titleBar = BuildTitleBar();
+        StartupTimeline.Mark("window: title bar");
         _calendar = new CalendarPanel(vm, brushes);
+        StartupTimeline.Mark("window: calendar");
         _search = new SearchPalette(vm, brushes) { Visibility = Visibility.Collapsed };
+        StartupTimeline.Mark("window: search palette");
 
         _historyRow = new RowDefinition { Height = new GridLength(_host.Settings.Current.HistoryPaneHeight) };
         var header = new NoteHeaderView(vm, brushes, _editor);
+        StartupTimeline.Mark("window: note header");
         var splitter = new SplitterHandle(
             () => _historyRow.Height.Value,
             h => _historyRow.Height = new GridLength(h),
@@ -81,6 +87,7 @@ internal sealed partial class MainWindow : Window
                 _ = _host.SaveSettingsAsync();
             });
         var history = new HistoryView(vm, brushes);
+        StartupTimeline.Mark("window: history");
 
         // Editor with time gutter: created time on top, last modification on the last visible line.
         var created = Typo.LeadTime(out _setCreated, 32, Palette.InkSecondary);
@@ -128,7 +135,9 @@ internal sealed partial class MainWindow : Window
         Add(main, splitter, 5);
         Add(main, history, 6);
 
+        StartupTimeline.Mark("window: editor pane, layout");
         var rail = new TagRail(vm, brushes) { Margin = new Thickness(0, 8, 0, 0) };
+        StartupTimeline.Mark("window: tag rail");
         var content = Ui.Ui.Columns((Ui.Ui.Star, main), (Ui.Ui.Auto, rail));
         WireFullView(editorPane, gutter, splitter, history, rail);
 
@@ -144,17 +153,22 @@ internal sealed partial class MainWindow : Window
         Add(_root, new StatusBar(vm), 3);
         Grid.SetRowSpan(_search, 4);
         _root.Children.Add(_search);
+        StartupTimeline.Mark("window: status bar, root");
         Content = _root;
         SetTitleBar(_titleBar);
+        StartupTimeline.Mark("window: Content, SetTitleBar");
 
         WireEditor();
         WireOverlays();
         _vm.ExternalFileRequested += (_, path) => _ = OpenExternalAsync(path);
         WireAccelerators();
         WireLifecycle();
+        StartupTimeline.Mark("window: wiring");
         ApplyTray();
         ApplyAppearance();
+        StartupTimeline.Mark("window: theme");
         RestorePlacement();
+        StartupTimeline.Mark("window: placement");
     }
 
     /// <summary>Theme and editor settings (also re-applied after the settings dialog).</summary>
@@ -298,6 +312,7 @@ internal sealed partial class MainWindow : Window
     public async Task InitializeAsync()
     {
         await _vm.InitializeAsync();
+        StartupTimeline.Mark("view model loaded (week, history, last note)");
         _editor.FocusEditor();
     }
 

@@ -8,8 +8,10 @@ namespace WolfMark.App.Infrastructure;
 /// </summary>
 internal static class StartupTimeline
 {
+    private static readonly List<(string Name, long Ms)> s_marks = [];
     private static long s_mainTimestamp;
     private static double s_mainMs;
+    private static bool s_done;
 
     public static long MainMs => (long)s_mainMs;
 
@@ -21,4 +23,29 @@ internal static class StartupTimeline
     }
 
     public static long Now() => (long)(s_mainMs + Stopwatch.GetElapsedTime(s_mainTimestamp).TotalMilliseconds);
+
+    /// <summary>A point of the start (UI thread); ignored once <see cref="TakeMarks"/> ran.</summary>
+    public static void Mark(string name)
+    {
+        if (!s_done)
+        {
+            s_marks.Add((name, Now()));
+        }
+    }
+
+    /// <summary>"name +delta" for each mark since the previous one – where the start spends its time.</summary>
+    public static string TakeMarks()
+    {
+        s_done = true;
+        var previous = 0L;
+        var parts = new List<string>(s_marks.Count);
+        foreach (var (name, ms) in s_marks)
+        {
+            parts.Add($"{name} +{ms - previous}");
+            previous = ms;
+        }
+
+        s_marks.Clear();
+        return string.Join(", ", parts);
+    }
 }

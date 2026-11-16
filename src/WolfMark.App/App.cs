@@ -52,8 +52,10 @@ public sealed partial class App : Application, IXamlMetadataProvider
         try
         {
             var launched = StartupTimeline.Now();
+            StartupTimeline.Mark("OnLaunched");
             var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory, freshDemo: LaunchOptions.Current.ScreenshotDirectory is not null);
             var hostReady = StartupTimeline.Now();
+            StartupTimeline.Mark("data and index open");
             var logger = host.Loggers.CreateLogger<App>();
             _logger = logger;
             if (LaunchOptions.Current.TraceEditor)
@@ -71,7 +73,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
             var brushes = new TagBrushes(host.Tags);
             long? firstFrame = null;
+            StartupTimeline.Mark("App: settings, brushes");
             var vm = new MainViewModel(host);
+            StartupTimeline.Mark("view model");
             _window = new MainWindow(vm, brushes);
             var windowBuilt = StartupTimeline.Now();
             WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: window built");
@@ -79,11 +83,13 @@ public sealed partial class App : Application, IXamlMetadataProvider
             {
                 _window.Activate();
                 var activated = StartupTimeline.Now();
+                StartupTimeline.Mark("Activate");
                 // The shell (title bar, calendar, empty history) is drawn before the note loads – loading a long
                 // note keeps the UI thread busy, and until then the window stayed blank.
                 await NextFrameAsync();
                 WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: first frame");
                 firstFrame = StartupTimeline.Now();
+                StartupTimeline.Mark("first frame");
                 LogStartupPhases(logger, StartupTimeline.MainMs, launched, hostReady, windowBuilt, activated, firstFrame.Value);
             }
 
@@ -91,10 +97,12 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
             host.StartBackground();
             await _window.InitializeAsync();
+            StartupTimeline.Mark("last note loaded");
             if (firstFrame is { } shown)
             {
                 // M4-09 (start to typing < 300 ms): the last note is loaded and the editor has the focus.
                 LogReadyToType(logger, StartupTimeline.Now(), shown);
+                LogStartupMarks(logger, StartupTimeline.TakeMarks());
             }
 
             if (LaunchOptions.Current.OpenFile is { } file)
@@ -316,6 +324,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
             // nothing left to report to
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Startup marks (ms since the previous one): {Marks}")]
+    private static partial void LogStartupMarks(ILogger logger, string marks);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Startup (ms since the process started): Main {MainMs}, OnLaunched {LaunchedMs}, data and index open {HostMs}, window built {WindowMs}, activated {ActivatedMs}, first frame {FirstFrameMs}")]
     private static partial void LogStartupPhases(ILogger logger, long mainMs, long launchedMs, long hostMs, long windowMs, long activatedMs, long firstFrameMs);
