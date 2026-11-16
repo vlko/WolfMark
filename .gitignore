@@ -23,6 +23,8 @@ bld/
 [Ll]og/
 [Ll]ogs/
 /temp_design/
+# dotnet publish -o publish/<rid> (README, tools/smoke-windows.ps1)
+/publish/
 
 # .NET Core
 project.lock.json

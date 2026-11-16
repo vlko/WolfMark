@@ -15,11 +15,13 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M0-01 – Solution a projekty.** Vytvoriť štruktúru zo SPEC §2 (Core, Storage, Index, Sync.ClaudeCode, Editor, App + testy). `global.json` pre .NET 11, `Directory.Build.props` so spoločnými nastaveniami (`Nullable`, `TreatWarningsAsErrors`, `IsAotCompatible`, AOT/trim analyzéry).
   *Stav:* Build bez warningov (TreatWarningsAsErrors), Core/Storage/Index/Sync sú `net11.0` bez WinUI.
   *AK:* `dotnet build` prejde bez warningov; Core/Storage/Index nemajú referenciu na WinUI.
-- 🟨 **M0-02 – Prázdna WinUI 3 aplikácia s Native AOT.** Okno s Mica a vlastným title barom, `PublishAot=true`, `WindowsAppSDKSelfContained=true`, RID `win-x64` a `win-arm64`.
+- ✅ **M0-02 – Prázdna WinUI 3 aplikácia s Native AOT.** Okno s Mica a vlastným title barom, `PublishAot=true`, `WindowsAppSDKSelfContained=true`, RID `win-x64` a `win-arm64`.
   *Stav:* Mica, vlastný title bar, `PublishAot`, self-contained, x64+ARM64. IL trimmer nad celou aplikáciou bez warningov; AOT publish beží v CI.
   Smoke test (`tools/smoke-windows.ps1`, CI po AOT publishi): importy všetkých binárok sú vo výstupe alebo súčasť
   Windows (bez .NET a VC++ redistributable), binárka sa spustí a vyrenderuje okno. Lokálne na Windows (2026-11-16):
-  bez runtime súborov, štart a vykreslenie OK; kontrola importov ešte nebežala (skript nenašiel `dumpbin`, opravené).
+  bez runtime súborov, štart a vykreslenie OK. Importy všetkých 37 binárok (vrátane oneskorených, `e_sqlite3`,
+  `vec0`) prečítané z PE hlavičiek: len systémové DLL Windows, žiadny VC++ runtime ani .NET (WinAppSDK a Win2D majú
+  CRT staticky).
   *AK:* `dotnet publish -c Release -r win-x64` vyprodukuje spustiteľný AOT binár; aplikácia sa spustí na čistom stroji bez nainštalovaného .NET.
 - ✅ **M0-03 – Logovanie a DI.** Composition root, `ILogger` so súborovým sinkom v `%LOCALAPPDATA%\WolfMark\logs`, globálny handler neošetrených výnimiek.
   *Stav:* `AppHost` (ADR 0002), `FileLoggerProvider`, `BackgroundRunner` – test: výnimka sa zaloguje. Globálne handlery v `App`.
