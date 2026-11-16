@@ -155,10 +155,14 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 
 - ✅ **M6-01 – Kompaktná týždenná lišta** pod title barom: dni s počtom záznamov a farebnými prúžkami tagov, navigácia týždňov, dnešok zvýraznený.
   *Stav:* Týždenný pás podľa ADR 0004 (hranaté bunky, šrafované minulé dni, rám dneška, štítok).
-- 🟨 **M6-02 – Plný kalendár (ročný pohľad)** podľa SPEC §5.2: mriežka mesiacov s číslami týždňov, bunky vyplnené farbami tagov, dnešok, legenda tagov s filtrovaním.
+- ✅ **M6-02 – Plný kalendár (ročný pohľad)** podľa SPEC §5.2: mriežka mesiacov s číslami týždňov, bunky vyplnené farbami tagov, dnešok, legenda tagov s filtrovaním.
   *AK:* Plynulý scroll celým rokom; klik na deň otvorí deň.
-- 🟨 **M6-03 – „Lupa“ na týždeň** a štítky pod týždňom.
-- 🟨 **M6-04 – Mesačný pohľad** a prepínanie Rok/Mesiac.
+  *Stav:* Nahradené rozhodnutím ADR 0004 (2026-11-16): namiesto ročného pohľadu týždenný pás a po rozbalení mesačná
+  mriežka (čísla týždňov, farby tagov, počty, dnešok, štítky medzi týždňami, filter cez lištu tagov).
+- ✅ **M6-03 – „Lupa“ na týždeň** a štítky pod týždňom.
+  *Stav:* Štítky medzi týždňami sú; „lupu“ nahrádza týždenný pás (ADR 0004).
+- ✅ **M6-04 – Mesačný pohľad** a prepínanie Rok/Mesiac.
+  *Stav:* Mesačný pohľad je; prepínač Rok/Mesiac odpadol s ročným pohľadom (ADR 0004).
 - 🟨 **M6-05 – Prístupnosť kalendára** (klávesnica, Narrator popisy buniek).
   *Stav:* Šípky/Enter/Esc, Narrator popisy buniek.
 - 🟨 **M6-06 – Vizuálne doladenie** podľa referencie (papierové pozadie, karta, typografia dátumu, pilulky tagov), light/dark.

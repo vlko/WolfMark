@@ -39,6 +39,10 @@ pamätá) mesačná mriežka s bublinami dní, čísiel týždňov a štítkami 
 týždeň resp. mesiac. Minulé dni sú šrafované len v týždennom páse (šrafy `\` každé 4 px, proti hraniciam pásov
 tagov) a farby tagov sú v ňom stlmené k farbe prázdnej bunky (svetlá téma o 40 %, tmavá o 25 %);
 mesačná mriežka má plné farby bez šrafov (`full_calendar.png`).
+
+**Ročný pohľad zo SPEC §5.2 sa nerobí** (2026-11-16): posúvateľný zoznam mesiacov, „lupu“ na týždeň pri hoveri
+a prepínač Rok/Mesiac nahrádza tento panel – týždenný pás je „lupa“ na aktuálny týždeň, mesačná mriežka plný
+kalendár. M6-02 až M6-04 sú tým uzavreté.
 Číslo šrafovaného minulého dňa so záznamom má plnú farbu prvého tagu o 60 % tmavšiu (svetlá téma) resp. o 80 %
 svetlejšiu (tmavá) – jemný odtieň tagu na šrafovaní nebolo vidieť; minulý deň bez záznamu má sivé
 číslo, budúci svetlosivé.
