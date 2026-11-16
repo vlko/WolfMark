@@ -51,6 +51,7 @@ public sealed class HistoryActionsTests : IAsyncLifetime
         Assert.Equal("# Otvorená a upravená", await File.ReadAllTextAsync(_host.Engine.GetFullPath("2026/11/16/1403.md"), Ct));
     }
 
+    /// <summary>A demo keeps its trash in the demo folder on every OS (the real app uses the Windows Recycle Bin there).</summary>
     [Fact]
     public async Task Deleting_moves_the_note_to_the_trash()
     {

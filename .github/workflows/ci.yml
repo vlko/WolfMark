@@ -114,7 +114,7 @@ jobs:
       - name: Smoke test
         # The AOT binary on demo data under Xvfb: single instance, .md files, startup (report only).
         if: runner.os == 'Linux'
-        run: tools/smoke-linux.sh publish/${{ matrix.rid }}/WolfMark.Desktop "${{ runner.temp }}/smoke"
+        run: bash tools/smoke-linux.sh publish/${{ matrix.rid }}/WolfMark.Desktop "${{ runner.temp }}/smoke"
       - uses: actions/upload-artifact@v7
         if: always() && runner.os == 'Linux'
         with:

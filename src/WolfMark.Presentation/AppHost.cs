@@ -27,7 +27,7 @@ internal sealed partial class AppHost : IAsyncDisposable
     private NoteWatcher? _watcher;
     private ClaudeCodeSyncScheduler? _claudeScheduler;
 
-    private AppHost(LocalPaths paths, LocalSettingsStore settings, FileLoggerProvider fileLogger, ILoggerFactory loggers)
+    private AppHost(LocalPaths paths, LocalSettingsStore settings, FileLoggerProvider fileLogger, ILoggerFactory loggers, bool isDemo)
     {
         Paths = paths;
         Settings = settings;
@@ -41,7 +41,8 @@ internal sealed partial class AppHost : IAsyncDisposable
         Hub = new NoteEventHub();
         SelfWrites = new SelfWriteRegistry(Time);
         // Portable: removable drives have no Recycle Bin – Windows would delete permanently (CLAUDE.md rule 5).
-        IRecycleBin recycleBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && paths.PortableDataDirectory is null
+        // Demo: everything stays in the demo folder – its deleted notes must not land in the user's Recycle Bin.
+        IRecycleBin recycleBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && paths.PortableDataDirectory is null && !isDemo
             ? new WindowsRecycleBin()
             : new FolderRecycleBin(Root);
         Engine = new DirectoryEngine(Root, recycleBin, Hub, SelfWrites, loggers.CreateLogger<DirectoryEngine>());
@@ -135,7 +136,7 @@ internal sealed partial class AppHost : IAsyncDisposable
             await PrepareDemoAsync(demoDirectory, settings).ConfigureAwait(false);
         }
 
-        return new AppHost(paths, settings, fileLogger, loggers);
+        return new AppHost(paths, settings, fileLogger, loggers, isDemo: demoDirectory is not null);
     });
 
     /// <summary>
