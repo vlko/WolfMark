@@ -78,13 +78,17 @@ public sealed partial class MarkdownEditor : UserControl
         _canvas.PointerWheelChanged += OnZoomWheel;
         Content = _scroll;
         IsTabStop = false;
+        StartupTimeline.Mark("editor: canvas, scroll viewer");
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.IBeam);
 
         InitInput();
         InitImageDrop();
+        StartupTimeline.Mark("editor: cursor, input, image drop");
         InitIme();
+        StartupTimeline.Mark("editor: IME edit context");
         InitCaretBlink();
         Load(string.Empty, caretToEnd: false, readOnly: false);
+        StartupTimeline.Mark("editor: caret, empty document");
     }
 
     public event EventHandler<string>? TextEdited;

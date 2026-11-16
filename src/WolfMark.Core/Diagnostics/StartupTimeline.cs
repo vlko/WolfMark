@@ -1,23 +1,32 @@
 using System.Diagnostics;
 
-namespace WolfMark.App.Infrastructure;
+namespace WolfMark.Core.Diagnostics;
 
 /// <summary>
 /// Milliseconds since the OS created the process (M4-09: start to typing &lt; 300 ms) – the offset to Main once from
-/// <see cref="Process.StartTime"/>, every later point from a stopwatch.
+/// <see cref="Process.StartTime"/>, every later point from a stopwatch. Marks come from the UI thread; nothing is
+/// recorded unless <see cref="MainEntered"/> ran (the Windows app's Main), so the editor library can mark freely.
 /// </summary>
-internal static class StartupTimeline
+public static class StartupTimeline
 {
     private static readonly List<(string Name, long Ms)> s_marks = [];
     private static long s_mainTimestamp;
     private static double s_mainMs;
-    private static bool s_done;
+    private static bool s_done = true;
+    private static long s_warmUpMs = -1;
+
+    /// <summary>When the background warm-up (Win2D device, DirectWrite) finished, -1 = not yet / none.</summary>
+    public static long WarmUpMs => Interlocked.Read(ref s_warmUpMs);
+
+    /// <summary>From any thread.</summary>
+    public static void WarmUpFinished() => Interlocked.Exchange(ref s_warmUpMs, Now());
 
     public static long MainMs => (long)s_mainMs;
 
     public static void MainEntered()
     {
         s_mainTimestamp = Stopwatch.GetTimestamp();
+        s_done = false;
         using var process = Process.GetCurrentProcess();
         s_mainMs = (DateTime.Now - process.StartTime).TotalMilliseconds;
     }

@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.XamlTypeInfo;
 using Microsoft.Windows.AppLifecycle;
 using WolfMark.App.Infrastructure;
+using WolfMark.Core.Diagnostics;
 using WolfMark.App.Theming;
 using WolfMark.App.ViewModels;
 using WolfMark.App.Views;
@@ -102,7 +103,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             {
                 // M4-09 (start to typing < 300 ms): the last note is loaded and the editor has the focus.
                 LogReadyToType(logger, StartupTimeline.Now(), shown);
-                LogStartupMarks(logger, StartupTimeline.TakeMarks());
+                LogStartupMarks(logger, StartupTimeline.TakeMarks() + "; Win2D warm-up done at " + StartupTimeline.WarmUpMs + " ms");
             }
 
             if (LaunchOptions.Current.OpenFile is { } file)

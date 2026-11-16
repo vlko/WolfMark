@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using Windows.System;
 using WolfMark.App.Infrastructure;
+using WolfMark.Core.Diagnostics;
 using WolfMark.App.Theming;
 using WolfMark.App.Ui;
 using WolfMark.App.ViewModels;
@@ -33,7 +34,7 @@ internal sealed partial class MainWindow : Window
     private readonly MarkdownEditor _editor = new();
     private readonly bool _startupEditorBuilt = StartupTimeline.MarkInline("window: editor control (Win2D)");
     private readonly CalendarPanel _calendar;
-    private readonly SearchPalette _search;
+    private SearchPalette? _search; // built on first open (M4-09: not on the way to the first frame)
     private readonly Action<DateTime?> _setCreated;
     private readonly TextBlock _modified = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
     private readonly TextBlock _fullViewTimes = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
@@ -77,8 +78,6 @@ internal sealed partial class MainWindow : Window
         StartupTimeline.Mark("window: title bar");
         _calendar = new CalendarPanel(vm, brushes);
         StartupTimeline.Mark("window: calendar");
-        _search = new SearchPalette(vm, brushes) { Visibility = Visibility.Collapsed };
-        StartupTimeline.Mark("window: search palette");
 
         _historyRow = new RowDefinition { Height = new GridLength(_host.Settings.Current.HistoryPaneHeight) };
         var header = new NoteHeaderView(vm, brushes, _editor);
@@ -156,8 +155,6 @@ internal sealed partial class MainWindow : Window
         header.InfoBars.Margin = new Thickness(24, 0, 24, 6);
         Add(_root, header.InfoBars, 2);
         Add(_root, new StatusBar(vm), 3);
-        Grid.SetRowSpan(_search, 4);
-        _root.Children.Add(_search);
         StartupTimeline.Mark("window: status bar, root");
         Content = _root;
         SetTitleBar(_titleBar);
@@ -621,6 +618,19 @@ internal sealed partial class MainWindow : Window
         };
     }
 
+    /// <summary>The search palette over the whole window – added last, so it is on top.</summary>
+    private SearchPalette EnsureSearch()
+    {
+        if (_search is null)
+        {
+            _search = new SearchPalette(_vm, _brushes) { Visibility = Visibility.Collapsed };
+            Grid.SetRowSpan(_search, 4);
+            _root.Children.Add(_search);
+        }
+
+        return _search;
+    }
+
     private void WireOverlays()
     {
         _vm.PropertyChanged += (_, e) =>
@@ -628,13 +638,19 @@ internal sealed partial class MainWindow : Window
             switch (e.PropertyName)
             {
                 case nameof(MainViewModel.IsSearchOpen):
-                    _search.Visibility = _vm.IsSearchOpen ? Visibility.Visible : Visibility.Collapsed;
                     if (_vm.IsSearchOpen)
                     {
-                        _search.FocusInput();
+                        var search = EnsureSearch();
+                        search.Visibility = Visibility.Visible;
+                        search.FocusInput();
                     }
                     else
                     {
+                        if (_search is not null)
+                        {
+                            _search.Visibility = Visibility.Collapsed;
+                        }
+
                         _editor.FocusEditor();
                     }
 
