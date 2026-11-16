@@ -33,6 +33,13 @@ internal static class StartupTimeline
         }
     }
 
+    /// <summary>For a field initializer (those run before the base class constructor): marks and returns true.</summary>
+    public static bool MarkInline(string name)
+    {
+        Mark(name);
+        return true;
+    }
+
     /// <summary>"name +delta" for each mark since the previous one – where the start spends its time.</summary>
     public static string TakeMarks()
     {
@@ -46,6 +53,6 @@ internal static class StartupTimeline
         }
 
         s_marks.Clear();
-        return string.Join(", ", parts);
+        return string.Join("; ", parts);
     }
 }

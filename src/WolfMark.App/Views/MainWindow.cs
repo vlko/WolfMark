@@ -26,10 +26,12 @@ internal sealed partial class MainWindow : Window
     private readonly MainViewModel _vm;
     private readonly TagBrushes _brushes;
     private readonly AppHost _host;
+    private readonly bool _startupFieldsBegin = StartupTimeline.MarkInline("window: before its fields");
     private readonly Grid _root = new();
     private readonly Grid _titleBar;
     private readonly List<FrameworkElement> _titleBarInteractive = [];
     private readonly MarkdownEditor _editor = new();
+    private readonly bool _startupEditorBuilt = StartupTimeline.MarkInline("window: editor control (Win2D)");
     private readonly CalendarPanel _calendar;
     private readonly SearchPalette _search;
     private readonly Action<DateTime?> _setCreated;
@@ -54,19 +56,22 @@ internal sealed partial class MainWindow : Window
 
     public MainWindow(MainViewModel vm, TagBrushes brushes)
     {
-        StartupTimeline.Mark("window: fields (editor control)");
+        StartupTimeline.Mark("window: Window base constructor, other fields");
         _vm = vm;
         _brushes = brushes;
         _host = vm.Host;
         Title = Strings.Get(R.AppTitle);
 
         ExtendsContentIntoTitleBar = true;
+        StartupTimeline.Mark("window: ExtendsContentIntoTitleBar");
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        StartupTimeline.Mark("window: AppWindow title bar height");
         ApplyIcon(_host.Settings.Current.AppIcon);
+        StartupTimeline.Mark("window: icon");
 
         // Palette first, so every view is built with the right colours.
         Palette.Apply(InitialTheme());
-        StartupTimeline.Mark("window: title bar options, icon, palette");
+        StartupTimeline.Mark("window: palette");
 
         _titleBar = BuildTitleBar();
         StartupTimeline.Mark("window: title bar");
