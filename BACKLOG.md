@@ -144,7 +144,10 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *AK:* Plynulý scroll cez 10 000 položiek.
 - ✅ **M5-02 – Filtre** podľa tagu a dňa; živá aktualizácia pri nových/zmenených poznámkach.
 - ✅ **M5-03 – Vyhľadávanie `Ctrl+K`** (command paleta nad `SearchAsync`), filtre `#tag`, `@YYYY-MM`.
-- 🟨 **M5-04 – Kontextové akcie:** zmena tagu, otvoriť v Prieskumníkovi, zmazať, kopírovať odkaz.
+- ✅ **M5-04 – Kontextové akcie:** zmena tagu, otvoriť v Prieskumníkovi, zmazať, kopírovať odkaz.
+  *Stav:* Windows mal menu hotové; Desktop (macOS/Linux) ho pri poznámkach nemal vôbec – doplnené (aj „Otvoriť
+  priečinok“ pri externých súboroch, potvrdenie zmazania). Logika spoločná v `MainViewModel` (`HistoryActionsTests`).
+  Desktop skompilovaný, na macOS/Linux nevyskúšaný (2026-11-16).
 
 ## M6 – Kalendár v UI 🟢
 

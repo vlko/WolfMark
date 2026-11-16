@@ -133,7 +133,7 @@ internal sealed partial class HistoryView : UserControl
         copy.Click += (_, _) =>
         {
             var data = new DataPackage();
-            data.SetText("[[" + note.RelativePath[..^NoteName.Extension.Length] + "]]");
+            data.SetText(MainViewModel.NoteLink(note.RelativePath));
             Clipboard.SetContent(data);
         };
 
@@ -165,18 +165,9 @@ internal sealed partial class HistoryView : UserControl
                 CloseButtonText = Strings.Get(R.Common_Cancel),
                 DefaultButton = ContentDialogButton.Close,
             };
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
-                return;
-            }
-
-            if (string.Equals(_vm.Editor.Path?.RelativePath, note.RelativePath, StringComparison.OrdinalIgnoreCase))
-            {
-                await _vm.Editor.DeleteAsync();
-            }
-            else if (NotePath.TryParse(note.RelativePath, out var path))
-            {
-                await Task.Run(() => host.Engine.DeleteAsync(path, CancellationToken.None));
+                await _vm.DeleteNoteAsync(note.RelativePath);
             }
         };
 
@@ -190,17 +181,7 @@ internal sealed partial class HistoryView : UserControl
         MenuFlyoutItem TagItem(string? tag)
         {
             var item = new MenuFlyoutItem { Text = tag ?? Strings.Get(R.Tag_None) };
-            item.Click += async (_, _) =>
-            {
-                if (string.Equals(_vm.Editor.Path?.RelativePath, note.RelativePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    await _vm.Editor.ChangeTagAsync(tag);
-                }
-                else if (NotePath.TryParse(note.RelativePath, out var path))
-                {
-                    await Task.Run(() => host.Engine.ChangeTagAsync(path, tag, CancellationToken.None));
-                }
-            };
+            item.Click += async (_, _) => await _vm.ChangeNoteTagAsync(note.RelativePath, tag);
             return item;
         }
     }

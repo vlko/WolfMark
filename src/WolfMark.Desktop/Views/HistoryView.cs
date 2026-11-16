@@ -3,11 +3,14 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using WolfMark.App.Infrastructure;
 using WolfMark.App.ViewModels;
 using WolfMark.Desktop.Theming;
+using WolfMark.Index.Queries;
 
 namespace WolfMark.Desktop.Views;
 
@@ -142,11 +145,66 @@ internal sealed class HistoryView : UserControl
             Padding = new Thickness(0, 4, 10, 4);
             Foreground = Palette.Ink;
             Click += async (_, _) => await vm.OpenNoteAsync(_row.Note.RelativePath);
+            ContextMenu = CreateMenu(vm, note, row.Title);
             Ui.Bind(row, nameof(HistoryRowViewModel.IsCurrent), UpdateCurrent);
             Palette.Changed += (_, _) => UpdateCurrent();
         }
 
         private void UpdateCurrent() => Background = _row.IsCurrent ? Palette.SubtleFill : Palette.Transparent;
+
+        /// <summary>M5-04, as in the Windows app: change tag, open folder, copy link, move to trash.</summary>
+        private ContextMenu CreateMenu(MainViewModel vm, NoteSummary note, string title)
+        {
+            var host = vm.Host;
+            var tagMenu = new MenuItem { Header = Strings.Get(R.Menu_ChangeTag), IsEnabled = note.IsStandard && !note.IsClaudeCode };
+            var folder = new MenuItem { Header = Strings.Get(R.Menu_OpenFolder) };
+            folder.Click += (_, _) => ShowFolder(this, host.Engine.GetFullPath(note.RelativePath));
+            var copy = new MenuItem { Header = Strings.Get(R.Menu_CopyLink) };
+            copy.Click += async (_, _) =>
+            {
+                if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                {
+                    await clipboard.SetTextAsync(MainViewModel.NoteLink(note.RelativePath));
+                }
+            };
+            var delete = new MenuItem { Header = Strings.Get(R.Menu_Delete) };
+            delete.Click += async (_, _) =>
+            {
+                if (await ConfirmDialog.AskAsync(this, Strings.Get(R.Delete_ConfirmTitle), title, Strings.Get(R.Menu_Delete)))
+                {
+                    await vm.DeleteNoteAsync(note.RelativePath);
+                }
+            };
+
+            var menu = new ContextMenu { Items = { tagMenu, folder, copy, new Separator(), delete } };
+            menu.Opening += async (_, _) =>
+            {
+                // The tags of the moment: "no tag" first, then the most used ones.
+                tagMenu.Items.Clear();
+                tagMenu.Items.Add(TagItem(null));
+                foreach (var t in (await host.GetTagListAsync(host.ShutdownToken)).Take(15))
+                {
+                    tagMenu.Items.Add(TagItem(t.Tag));
+                }
+            };
+            return menu;
+
+            MenuItem TagItem(string? tag)
+            {
+                var item = new MenuItem { Header = tag ?? Strings.Get(R.Tag_None) };
+                item.Click += async (_, _) => await vm.ChangeNoteTagAsync(note.RelativePath, tag);
+                return item;
+            }
+        }
+    }
+
+    /// <summary>The file manager on the file's folder (a missing file: the folder it was in).</summary>
+    private static void ShowFolder(Control owner, string fullPath)
+    {
+        if (TopLevel.GetTopLevel(owner)?.Launcher is { } launcher && Path.GetDirectoryName(fullPath) is { } directory)
+        {
+            _ = launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(directory));
+        }
     }
 
     /// <summary>
@@ -199,9 +257,11 @@ internal sealed class HistoryView : UserControl
 
             var open = new MenuItem { Header = Strings.Get(R.Menu_Open), IsEnabled = !row.IsMissing };
             open.Click += async (_, _) => await vm.OpenFileAsync(row.FullPath);
+            var folder = new MenuItem { Header = Strings.Get(R.Menu_OpenFolder) };
+            folder.Click += (_, _) => ShowFolder(this, row.FullPath);
             var remove = new MenuItem { Header = Strings.Get(R.Menu_RemoveFromHistory) };
             remove.Click += (_, _) => vm.RemoveExternalFile(row.FullPath);
-            ContextMenu = new ContextMenu { Items = { open, new Separator(), remove } };
+            ContextMenu = new ContextMenu { Items = { open, folder, new Separator(), remove } };
         }
     }
 }

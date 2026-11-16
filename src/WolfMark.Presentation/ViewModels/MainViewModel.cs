@@ -201,6 +201,41 @@ internal sealed partial class MainViewModel : ObservableObject
 
     public Task MoveWeekAsync(int weeks) => Week.LoadAsync(Week.Monday.AddDays(7 * weeks), SelectedDay);
 
+    /// <summary>History context menu (M5-04): <c>[[2026/11/16/praca_1403]]</c> – the note's path without the extension.</summary>
+    public static string NoteLink(string relativePath) =>
+        "[[" + (relativePath.EndsWith(NoteName.Extension, StringComparison.OrdinalIgnoreCase)
+            ? relativePath[..^NoteName.Extension.Length]
+            : relativePath) + "]]";
+
+    /// <summary>History context menu: the open note goes through the editor (it keeps saving to the renamed file).</summary>
+    public async Task ChangeNoteTagAsync(string relativePath, string? tag)
+    {
+        if (IsOpenInEditor(relativePath))
+        {
+            await Editor.ChangeTagAsync(tag);
+        }
+        else if (NotePath.TryParse(relativePath, out var path))
+        {
+            await Task.Run(() => _host.Engine.ChangeTagAsync(path, tag, CancellationToken.None));
+        }
+    }
+
+    /// <summary>History context menu: to the Recycle Bin / trash, never permanently (CLAUDE.md rule 5).</summary>
+    public async Task DeleteNoteAsync(string relativePath)
+    {
+        if (IsOpenInEditor(relativePath))
+        {
+            await Editor.DeleteAsync();
+        }
+        else if (NotePath.TryParse(relativePath, out var path))
+        {
+            await Task.Run(() => _host.Engine.DeleteAsync(path, CancellationToken.None));
+        }
+    }
+
+    private bool IsOpenInEditor(string relativePath) =>
+        string.Equals(Editor.Path?.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase);
+
     public async Task OpenNoteAsync(string relativePath)
     {
         if (!NotePath.TryParse(relativePath, out var path))
