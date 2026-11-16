@@ -10,6 +10,8 @@
     instance    M0-05  a second launch on the same data hands over to the first and exits; other data = own instance
     files       M8-08  a .md file as argument: outside the notes its own window (also handed over by a second
                        launch, never twice), inside the notes the main editor – the registry is not touched
+    startup     M4-09  process start to typing (last note loaded, editor focused), median of 3 warm starts on
+                       existing demo data, against -StartupBudgetMs (300 = the acceptance criterion)
 
   Runs in CI after the AOT publish and locally:
     dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64 -o publish/win-x64
@@ -21,7 +23,8 @@
 param(
     [Parameter(Mandatory)] [string] $PublishDir,
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
-    [ValidateSet('deps', 'screenshots', 'instance', 'files')] [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files')
+    [ValidateSet('deps', 'screenshots', 'instance', 'files', 'startup')] [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'startup'),
+    [int] $StartupBudgetMs = 300
 )
 
 $ErrorActionPreference = 'Stop'
@@ -310,10 +313,51 @@ function Test-OpenFiles {
     }
 }
 
+# ---------------------------------------------------------------------------------------------------------------
+# startup (M4-09): the app logs "Ready to type <n> ms after the process started (first frame <m> ms)".
+# ---------------------------------------------------------------------------------------------------------------
+function Get-ReadyTimes([string] $demoDir) {
+    [regex]::Matches((Get-Log $demoDir), 'Ready to type (\d+) ms after the process started \(first frame (\d+) ms\)') |
+        ForEach-Object { [pscustomobject]@{ Ready = [int]$_.Groups[1].Value; FirstFrame = [int]$_.Groups[2].Value } }
+}
+
+function Test-Startup {
+    $demo = Join-Path $WorkDir 'demo-startup'
+    $times = [System.Collections.Generic.List[object]]::new()
+    # Start 0 creates the demo notes and the index – not measured; then three starts on existing data.
+    for ($run = 0; $run -le 3; $run++) {
+        $before = @(Get-ReadyTimes $demo).Count
+        $p = Start-WolfMark @('--demo', $demo)
+        try {
+            $deadline = (Get-Date).AddSeconds(90)
+            while (@(Get-ReadyTimes $demo).Count -le $before -and -not $p.HasExited -and (Get-Date) -lt $deadline) {
+                Start-Sleep -Milliseconds 100
+            }
+        }
+        finally {
+            Stop-WolfMark @($p)
+        }
+
+        $all = @(Get-ReadyTimes $demo)
+        if ($all.Count -le $before) {
+            Report 'startup: ready to type' $false "start $run logged no 'Ready to type' (exited: $($p.HasExited))`n$(Get-Problems (Get-Log $demo))"
+            return
+        }
+
+        if ($run -gt 0) { $times.Add($all[-1]) }
+        Start-Sleep -Milliseconds 500 # let the killed process release its files
+    }
+
+    $median = ($times | Sort-Object Ready)[1]
+    $list = ($times | ForEach-Object { "$($_.Ready) ms (first frame $($_.FirstFrame) ms)" }) -join ', '
+    Report 'startup: ready to type' ($median.Ready -le $StartupBudgetMs) "median $($median.Ready) ms, budget $StartupBudgetMs ms – $list"
+}
+
 if ($Checks -contains 'deps') { Test-Dependencies }
 if ($Checks -contains 'screenshots') { Test-Screenshots }
 if ($Checks -contains 'instance') { Test-SingleInstance }
 if ($Checks -contains 'files') { Test-OpenFiles }
+if ($Checks -contains 'startup') { Test-Startup }
 
 $failed = @($script:results | Where-Object { -not $_.Ok })
 if ($env:GITHUB_STEP_SUMMARY) {

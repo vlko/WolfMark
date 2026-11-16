@@ -72,9 +72,11 @@ jobs:
           name: WolfMark-${{ matrix.rid }}
           path: publish/${{ matrix.rid }}
       - name: Smoke test
-        # The real AOT binary on demo data: imports (no .NET / VC++ needed), screenshots, single instance.
+        # The real AOT binary on demo data: imports (no .NET / VC++ needed), screenshots, single instance,
+        # .md files, startup. The runner has no GPU and shared cores: the startup budget only catches regressions
+        # there – the 300 ms of M4-09 is measured on a real machine.
         if: matrix.rid == 'win-x64'
-        run: pwsh tools/smoke-windows.ps1 -PublishDir publish/${{ matrix.rid }} -WorkDir "${{ runner.temp }}/smoke"
+        run: pwsh tools/smoke-windows.ps1 -PublishDir publish/${{ matrix.rid }} -WorkDir "${{ runner.temp }}/smoke" -StartupBudgetMs 3000
       - uses: actions/upload-artifact@v7
         if: always() && matrix.rid == 'win-x64'
         with:

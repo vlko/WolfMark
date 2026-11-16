@@ -52,7 +52,8 @@ public sealed partial class App : Application, IXamlMetadataProvider
         try
         {
             var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory, freshDemo: LaunchOptions.Current.ScreenshotDirectory is not null);
-            _logger = host.Loggers.CreateLogger<App>();
+            var logger = host.Loggers.CreateLogger<App>();
+            _logger = logger;
             if (LaunchOptions.Current.TraceEditor)
             {
                 StartEditorTrace(host.Paths.LogsDirectory);
@@ -64,6 +65,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             }
 
             var brushes = new TagBrushes(host.Tags);
+            TimeSpan? firstFrame = null;
             var vm = new MainViewModel(host);
             _window = new MainWindow(vm, brushes);
             WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: window built");
@@ -74,12 +76,19 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 // note keeps the UI thread busy, and until then the window stayed blank.
                 await NextFrameAsync();
                 WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("startup: first frame");
+                firstFrame = SinceProcessStart();
             }
 
             // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
 
             host.StartBackground();
             await _window.InitializeAsync();
+            if (firstFrame is { } shown)
+            {
+                // M4-09 (start to typing < 300 ms): the last note is loaded and the editor has the focus.
+                LogReadyToType(logger, (long)SinceProcessStart().TotalMilliseconds, (long)shown.TotalMilliseconds);
+            }
+
             if (LaunchOptions.Current.OpenFile is { } file)
             {
                 await vm.OpenFileAsync(file);
@@ -291,6 +300,16 @@ public sealed partial class App : Application, IXamlMetadataProvider
             // nothing left to report to
         }
     }
+
+    /// <summary>From the OS creating the process – includes loading the binary, unlike a stopwatch started in Main.</summary>
+    private static TimeSpan SinceProcessStart()
+    {
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        return DateTime.Now - process.StartTime;
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Ready to type {ReadyMs} ms after the process started (first frame {FirstFrameMs} ms)")]
+    private static partial void LogReadyToType(ILogger logger, long readyMs, long firstFrameMs);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Activation redirected from another launch (with file: {WithFile})")]
     private static partial void LogRedirectedActivation(ILogger logger, bool withFile);

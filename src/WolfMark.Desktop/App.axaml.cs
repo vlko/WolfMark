@@ -65,7 +65,8 @@ public sealed partial class App : Application
         try
         {
             var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory);
-            _logger = host.Loggers.CreateLogger<App>();
+            var logger = host.Loggers.CreateLogger<App>();
+            _logger = logger;
             DesktopStrings.ApplyLanguage(host.Settings.Current.Language);
             RequestedThemeVariant = host.Settings.Current.Theme switch
             {
@@ -84,6 +85,7 @@ public sealed partial class App : Application
             {
                 instance.Activated += (_, file) => UiThread.Post(() =>
                 {
+                    LogRedirectedActivation(logger, file is not null); // tools/smoke-linux.sh checks for it
                     if (file is null)
                     {
                         window.BringToFront();
@@ -97,6 +99,8 @@ public sealed partial class App : Application
 
             host.StartBackground();
             await window.InitializeAsync();
+            // M4-09: the last note is loaded and the editor has the focus.
+            LogReadyToType(logger, (long)SinceProcessStart().TotalMilliseconds);
             _vm = vm;
             if (LaunchOptions.Current.OpenFile is { } first)
             {
@@ -153,6 +157,19 @@ public sealed partial class App : Application
             LogUnhandled(_logger, source, ex);
         }
     }
+
+    /// <summary>From the OS creating the process – includes loading the binary, unlike a stopwatch started in Main.</summary>
+    private static TimeSpan SinceProcessStart()
+    {
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        return DateTime.Now - process.StartTime;
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Ready to type {ReadyMs} ms after the process started")]
+    private static partial void LogReadyToType(ILogger logger, long readyMs);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Activation redirected from another launch (with file: {WithFile})")]
+    private static partial void LogRedirectedActivation(ILogger logger, bool withFile);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception ({Source})")]
     private static partial void LogUnhandled(ILogger logger, string source, Exception ex);
