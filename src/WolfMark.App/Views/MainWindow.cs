@@ -311,12 +311,13 @@ internal sealed partial class MainWindow : Window
         Windows.Win32.PInvoke.SetForegroundWindow(new Windows.Win32.Foundation.HWND(Win32Interop.GetWindowFromWindowId(AppWindow.Id)));
     }
 
-    public async Task InitializeAsync()
+    /// <param name="ready">The start note is in the editor and it has the focus; the panels are still loading.</param>
+    public Task InitializeAsync(Action? ready = null) => _vm.InitializeAsync(() =>
     {
-        await _vm.InitializeAsync();
-        StartupTimeline.Mark("view model loaded (week, history, last note)");
+        StartupTimeline.Mark("start note opened");
         _editor.FocusEditor();
-    }
+        ready?.Invoke();
+    });
 
     private static void Add(Grid grid, FrameworkElement child, int row)
     {

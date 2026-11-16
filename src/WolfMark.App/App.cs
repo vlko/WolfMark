@@ -43,7 +43,9 @@ public sealed partial class App : Application, IXamlMetadataProvider
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        StartupTimeline.Mark("Windows App SDK, XAML start");
         Resources.MergedDictionaries.Add(new XamlControlsResources());
+        StartupTimeline.Mark("XamlControlsResources");
 
         // Flat design (ADR 0004): controls only slightly rounded, like the tags.
         Resources["ControlCornerRadius"] = new CornerRadius(3);
@@ -97,12 +99,17 @@ public sealed partial class App : Application, IXamlMetadataProvider
             // else: started by Windows at sign-in with the tray on – only the tray icon, the window opens from it.
 
             host.StartBackground();
-            await _window.InitializeAsync();
-            StartupTimeline.Mark("last note loaded");
-            if (firstFrame is { } shown)
+            await _window.InitializeAsync(() =>
             {
-                // M4-09 (start to typing < 300 ms): the last note is loaded and the editor has the focus.
-                LogReadyToType(logger, StartupTimeline.Now(), shown);
+                if (firstFrame is { } shown)
+                {
+                    // M4-09 (start to typing): the start note is in the editor and it has the focus.
+                    LogReadyToType(logger, StartupTimeline.Now(), shown);
+                }
+            });
+            if (firstFrame is not null)
+            {
+                StartupTimeline.Mark("panels loaded (week, history, calendar, counts)");
                 LogStartupMarks(logger, StartupTimeline.TakeMarks() + "; experiment " + StartupExperiment.Active);
             }
 

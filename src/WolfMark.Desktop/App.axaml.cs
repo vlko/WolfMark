@@ -98,9 +98,8 @@ public sealed partial class App : Application
             }
 
             host.StartBackground();
-            await window.InitializeAsync();
-            // M4-09: the last note is loaded and the editor has the focus.
-            LogReadyToType(logger, (long)SinceProcessStart().TotalMilliseconds);
+            // M4-09: the start note is in the editor and it has the focus (the panels load after it).
+            await window.InitializeAsync(() => LogReadyToType(logger, (long)SinceProcessStart().TotalMilliseconds));
             _vm = vm;
             if (LaunchOptions.Current.OpenFile is { } first)
             {

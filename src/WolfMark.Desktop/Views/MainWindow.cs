@@ -108,11 +108,12 @@ internal sealed class MainWindow : Window
         ApplyTray();
     }
 
-    public async Task InitializeAsync()
+    /// <param name="ready">The start note is in the editor and it has the focus; the panels are still loading.</param>
+    public Task InitializeAsync(Action? ready = null) => _vm.InitializeAsync(() =>
     {
-        await _vm.InitializeAsync();
         _editor.FocusEditor();
-    }
+        ready?.Invoke();
+    });
 
     /// <summary>A file from outside the notes tree in its own window (or the window it already has).</summary>
     private void OpenExternal(string fullPath)

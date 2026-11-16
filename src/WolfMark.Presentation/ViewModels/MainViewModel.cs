@@ -133,7 +133,11 @@ internal sealed partial class MainViewModel : ObservableObject
     public AppHost Host => _host;
 
     /// <summary>Opens the last note immediately (no index needed), then loads the rest.</summary>
-    public async Task InitializeAsync()
+    /// <param name="noteReady">
+    /// Called once the start note is in the editor – before the week, history, calendar and counts load (M4-09: the
+    /// user can type while they fill in).
+    /// </param>
+    public async Task InitializeAsync(Action? noteReady = null)
     {
         if (_initialized)
         {
@@ -154,6 +158,7 @@ internal sealed partial class MainViewModel : ObservableObject
             await Editor.NewAsync(null);
         }
 
+        noteReady?.Invoke();
         await Week.LoadAsync(SelectedDay, SelectedDay);
         await History.ReloadAsync();
         History.MarkCurrent(Editor.IsPersisted ? Editor.Path?.RelativePath : null);
