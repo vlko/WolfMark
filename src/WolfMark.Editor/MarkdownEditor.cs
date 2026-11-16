@@ -24,6 +24,7 @@ public sealed partial class MarkdownEditor : UserControl
     private readonly HashSet<EditorCommand> _activeFormats = [];
 
     private MarkdownDocumentModel _doc = new();
+    private bool _layoutDeferred;
     private MarkdownTheme _theme = MarkdownTheme.Light(_ => default);
     private MarkdownEditorMode _mode = MarkdownEditorMode.Formatted;
     private bool _readOnly;
@@ -87,9 +88,23 @@ public sealed partial class MarkdownEditor : UserControl
         InitIme();
         StartupTimeline.Mark("editor: IME edit context");
         InitCaretBlink();
-        Load(string.Empty, caretToEnd: false, readOnly: false);
+        if (DeferInitialLayout)
+        {
+            // No text layout before the first Load (the host loads a note right away): Win2D's device and DirectWrite
+            // are then first used after the window's first frame, when WinUI already initialised Direct3D.
+            _layoutDeferred = true;
+            ResetLines();
+        }
+        else
+        {
+            Load(string.Empty, caretToEnd: false, readOnly: false);
+        }
+
         StartupTimeline.Mark("editor: caret, empty document");
     }
+
+    /// <summary>Startup experiment (M4-09, <c>editor-defer-layout</c>): skip laying out the empty document in the constructor.</summary>
+    public static bool DeferInitialLayout { get; set; }
 
     public event EventHandler<string>? TextEdited;
 
@@ -168,6 +183,7 @@ public sealed partial class MarkdownEditor : UserControl
     public void Load(string text, bool caretToEnd, bool readOnly)
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        _layoutDeferred = false;
         _readOnly = readOnly;
         _doc = new MarkdownDocumentModel();
         _doc.Update(text.Replace("\r\n", "\n", StringComparison.Ordinal));

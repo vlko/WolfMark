@@ -77,6 +77,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             var brushes = new TagBrushes(host.Tags);
             long? firstFrame = null;
             StartupTimeline.Mark("App: settings, brushes");
+            WolfMark.Editor.MarkdownEditor.DeferInitialLayout = StartupExperiment.Is("editor-defer-layout");
             var vm = new MainViewModel(host);
             StartupTimeline.Mark("view model");
             _window = new MainWindow(vm, brushes);

@@ -17,6 +17,9 @@ public sealed class DemoHostTests
             await using var host = await AppHost.CreateAsync(demo, freshDemo: true);
 
             Assert.True(Directory.EnumerateFiles(Path.Combine(demo, "notes"), "*.md", SearchOption.AllDirectories).Any());
+            // It starts on today's work note, like a user on their last one (the startup measurement opens it).
+            Assert.Matches(@"^\d{4}/\d{2}/\d{2}/work_\d{4}\.md$", host.Settings.Current.LastNotePath);
+            Assert.True(File.Exists(host.Engine.GetFullPath(host.Settings.Current.LastNotePath!)));
         }
         finally
         {

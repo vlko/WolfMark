@@ -124,6 +124,11 @@ public sealed partial class MarkdownEditor
     /// <param name="keepView">False when a new note replaced the text: the old scroll position means nothing.</param>
     private void RelayoutAll(bool keepView = true)
     {
+        if (_layoutDeferred)
+        {
+            return; // nothing loaded yet (DeferInitialLayout) – the first Load lays out
+        }
+
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var anchor = keepView ? ViewAnchor() : null;
         ClearLayouts();

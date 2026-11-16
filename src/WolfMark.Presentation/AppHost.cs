@@ -178,6 +178,8 @@ internal sealed partial class AppHost : IAsyncDisposable
         s.ClaudeCode.Enabled = true;
         s.ClaudeCode.ClaudeDirectory = claude;
         s.ClaudeCode.RedactSecrets = true;
+        // Start on today's work note like a real user on their last one (M4-09 measures opening it), not on a new note.
+        s.LastNotePath ??= TodaysWorkNote(notes);
         // A README outside the notes, opened an hour ago: an external file in the history.
         var external = await WolfMark.Storage.Demo.DemoDataSeeder.WriteExternalFileAsync(Path.Combine(directory, "projects", "billing-api"), CancellationToken.None).ConfigureAwait(false);
         if (s.ExternalFiles.Count == 0)
@@ -186,6 +188,20 @@ internal sealed partial class AppHost : IAsyncDisposable
         }
 
         await settings.SaveAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private static string? TodaysWorkNote(string notes)
+    {
+        var day = WolfMark.Core.Notes.NotePath.FormatDirectory(DateOnly.FromDateTime(DateTime.Now));
+        var dir = Path.Combine(notes, day);
+        if (!Directory.Exists(dir))
+        {
+            return null;
+        }
+
+        var file = Directory.EnumerateFiles(dir, "work_*.md").Order(StringComparer.Ordinal).FirstOrDefault()
+                   ?? Directory.EnumerateFiles(dir, "*.md").Order(StringComparer.Ordinal).LastOrDefault();
+        return file is null ? null : day + "/" + Path.GetFileName(file);
     }
 
     /// <summary>Starts index, watcher and sync in the background; never blocks the caller.</summary>
