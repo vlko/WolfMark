@@ -74,6 +74,9 @@ public sealed class LocalSettings
     /// <summary>Closing the window hides it to the notification area; the app ends from the tray menu.</summary>
     public bool CloseToTray { get; set; }
 
+    /// <summary>Global shortcut for the quick note window (M8-01, Windows); off by default.</summary>
+    public QuickNoteSettings QuickNote { get; set; } = new();
+
     /// <summary>Calendar panel shows the full month (true) or only the week band.</summary>
     public bool CalendarExpanded { get; set; }
 
@@ -107,6 +110,19 @@ public sealed class ExternalFileEntry
     public string Path { get; set; } = string.Empty;
 
     public DateTime TouchedUtc { get; set; }
+}
+
+/// <summary>The quick note window (M8-01): a small window with a new note, opened by a global shortcut.</summary>
+public sealed class QuickNoteSettings
+{
+    /// <summary>The shortcut is registered while the app runs (also hidden in the notification area).</summary>
+    public bool HotkeyEnabled { get; set; }
+
+    /// <summary><see cref="KeyChord"/> text; an invalid value falls back to <see cref="KeyChord.QuickNoteDefault"/>.</summary>
+    public string Hotkey { get; set; } = KeyChord.QuickNoteDefault.ToString();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public KeyChord Chord => KeyChord.TryParse(Hotkey, out var chord) ? chord : KeyChord.QuickNoteDefault;
 }
 
 public sealed class ClaudeCodeSyncSettings

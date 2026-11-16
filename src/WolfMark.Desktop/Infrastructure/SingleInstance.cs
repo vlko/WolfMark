@@ -7,7 +7,8 @@ namespace WolfMark.Desktop.Infrastructure;
 /// <summary>
 /// One instance per data folder (the Windows app uses AppInstance redirection): the first process holds an
 /// exclusive lock file and listens on a local socket; a later launch sends that socket the file it was started
-/// with (or nothing) – the first instance opens it or comes to the front – and exits.
+/// with, <c>--quick-note</c>, or nothing – the first instance opens the file, the quick note window, or comes to the
+/// front – and exits.
 /// </summary>
 internal sealed class SingleInstance : IDisposable
 {
@@ -23,14 +24,17 @@ internal sealed class SingleInstance : IDisposable
         _ = AcceptLoopAsync();
     }
 
-    /// <summary>Raised on a thread-pool thread when another launch asked for the window; the file it was started with, or null.</summary>
+    /// <summary>
+    /// Raised on a thread-pool thread when another launch asked for the window: the file it was started with,
+    /// <see cref="WolfMark.App.Infrastructure.LaunchOptions.QuickNoteSwitch"/>, or null. A file is always a full path, so it cannot be the switch.
+    /// </summary>
     public event EventHandler<string?>? Activated;
 
     /// <summary>
-    /// Null when another instance owns <paramref name="directory"/> (it has been handed <paramref name="file"/>, or
-    /// asked to show itself).
+    /// Null when another instance owns <paramref name="directory"/> (it has been handed <paramref name="request"/> –
+    /// a file or the quick note switch – or asked to show itself).
     /// </summary>
-    public static SingleInstance? TryAcquire(string directory, string? file)
+    public static SingleInstance? TryAcquire(string directory, string? request)
     {
         Directory.CreateDirectory(directory);
         var socketPath = SocketPath(directory);
@@ -41,7 +45,7 @@ internal sealed class SingleInstance : IDisposable
         }
         catch (IOException)
         {
-            Poke(socketPath, file);
+            Poke(socketPath, request);
             return null;
         }
 

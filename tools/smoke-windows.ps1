@@ -10,6 +10,8 @@
     instance    M0-05  a second launch on the same data hands over to the first and exits; other data = own instance
     files       M8-08  a .md file as argument: outside the notes its own window (also handed over by a second
                        launch, never twice), inside the notes the main editor – the registry is not touched
+    quicknote   M8-01  --quick-note: a later launch opens the quick note window in the running app (once, however
+                       often it is asked for), a first launch with it starts the app with that window
     startup     M4-09  process start to typing (last note loaded, editor focused), median of 3 warm starts on
                        existing demo data, against -StartupBudgetMs (600 = the acceptance criterion, ADR 0011)
 
@@ -24,14 +26,14 @@ param(
     [Parameter(Mandatory)] [string] $PublishDir,
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
     # "startup,files" or startup, files – run as a script file (pwsh tools/smoke-windows.ps1 …) a list arrives as one string.
-    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'startup'),
+    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'quicknote', 'startup'),
     [int] $StartupBudgetMs = 600,
     # A/B: alternate 3 starts with WOLFMARK_EXPERIMENT=<name> and 3 without (StartupExperiment in the app).
     [string] $StartupExperiment
 )
 
 $ErrorActionPreference = 'Stop'
-$known = 'deps', 'screenshots', 'instance', 'files', 'startup'
+$known = 'deps', 'screenshots', 'instance', 'files', 'quicknote', 'startup'
 $Checks = @($Checks | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $unknown = @($Checks | Where-Object { $known -notcontains $_ })
 if ($unknown) { throw "Unknown check(s): $($unknown -join ', '). Known: $($known -join ', ')" }
@@ -323,6 +325,61 @@ function Test-OpenFiles {
 # ---------------------------------------------------------------------------------------------------------------
 # startup (M4-09): the app logs "Ready to type <n> ms after the process started (first frame <m> ms)".
 # ---------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+# quicknote (M8-01): what the global shortcut and --quick-note do – the shortcut itself is not pressed (demo mode
+# does not register it, so a smoke test never takes it from the user's running WolfMark).
+# ---------------------------------------------------------------------------------------------------------------
+function Get-QuickNoteWindows([System.Diagnostics.Process] $process) {
+    @([WolfMarkSmokeWindows]::Titles($process.Id) | Where-Object { $_ -match '^(Quick note|Rýchla poznámka) – WolfMark$' })
+}
+
+function Wait-QuickNoteWindow([System.Diagnostics.Process] $process, [int] $seconds) {
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {
+        if ($process.HasExited) { return $false }
+        if ((Get-QuickNoteWindows $process).Count -gt 0) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
+function Test-QuickNote {
+    $demo = Join-Path $WorkDir 'demo-quicknote'
+    $first = Join-Path $WorkDir 'demo-quicknote-first'
+    $main = $null; $second = $null; $third = $null; $direct = $null
+    try {
+        $main = Start-WolfMark @('--demo', $demo)
+        if (-not (Wait-Window $main 90)) {
+            Report 'quicknote: a later launch opens it in the running app' $false "no main window within 90 s (exited: $($main.HasExited))"
+            return
+        }
+
+        $second = Start-WolfMark @('--demo', $demo, '--quick-note')
+        $exited = $second.WaitForExit(30000)
+        $shown = Wait-QuickNoteWindow $main 30
+        Start-Sleep -Seconds 1
+        $logged = (Get-Log $demo) -match 'Quick note shown'
+        Report 'quicknote: a later launch opens it in the running app' ($exited -and $shown -and $logged) `
+            "second exited: $exited, window: $shown, logged: $logged; windows: $([WolfMarkSmokeWindows]::Titles($main.Id) -join ' | ')"
+
+        $third = Start-WolfMark @('--demo', $demo, '--quick-note')
+        $exited = $third.WaitForExit(30000)
+        Start-Sleep -Seconds 2
+        $count = (Get-QuickNoteWindows $main).Count
+        Report 'quicknote: asked again, the same window' ($exited -and $count -eq 1) "second exited: $exited, quick note windows: $count"
+
+        $problems = Get-Problems (Get-Log $demo)
+        Report 'quicknote: no errors logged' (-not $problems) $(if ($problems) { $problems -join "`n" } else { 'clean log' })
+
+        $direct = Start-WolfMark @('--demo', $first, '--quick-note')
+        $ok = Wait-QuickNoteWindow $direct 90
+        Report 'quicknote: a first launch with it starts the app with the window' $ok "windows: $(if (-not $direct.HasExited) { [WolfMarkSmokeWindows]::Titles($direct.Id) -join ' | ' } else { 'exited' })"
+    }
+    finally {
+        Stop-WolfMark @($main, $second, $third, $direct)
+    }
+}
+
 function Get-ReadyTimes([string] $demoDir) {
     [regex]::Matches((Get-Log $demoDir), 'Ready to type (\d+) ms after the process started \(first frame (\d+) ms\)') |
         ForEach-Object { [pscustomobject]@{ Ready = [int]$_.Groups[1].Value; FirstFrame = [int]$_.Groups[2].Value } }
@@ -379,6 +436,7 @@ if ($Checks -contains 'deps') { Test-Dependencies }
 if ($Checks -contains 'screenshots') { Test-Screenshots }
 if ($Checks -contains 'instance') { Test-SingleInstance }
 if ($Checks -contains 'files') { Test-OpenFiles }
+if ($Checks -contains 'quicknote') { Test-QuickNote }
 if ($Checks -contains 'startup') { Test-Startup }
 
 $failed = @($script:results | Where-Object { -not $_.Ok })

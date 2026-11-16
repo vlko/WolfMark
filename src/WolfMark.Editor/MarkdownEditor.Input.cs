@@ -241,7 +241,7 @@ public sealed partial class MarkdownEditor
             case VirtualKey.Delete when !_readOnly:
                 DeleteForward(ctrl);
                 break;
-            case VirtualKey.Enter when !_readOnly:
+            case VirtualKey.Enter when !_readOnly && !ctrl: // Ctrl+Enter is the window's (quick note: done)
                 Enter();
                 break;
             case VirtualKey.A when ctrl:

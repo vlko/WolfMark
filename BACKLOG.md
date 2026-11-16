@@ -192,14 +192,23 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 
 ## M8 – Pohodlie a integrácia s Windows 🟡
 
-- ⬜ **M8-01 – Globálna skratka rýchleho zápisu** (malé okno, Enter uloží a skryje).
+- ✅ **M8-01 – Globálna skratka rýchleho zápisu** (malé okno, Enter uloží a skryje). ADR 0012.
+  *Stav:* Hotové, ručne overené na Windows a smoke `quicknote` 4/4 na Windows (2026-11-16): samostatné okno „Rýchla poznámka“ (nová poznámka dnešného
+  dňa bez tagu, výber tagu, ukladá priebežne, Esc / Ctrl+Enter skryje, „Pokračovať v hlavnom okne“ = celé okno),
+  hlavné okno sa nemení. Windows: `RegisterHotKey`, Nastavenia → Všeobecné → Rýchla poznámka (predvolene vypnutá,
+  `Win+Shift+N`, nahratie stlačením, obsadená skratka = oznámenie). macOS/Linux: `--quick-note` pre systémovú
+  skratku (príkaz na skopírovanie v Nastaveniach); funguje aj na Windows. Testy `KeyChordTests`, smoke `quicknote`
+  (Linux 4/4 nad buildom vo WSL, 2026-11-16).
+  *AK:* skratka otvorí okno nad inou aplikáciou aj so skrytým hlavným oknom; napísaný text je po Esc v novej
+  poznámke (súbor), prázdna poznámka nevznikne; opakovaná skratka s rozpísaným textom ho nezahodí; obsadená
+  skratka sa ohlási; vypnutá skratka sa neregistruje.
 - ✅ **M8-02 – Tray ikona**, minimalizácia do tray, štart s Windows.
   *Stav:* Hotové, ručne overené na Windows (2026-11-16): Nastavenia → Windows (štart = HKCU `Run` s `--autostart`;
   pri zapnutom tray štartuje skryto), zatvorenie okna skryje do oblasti oznámení (`Infrastructure/TrayIcon.cs`,
   Shell_NotifyIcon + subclass okna), menu Zobraziť / Nastavenia… / Ukončiť.
 - ⬜ **M8-03 – Jump list** a protokol `wolfmark://`.
 - 🟨 **M8-04 – Nastavenia** (SPEC §4.6) vrátane zmeny koreňového adresára s presunom.
-  *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu, skratka rýchleho zápisu (M8-01).
+  *Stav:* Čiastočne: priečinok (presun/prepnutie), téma, backdrop, jazyk, editor (písmo, veľkosť, čísla riadkov, farebné emotikony), Claude Code, rebuild indexu; v titulku verzia, Diagnostika s kopírovaním. Chýba šírka textu, voľba embedding modelu. Skratka rýchleho zápisu: M8-01.
 - ✅ **M8-05 – Premenovanie a zlúčenie tagov** (hromadné premenovanie súborov s rollbackom pri chybe).
   Nastavenia → Tagy: zoznam tagov (aj bez poznámok, z `tags.json`), pridanie nového; pri každom tagu vyskakovacie okno
   s farbou, titulkami v kalendári, „Zobraziť poznámky“, premenovaním (na existujúci tag = zlúčenie) a odstránením

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -208,6 +209,20 @@ internal sealed class SettingsWindow : Window
         var time24 = new ToggleSwitch { IsChecked = s.Use24HourTime, Content = Strings.Get(R.Settings_Use24HourTime) };
         var closeToTray = new ToggleSwitch { IsChecked = s.CloseToTray, Content = Strings.Get(R.Settings_CloseToTray) };
 
+        // Quick note (M8-01): no global shortcut of the app's own here (Wayland has none, ADR 0012) – the command
+        // for a shortcut of the system.
+        var quickNoteHint = Typo.Body(Strings.Get(R.Settings_QuickNoteCommand), 12.5, Palette.InkTertiary);
+        quickNoteHint.TextWrapping = TextWrapping.Wrap;
+        var quickNoteCommand = new TextBox { Text = QuickNoteCommand(), IsReadOnly = true, MinWidth = 320 };
+        var quickNoteCopy = Ui.FlatButton(Strings.Get(R.Settings_QuickNoteCopy));
+        quickNoteCopy.Click += async (_, _) =>
+        {
+            if (Clipboard is { } clipboard)
+            {
+                await clipboard.SetTextAsync(quickNoteCommand.Text);
+            }
+        };
+
         // .md files: the system's default handler is the truth – read off the UI thread (xdg-mime runs a process).
         bool? associationWas = null;
         var fileAssociation = new ToggleSwitch { Content = Strings.Get(R.Settings_FileAssociation), IsEnabled = false };
@@ -323,6 +338,9 @@ internal sealed class SettingsWindow : Window
                 dateFormats,
                 time24,
                 closeToTray,
+                Section(Strings.Get(R.Settings_QuickNote)),
+                quickNoteHint,
+                Ui.HStack(8, quickNoteCommand, quickNoteCopy),
                 Section(Strings.Get(R.Settings_Files)),
                 fileAssociation,
                 associationHint,
@@ -649,6 +667,22 @@ internal sealed class SettingsWindow : Window
         var layout = Ui.Columns((Ui.Px(210), nav), (Ui.Px(1), new Border { Width = 1, Background = Palette.Divider }), (Ui.Star, host));
         Show(Math.Clamp(_lastCategory, 0, pages.Length - 1));
         return layout;
+    }
+
+    /// <summary>
+    /// This executable with <c>--quick-note</c>, quoted when the path has spaces; in demo mode with its folder, so
+    /// the command reaches the demo instance.
+    /// </summary>
+    private static string QuickNoteCommand()
+    {
+        static string Quote(string arg) => arg.Contains(' ', StringComparison.Ordinal) ? "\"" + arg + "\"" : arg;
+        var command = Quote(Environment.ProcessPath ?? "wolfmark");
+        if (LaunchOptions.Current.DemoDirectory is { } demo)
+        {
+            command += " --demo " + Quote(demo);
+        }
+
+        return command + " " + LaunchOptions.QuickNoteSwitch;
     }
 
     private static ComboBox Combo(string[] items, int selected) => new() { ItemsSource = items, SelectedIndex = selected, MinWidth = 220 };

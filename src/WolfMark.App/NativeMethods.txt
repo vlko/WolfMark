@@ -38,3 +38,9 @@ FONT_CHARSET
 SHChangeNotify
 SHCNE_ID
 SHCNF_FLAGS
+RegisterHotKey
+UnregisterHotKey
+WM_HOTKEY
+HOT_KEY_MODIFIERS
+MonitorFromPoint
+GetDpiForMonitor

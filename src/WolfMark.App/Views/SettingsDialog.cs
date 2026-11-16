@@ -17,7 +17,7 @@ namespace WolfMark.App.Views;
 /// <summary>Settings (SPEC §4.6, M8-04). Visual settings apply immediately, the rest after restart.</summary>
 internal static class SettingsDialog
 {
-    public static async Task ShowAsync(XamlRoot root, MainViewModel vm, Microsoft.UI.WindowId windowId, Action applyAppearance, Action<string?> previewIcon)
+    public static async Task ShowAsync(XamlRoot root, MainViewModel vm, Microsoft.UI.WindowId windowId, Action applyAppearance, Action<string?> previewIcon, Action suspendHotkey)
     {
         var host = vm.Host;
         var s = host.Settings.Current;
@@ -271,6 +271,7 @@ internal static class SettingsDialog
         // Portable mode writes nothing to this computer's system settings: both integrations are off there.
         var startWithWindows = new ToggleSwitch { IsOn = startupWas, Header = Strings.Get(R.Settings_StartWithWindows), IsEnabled = !LaunchOptions.Current.IsDemo && !isPortable };
         var closeToTray = new ToggleSwitch { IsOn = s.CloseToTray, Header = Strings.Get(R.Settings_CloseToTray) };
+        var quickNote = QuickNoteShortcut(s.QuickNote, suspendHotkey);
         // .md files: the association of this exe (registry is the truth); Windows confirms the default itself.
         var associationWas = await Task.Run(() => FileAssociation.IsEnabled);
         var fileAssociation = new ToggleSwitch { IsOn = associationWas, Header = Strings.Get(R.Settings_FileAssociation), IsEnabled = !isPortable };
@@ -330,6 +331,8 @@ internal static class SettingsDialog
                 startWithWindows,
                 PortableUnavailable(),
                 closeToTray,
+                Section(Strings.Get(R.Settings_QuickNote)),
+                quickNote.Panel,
                 Section(Strings.Get(R.Settings_Files)),
                 fileAssociation,
                 associationHint,
@@ -415,6 +418,8 @@ internal static class SettingsDialog
         s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
         s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
         s.CloseToTray = closeToTray.IsOn;
+        s.QuickNote.HotkeyEnabled = quickNote.Enabled.IsOn;
+        s.QuickNote.Hotkey = quickNote.Chord().ToString();
         if (!LaunchOptions.Current.IsDemo && !isPortable && (startWithWindows.IsOn != startupWas || startupWas))
         {
             // Re-written also when unchanged: keeps the path current if the exe moved.
@@ -473,6 +478,73 @@ internal static class SettingsDialog
         {
             await ShowRestartAsync(root, vm);
         }
+    }
+
+    /// <summary>
+    /// Settings → General → Quick note (M8-01): the switch and the shortcut, recorded by pressing it in the box. While
+    /// the box has the focus the registered shortcut is off – pressing it must record it, not open a quick note; the
+    /// main window registers the result again when the dialog closes.
+    /// </summary>
+    private static (ToggleSwitch Enabled, StackPanel Panel, Func<KeyChord> Chord) QuickNoteShortcut(QuickNoteSettings settings, Action suspendHotkey)
+    {
+        var chord = settings.Chord;
+        var enabled = new ToggleSwitch { IsOn = settings.HotkeyEnabled, Header = Strings.Get(R.Settings_QuickNoteHotkey) };
+        var box = new TextBox
+        {
+            Text = chord.ToString(),
+            IsReadOnly = true,
+            Width = 240,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            IsEnabled = enabled.IsOn,
+        };
+        enabled.Toggled += (_, _) => box.IsEnabled = enabled.IsOn;
+        box.GotFocus += (_, _) =>
+        {
+            suspendHotkey();
+            box.Text = Strings.Get(R.Settings_QuickNoteRecording);
+        };
+        box.LostFocus += (_, _) => box.Text = chord.ToString();
+        box.PreviewKeyDown += (_, e) =>
+        {
+            if (KeyChord.KeyFromVirtualKey((int)e.Key) is not { } key)
+            {
+                return; // a modifier on its own (wait for the key), Tab, Esc, Enter – their usual meaning
+            }
+
+            static bool Down(Windows.System.VirtualKey k) =>
+                Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(k).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            var modifiers = ChordModifiers.None;
+            if (Down(Windows.System.VirtualKey.Control))
+            {
+                modifiers |= ChordModifiers.Control;
+            }
+
+            if (Down(Windows.System.VirtualKey.Menu))
+            {
+                modifiers |= ChordModifiers.Alt;
+            }
+
+            if (Down(Windows.System.VirtualKey.Shift))
+            {
+                modifiers |= ChordModifiers.Shift;
+            }
+
+            if (Down(Windows.System.VirtualKey.LeftWindows) || Down(Windows.System.VirtualKey.RightWindows))
+            {
+                modifiers |= ChordModifiers.Windows;
+            }
+
+            if (KeyChord.TryCreate(modifiers, key, out var pressed))
+            {
+                e.Handled = true;
+                chord = pressed;
+                box.Text = chord.ToString();
+            }
+        };
+
+        var hint = Typo.Body(Strings.Get(R.Settings_QuickNoteHotkeyHint), 12.5, Palette.InkTertiary);
+        hint.TextWrapping = TextWrapping.Wrap;
+        return (enabled, Ui.Ui.VStack(6, enabled, box, hint), () => chord);
     }
 
     /// <summary>The category last shown – the dialog opens on it again while the app runs.</summary>

@@ -54,6 +54,8 @@ internal sealed partial class MainWindow : Window
     private bool _settingsOpen;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _zoomSave;
     private TrayIcon? _tray;
+    private GlobalHotkey? _hotkey;
+    private QuickNoteWindow? _quickNote;
 
     public MainWindow(MainViewModel vm, TagBrushes brushes)
     {
@@ -167,6 +169,7 @@ internal sealed partial class MainWindow : Window
         WireLifecycle();
         StartupTimeline.Mark("window: wiring");
         ApplyTray();
+        ApplyHotkey();
         ApplyAppearance();
         StartupTimeline.Mark("window: theme");
         RestorePlacement();
@@ -225,6 +228,60 @@ internal sealed partial class MainWindow : Window
         _tray.ExitRequested += (_, _) => _ = ExitAsync();
     }
 
+    /// <summary>
+    /// The quick note shortcut (M8-01) is registered while it is on in the settings (not in demo mode – the demo
+    /// would take it from the real instance). A shortcut another app holds is reported in the error notice.
+    /// </summary>
+    public void ApplyHotkey()
+    {
+        var settings = _host.Settings.Current.QuickNote;
+        if (!settings.HotkeyEnabled || LaunchOptions.Current.IsDemo)
+        {
+            _hotkey?.Dispose();
+            _hotkey = null;
+            return;
+        }
+
+        if (_hotkey is null)
+        {
+            _hotkey = new GlobalHotkey(Win32Interop.GetWindowFromWindowId(AppWindow.Id));
+            _hotkey.Pressed += (_, _) => _ = ShowQuickNoteAsync();
+        }
+
+        var chord = settings.Chord;
+        if (!_hotkey.Register(chord))
+        {
+            LogHotkeyTaken(_host.Loggers.CreateLogger(nameof(MainWindow)), chord.ToString());
+            _vm.ErrorNotice = Strings.Format(R.Settings_QuickNoteTaken, chord.ToString());
+        }
+    }
+
+    /// <summary>The quick note window with a new note (global shortcut, <c>--quick-note</c>); built on first use.</summary>
+    public async Task ShowQuickNoteAsync()
+    {
+        if (_closing)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_quickNote is null)
+            {
+                _quickNote = new QuickNoteWindow(this, _vm, _brushes);
+                _quickNote.ApplyTheme(_root.ActualTheme);
+            }
+
+            await _quickNote.ShowNewAsync();
+            LogQuickNoteShown(_host.Loggers.CreateLogger(nameof(MainWindow))); // tools/smoke-*.ps1/sh check for it
+        }
+        catch (Exception ex)
+        {
+            LogQuickNoteFailed(_host.Loggers.CreateLogger(nameof(MainWindow)), ex);
+            _vm.ErrorNotice = ex.Message;
+        }
+    }
+
     /// <summary>Ends the app (tray menu "Exit"), also when the window is hidden.</summary>
     public async Task ExitAsync()
     {
@@ -252,6 +309,15 @@ internal sealed partial class MainWindow : Window
 
     private async Task ShutdownAsync()
     {
+        _hotkey?.Dispose();
+        _hotkey = null;
+        if (_quickNote is not null)
+        {
+            // A hidden window would keep the app alive after the main one closes.
+            await _quickNote.CloseForExitAsync();
+            _quickNote = null;
+        }
+
         await _vm.Editor.FlushAsync();
         SavePlacement();
         await _host.SaveSettingsAsync();
@@ -414,6 +480,8 @@ internal sealed partial class MainWindow : Window
             window.ApplyTheme(theme);
         }
 
+        _quickNote?.ApplyTheme(theme);
+
         _brushes.Refresh(); // views that compute colours re-render
 
         var tb = AppWindow.TitleBar;
@@ -432,6 +500,8 @@ internal sealed partial class MainWindow : Window
         {
             window.ApplyEditorTheme();
         }
+
+        _quickNote?.ApplyEditorTheme();
     }
 
     /// <summary>Ctrl + / Ctrl − / Ctrl 0 (null steps) in the editor: the font size setting, saved once the zooming stops.</summary>
@@ -769,7 +839,7 @@ internal sealed partial class MainWindow : Window
         _settingsOpen = true;
         try
         {
-            await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance, ApplyIcon);
+            await SettingsDialog.ShowAsync(_root.XamlRoot, _vm, AppWindow.Id, ApplyAppearance, ApplyIcon, SuspendHotkey);
             ApplyTray();
         }
         catch (Exception ex)
@@ -780,9 +850,22 @@ internal sealed partial class MainWindow : Window
         }
         finally
         {
+            ApplyHotkey(); // also after a cancelled dialog: the box may have suspended it
             _settingsOpen = false;
         }
     }
+
+    /// <summary>While the settings record a new shortcut, the current one must not fire (it is the likeliest key to press).</summary>
+    private void SuspendHotkey() => _hotkey?.Unregister();
+
+    [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Quick note shortcut {Chord} is registered by another app")]
+    private static partial void LogHotkeyTaken(Microsoft.Extensions.Logging.ILogger logger, string chord);
+
+    [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Quick note shown")]
+    private static partial void LogQuickNoteShown(Microsoft.Extensions.Logging.ILogger logger);
+
+    [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Opening the quick note failed")]
+    private static partial void LogQuickNoteFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
 
     [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Opening settings failed")]
     private static partial void LogSettingsFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);

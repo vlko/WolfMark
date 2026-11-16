@@ -15,10 +15,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        Instance = SingleInstance.TryAcquire(InstanceIdentity.DataDirectory(LaunchOptions.Current), LaunchOptions.Current.OpenFile);
+        var options = LaunchOptions.Current;
+        var request = options.OpenFile ?? (options.QuickNote ? LaunchOptions.QuickNoteSwitch : null);
+        Instance = SingleInstance.TryAcquire(InstanceIdentity.DataDirectory(options), request);
         if (Instance is null)
         {
-            return 0; // the running instance opens the file, or its window comes forward
+            return 0; // the running instance opens the file or the quick note, or its window comes forward
         }
 
         Strings.Source = DesktopStrings.Get;

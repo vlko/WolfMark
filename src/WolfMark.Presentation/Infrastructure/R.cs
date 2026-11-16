@@ -190,6 +190,17 @@ internal static class R
     public const string Tray_Show = nameof(Tray_Show);
     public const string Tray_Settings = nameof(Tray_Settings);
     public const string Tray_Exit = nameof(Tray_Exit);
+    public const string QuickNote_Title = nameof(QuickNote_Title);
+    public const string QuickNote_Hint = nameof(QuickNote_Hint);
+    public const string QuickNote_HintMac = nameof(QuickNote_HintMac);
+    public const string QuickNote_OpenInMain = nameof(QuickNote_OpenInMain);
+    public const string Settings_QuickNote = nameof(Settings_QuickNote);
+    public const string Settings_QuickNoteHotkey = nameof(Settings_QuickNoteHotkey);
+    public const string Settings_QuickNoteHotkeyHint = nameof(Settings_QuickNoteHotkeyHint);
+    public const string Settings_QuickNoteRecording = nameof(Settings_QuickNoteRecording);
+    public const string Settings_QuickNoteTaken = nameof(Settings_QuickNoteTaken);
+    public const string Settings_QuickNoteCommand = nameof(Settings_QuickNoteCommand);
+    public const string Settings_QuickNoteCopy = nameof(Settings_QuickNoteCopy);
     public const string History_External = nameof(History_External);
     public const string Menu_Open = nameof(Menu_Open);
     public const string Menu_OpenLink = nameof(Menu_OpenLink);

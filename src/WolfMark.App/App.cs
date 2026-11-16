@@ -118,6 +118,11 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 await vm.OpenFileAsync(file);
             }
 
+            if (LaunchOptions.Current.QuickNote && LaunchOptions.Current.ScreenshotDirectory is null)
+            {
+                await _window.ShowQuickNoteAsync();
+            }
+
             if (LaunchOptions.Current.ScreenshotDirectory is { } shots)
             {
                 await new ScreenshotRunner(_window, host, shots).RunAsync();
@@ -213,12 +218,13 @@ public sealed partial class App : Application, IXamlMetadataProvider
     }
 
     /// <summary>
-    /// A later start (another command line, or Explorer opening a <c>.md</c> file): its file opens here, otherwise
-    /// the window just comes to the front. Runs on a background thread.
+    /// A later start (another command line, or Explorer opening a <c>.md</c> file): its file opens here, with
+    /// <c>--quick-note</c> the quick note window, otherwise the window just comes to the front. Runs on a background thread.
     /// </summary>
     internal void OnRedirectedActivation(AppActivationArguments e)
     {
-        var file = RedirectedFile(e);
+        var options = RedirectedOptions(e);
+        var file = options?.OpenFile;
         if (_logger is not null)
         {
             LogRedirectedActivation(_logger, file is not null); // tools/smoke-windows.ps1 checks for it
@@ -231,7 +237,11 @@ public sealed partial class App : Application, IXamlMetadataProvider
                 return;
             }
 
-            if (file is null)
+            if (options is { QuickNote: true, OpenFile: null })
+            {
+                _ = _window.ShowQuickNoteAsync();
+            }
+            else if (file is null)
             {
                 _window.BringToFront();
             }
@@ -243,15 +253,15 @@ public sealed partial class App : Application, IXamlMetadataProvider
     }
 
     /// <summary>
-    /// The file of a redirected activation. A launch carries the second process's command line as one string – with
+    /// The command line of a redirected activation (a file activation as its file). A launch carries the second process's command line as one string – with
     /// or without the program in front, so a first word that is not an .exe is taken as an argument already.
     /// </summary>
-    private static string? RedirectedFile(AppActivationArguments e)
+    private static LaunchOptions? RedirectedOptions(AppActivationArguments e)
     {
         switch (e.Data)
         {
             case Windows.ApplicationModel.Activation.IFileActivatedEventArgs files:
-                return files.Files.Count > 0 ? files.Files[0].Path : null;
+                return files.Files.Count > 0 ? new LaunchOptions(null, null, OpenFile: files.Files[0].Path) : null;
             case Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch when !string.IsNullOrWhiteSpace(launch.Arguments):
                 var args = CommandLine.Split(launch.Arguments);
                 if (args.Count > 0 && !args[0].EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -259,7 +269,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
                     args.Insert(0, "WolfMark.exe");
                 }
 
-                return LaunchOptions.Parse(args).OpenFile;
+                return LaunchOptions.Parse(args);
             default:
                 return null;
         }

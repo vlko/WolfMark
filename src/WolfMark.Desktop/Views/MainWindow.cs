@@ -27,6 +27,7 @@ internal sealed class MainWindow : Window
     private readonly MarkdownTextEditor _editor = new();
     private readonly SearchPalette _search;
     private TrayIcon? _tray;
+    private QuickNoteWindow? _quickNote;
     private bool _exitRequested;
     private readonly RowDefinition _historyRow;
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMinutes(1) };
@@ -130,6 +131,18 @@ internal sealed class MainWindow : Window
         window.Closed += (_, _) => _externalWindows.Remove(fullPath);
         window.Show();
         _ = window.LoadAsync();
+    }
+
+    /// <summary>The quick note window with a new note (<c>--quick-note</c>, M8-01); built on first use.</summary>
+    public async Task ShowQuickNoteAsync()
+    {
+        if (_closing)
+        {
+            return;
+        }
+
+        _quickNote ??= new QuickNoteWindow(this, _vm);
+        await _quickNote.ShowNewAsync();
     }
 
     /// <summary>Before the app ends: each external window closes, asking about unsaved changes. False = the user cancelled.</summary>
@@ -320,6 +333,8 @@ internal sealed class MainWindow : Window
         {
             ApplyEditorTheme(window.Editor, _host);
         }
+
+        _quickNote?.ApplyEditorTheme();
     }
 
     /// <summary>Markdown colours for the current light/dark palette; fonts and size from the settings.</summary>
@@ -410,6 +425,11 @@ internal sealed class MainWindow : Window
             _tick.Stop();
             try
             {
+                if (_quickNote is not null)
+                {
+                    await _quickNote.CloseForExitAsync();
+                }
+
                 await _vm.Editor.FlushAsync();
                 SavePlacement();
                 _host.Settings.Current.HistoryPaneHeight = _historyRow.ActualHeight;

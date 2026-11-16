@@ -4,20 +4,24 @@ namespace WolfMark.App.Infrastructure;
 /// Command-line switches. <c>--demo &lt;dir&gt;</c> runs on isolated demo data (notes, Claude Code transcripts,
 /// settings and index all under that folder – the user's notes and settings are never touched);
 /// <c>--screenshots &lt;dir&gt;</c> additionally captures the README screenshots there and exits;
-/// <c>--trace-editor</c> times the editor's hot paths into <c>logs/editor-trace.txt</c>.
+/// <c>--trace-editor</c> times the editor's hot paths into <c>logs/editor-trace.txt</c>;
+/// <c>--quick-note</c> opens the quick note window (M8-01) – in the running instance if there is one; this is what a
+/// system keyboard shortcut runs on macOS and Linux.
 /// A file path (the first argument that is not a switch) opens that Markdown file: a note of the notes tree in
 /// the main window, any other file in its own window – this is what the file association runs.
 /// </summary>
-internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDirectory, bool TraceEditor = false, string? OpenFile = null)
+internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDirectory, bool TraceEditor = false, string? OpenFile = null, bool QuickNote = false)
 {
     public static LaunchOptions Current { get; } = Parse(Environment.GetCommandLineArgs());
+
+    public const string QuickNoteSwitch = "--quick-note";
 
     public bool IsDemo => DemoDirectory is not null;
 
     public static LaunchOptions Parse(IReadOnlyList<string> args)
     {
         string? demo = null, shots = null, file = null;
-        var trace = false;
+        bool trace = false, quickNote = false;
         // args[0] is the program itself.
         for (var i = 1; i < args.Count; i++)
         {
@@ -35,6 +39,10 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
             {
                 trace = true;
             }
+            else if (string.Equals(arg, QuickNoteSwitch, StringComparison.OrdinalIgnoreCase))
+            {
+                quickNote = true;
+            }
             else if (file is null && !arg.StartsWith('-') && arg.Trim().Length > 0) // not a switch (nor macOS's old -psn_…)
             {
                 file = Path.GetFullPath(arg);
@@ -47,6 +55,6 @@ internal sealed record LaunchOptions(string? DemoDirectory, string? ScreenshotDi
             demo = Path.Combine(Path.GetTempPath(), "WolfMarkDemo");
         }
 
-        return new LaunchOptions(demo, shots, trace, file);
+        return new LaunchOptions(demo, shots, trace, file, quickNote);
     }
 }

@@ -573,6 +573,39 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Ukončiť</value>
   </data>
+  <data name="QuickNote_Title" xml:space="preserve">
+    <value>Rýchla poznámka</value>
+  </data>
+  <data name="QuickNote_Hint" xml:space="preserve">
+    <value>Ukladá sa priebežne · Esc alebo Ctrl+Enter zavrie</value>
+  </data>
+  <data name="QuickNote_HintMac" xml:space="preserve">
+    <value>Ukladá sa priebežne · Esc alebo ⌘↩ zavrie</value>
+  </data>
+  <data name="QuickNote_OpenInMain" xml:space="preserve">
+    <value>Pokračovať v hlavnom okne</value>
+  </data>
+  <data name="Settings_QuickNote" xml:space="preserve">
+    <value>Rýchla poznámka</value>
+  </data>
+  <data name="Settings_QuickNoteHotkey" xml:space="preserve">
+    <value>Globálna skratka otvorí rýchlu poznámku</value>
+  </data>
+  <data name="Settings_QuickNoteHotkeyHint" xml:space="preserve">
+    <value>Klikni do poľa a stlač skratku: Ctrl, Alt alebo Win s písmenom, číslicou, F1–F24 alebo medzerníkom. Funguje, kým WolfMark beží, aj skrytý v oblasti oznámení.</value>
+  </data>
+  <data name="Settings_QuickNoteRecording" xml:space="preserve">
+    <value>Stlač skratku…</value>
+  </data>
+  <data name="Settings_QuickNoteTaken" xml:space="preserve">
+    <value>Skratku {0} používa iná aplikácia – zvoľ inú v Nastaveniach → Všeobecné.</value>
+  </data>
+  <data name="Settings_QuickNoteCommand" xml:space="preserve">
+    <value>Priraď tento príkaz klávesovej skratke v nastaveniach systému (GNOME, KDE: Klávesnica → Vlastné skratky; macOS: aplikácia Skratky). Otvorí rýchlu poznámku v bežiacom WolfMarku alebo ho spustí.</value>
+  </data>
+  <data name="Settings_QuickNoteCopy" xml:space="preserve">
+    <value>Kopírovať príkaz</value>
+  </data>
   <data name="History_External" xml:space="preserve">
     <value>externý</value>
   </data>

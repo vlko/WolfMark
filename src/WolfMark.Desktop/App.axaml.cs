@@ -83,10 +83,16 @@ public sealed partial class App : Application
             window.Show();
             if (Program.Instance is { } instance)
             {
-                instance.Activated += (_, file) => UiThread.Post(() =>
+                instance.Activated += (_, request) => UiThread.Post(() =>
                 {
+                    var quickNote = request == LaunchOptions.QuickNoteSwitch;
+                    var file = quickNote ? null : request;
                     LogRedirectedActivation(logger, file is not null); // tools/smoke-linux.sh checks for it
-                    if (file is null)
+                    if (quickNote)
+                    {
+                        _ = ShowQuickNoteAsync(window, logger);
+                    }
+                    else if (file is null)
                     {
                         window.BringToFront();
                     }
@@ -112,12 +118,30 @@ public sealed partial class App : Application
             }
 
             _pendingFiles.Clear();
+            if (LaunchOptions.Current.QuickNote && LaunchOptions.Current.OpenFile is null)
+            {
+                await ShowQuickNoteAsync(window, logger);
+            }
         }
         catch (Exception ex)
         {
             LogFatal(ex, "Start");
             await Console.Error.WriteLineAsync($"WolfMark could not start: {ex}");
             desktop.Shutdown(1);
+        }
+    }
+
+    /// <summary>The quick note window (M8-01): <c>--quick-note</c> on this start or from a later one.</summary>
+    private static async Task ShowQuickNoteAsync(MainWindow window, ILogger logger)
+    {
+        try
+        {
+            await window.ShowQuickNoteAsync();
+            LogQuickNoteShown(logger); // tools/smoke-linux.sh checks for it
+        }
+        catch (Exception ex)
+        {
+            LogQuickNoteFailed(logger, ex);
         }
     }
 
@@ -169,6 +193,12 @@ public sealed partial class App : Application
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Activation redirected from another launch (with file: {WithFile})")]
     private static partial void LogRedirectedActivation(ILogger logger, bool withFile);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Quick note shown")]
+    private static partial void LogQuickNoteShown(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Opening the quick note failed")]
+    private static partial void LogQuickNoteFailed(ILogger logger, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception ({Source})")]
     private static partial void LogUnhandled(ILogger logger, string source, Exception ex);

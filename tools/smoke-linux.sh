@@ -5,6 +5,8 @@
 #   instance  M0-05  a second launch on the same data hands over to the first and exits; other data = own instance
 #   files     M8-08  a .md file as argument: outside the notes its own window (also handed over by a second launch,
 #                    never twice), inside the notes the main editor – xdg-mime is not touched
+#   quicknote M8-01  --quick-note: a later launch opens the quick note window in the running app (once, however often
+#                    it is asked for), a first launch with it starts the app with that window
 #   startup   M4-09  process start to typing, median of 3 warm starts, against --budget-ms (report only by default)
 #
 # Usage: tools/smoke-linux.sh <WolfMark executable> [work dir] [--budget-ms N]
@@ -158,6 +160,39 @@ if wait_for 90 bash -c "python3 -I '$titles_py' | grep -q '^outside-one.md '"; t
 else
     report "files: file outside the notes opens its own window" 0 "no window for outside-one.md; windows: $(titles | paste -sd'|')"
 fi
+stop_all
+
+# --- quick note (M8-01) ---------------------------------------------------------------------------------------
+quick_title='^(Quick note|Rýchla poznámka) – WolfMark$'
+quick_count() { titles | grep -cE -- "$quick_title"; }
+demo="$work/demo-quicknote"
+launch "$demo"; main=$launched
+if wait_for 90 has_log "$demo" "Ready to type"; then
+    launch "$demo" --quick-note; p2=$launched
+    if wait_exit "$p2" 30; then exited=1; else exited=0; fi
+    shown=0; wait_for 30 bash -c "python3 -I '$titles_py' | grep -qE '$quick_title'" && shown=1
+    logged=0; wait_for 10 has_log "$demo" "Quick note shown" && logged=1
+    ok=0; [[ $exited == 1 && $shown == 1 && $logged == 1 ]] && ok=1
+    report "quicknote: a later launch opens it in the running app" $ok "second exited: $exited, window: $shown, logged: $logged; windows: $(titles | paste -sd'|')"
+
+    launch "$demo" --quick-note; p3=$launched
+    if wait_exit "$p3" 30; then exited=1; else exited=0; fi
+    sleep 2
+    n=$(quick_count)
+    ok=0; [[ $exited == 1 && $n == 1 ]] && ok=1
+    report "quicknote: asked again, the same window" $ok "second exited: $exited, quick note windows: $n"
+    p=$(problems "$demo")
+    ok=0; [[ -z "$p" ]] && ok=1
+    report "quicknote: no errors logged" $ok "${p:-clean log}"
+else
+    report "quicknote: a later launch opens it in the running app" 0 "no 'Ready to type' within 90 s"
+fi
+stop_all
+
+demo="$work/demo-quicknote-first"
+launch "$demo" --quick-note
+ok=0; wait_for 90 bash -c "python3 -I '$titles_py' | grep -qE '$quick_title'" && ok=1
+report "quicknote: a first launch with it starts the app with the window" $ok "windows: $(titles | paste -sd'|')"
 stop_all
 
 # --- startup (M4-09) -------------------------------------------------------------------------------------------

@@ -40,6 +40,16 @@ public sealed class LaunchOptionsTests
         Assert.True(both.TraceEditor);
         Assert.Equal(Path.GetFullPath("demo"), both.DemoDirectory);
     }
+
+    [Fact]
+    public void Quick_note_is_a_flag_and_not_a_file()
+    {
+        var options = LaunchOptions.Parse(["WolfMark", "--quick-note"]);
+
+        Assert.True(options.QuickNote);
+        Assert.Null(options.OpenFile);
+        Assert.False(LaunchOptions.Parse(["WolfMark"]).QuickNote);
+    }
 }
 
 public sealed class OpenFileArgumentTests

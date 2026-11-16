@@ -573,6 +573,39 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Exit</value>
   </data>
+  <data name="QuickNote_Title" xml:space="preserve">
+    <value>Quick note</value>
+  </data>
+  <data name="QuickNote_Hint" xml:space="preserve">
+    <value>Saved as you type · Esc or Ctrl+Enter closes</value>
+  </data>
+  <data name="QuickNote_HintMac" xml:space="preserve">
+    <value>Saved as you type · Esc or ⌘↩ closes</value>
+  </data>
+  <data name="QuickNote_OpenInMain" xml:space="preserve">
+    <value>Continue in the main window</value>
+  </data>
+  <data name="Settings_QuickNote" xml:space="preserve">
+    <value>Quick note</value>
+  </data>
+  <data name="Settings_QuickNoteHotkey" xml:space="preserve">
+    <value>Global shortcut opens a quick note</value>
+  </data>
+  <data name="Settings_QuickNoteHotkeyHint" xml:space="preserve">
+    <value>Click the box and press the shortcut: Ctrl, Alt or Win with a letter, digit, F1–F24 or Space. It works while WolfMark runs, also hidden in the notification area.</value>
+  </data>
+  <data name="Settings_QuickNoteRecording" xml:space="preserve">
+    <value>Press the shortcut…</value>
+  </data>
+  <data name="Settings_QuickNoteTaken" xml:space="preserve">
+    <value>The shortcut {0} is used by another app – choose another one in Settings → General.</value>
+  </data>
+  <data name="Settings_QuickNoteCommand" xml:space="preserve">
+    <value>Assign this command to a keyboard shortcut in the system settings (GNOME, KDE: Keyboard → Custom shortcuts; macOS: the Shortcuts app). It opens a quick note in the running WolfMark, or starts it.</value>
+  </data>
+  <data name="Settings_QuickNoteCopy" xml:space="preserve">
+    <value>Copy command</value>
+  </data>
   <data name="History_External" xml:space="preserve">
     <value>external</value>
   </data>
