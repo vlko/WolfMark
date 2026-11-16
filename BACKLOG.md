@@ -130,8 +130,12 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *Stav:* Tichý reload / InfoBar „Načítať z disku | Ponechať moje“; diff/merge UI nie.
 - 🟨 **M4-09 – Hlavné okno v1.** Hlavička poznámky (výber tagu s farbou, čas, prepínač režimu, `+`), `Ctrl+N`, otvorenie poslednej poznámky pri štarte, vytvorenie súboru až po prvom znaku.
   *Stav:* Hotové; okno sa ukáže hneď, posledná poznámka sa načíta potom (~0,1 s). Obe aplikácie logujú
-  „Ready to type <n> ms after the process started“, smoke test (`-Checks startup`) berie medián 3 štartov – čaká
-  na meranie AOT buildu na Windows.
+  „Ready to type <n> ms after the process started“ aj fázy štartu, smoke test (`-Checks startup`) berie medián
+  3 štartov. **Zmerané 2026-11-16 (AOT, Windows): medián 1,6 s – AK nesplnené.** Fázy (ms od štartu procesu):
+  Main ~40, OnLaunched ~110, dáta a index ~10 ms, **okno postavené +540–900 ms** (`MainWindow` stavia celé UI
+  naraz), **Activate +280–550 ms**, prvá snímka +270–490 ms, editor pripravený +~70 ms.
+  Ďalší krok: zmerať časti konštruktora `MainWindow`, stavať skryté časti (vyhľadávanie, mesačná mriežka, …)
+  až pri prvom použití; reálnosť 300 ms pri WinUI 3 posúdiť po tom.
   *AK:* Od spustenia po písanie < 300 ms (AOT, SSD).
 - ✅ **M4-10 – Veľkosť písma a farebné emotikony.** `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+koliesko (podľa znaku na rozložení), uloží sa do nastavení; farebné emotikony v Nastaveniach (Windows).
   *Stav:* Windows aj Avalonia (v0.3.2). Rýchly zoom kolieskom padal (natívny pád WinUI); obídené – zoom sa sčíta na jeden relayout, chyby kreslenia sa logujú („Editor drawing failed“). Skutočná príčina neznáma, čaká na záznam v logu.
