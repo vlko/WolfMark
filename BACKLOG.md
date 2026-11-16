@@ -18,7 +18,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M0-02 – Prázdna WinUI 3 aplikácia s Native AOT.** Okno s Mica a vlastným title barom, `PublishAot=true`, `WindowsAppSDKSelfContained=true`, RID `win-x64` a `win-arm64`.
   *Stav:* Mica, vlastný title bar, `PublishAot`, self-contained, x64+ARM64. IL trimmer nad celou aplikáciou bez warningov; AOT publish beží v CI.
   Smoke test (`tools/smoke-windows.ps1`, CI po AOT publishi): importy všetkých binárok sú vo výstupe alebo súčasť
-  Windows (bez .NET a VC++ redistributable), binárka sa spustí a vyrenderuje okno. Čaká na prvý beh v CI.
+  Windows (bez .NET a VC++ redistributable), binárka sa spustí a vyrenderuje okno. Lokálne na Windows (2026-11-16):
+  bez runtime súborov, štart a vykreslenie OK; kontrola importov ešte nebežala (skript nenašiel `dumpbin`, opravené).
   *AK:* `dotnet publish -c Release -r win-x64` vyprodukuje spustiteľný AOT binár; aplikácia sa spustí na čistom stroji bez nainštalovaného .NET.
 - ✅ **M0-03 – Logovanie a DI.** Composition root, `ILogger` so súborovým sinkom v `%LOCALAPPDATA%\WolfMark\logs`, globálny handler neošetrených výnimiek.
   *Stav:* `AppHost` (ADR 0002), `FileLoggerProvider`, `BackgroundRunner` – test: výnimka sa zaloguje. Globálne handlery v `App`.
@@ -31,10 +32,10 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   Padnuté testy sa vypíšu ako anotácie (`tools/ci-test-annotations.py`), ktoré sú verejné, hoci logy jobov
   vyžadujú admin práva. Akcie na Node 24 (checkout v7, setup-dotnet v6, upload v7, download v8).
   *AK:* Zelený pipeline na push.
-- 🟨 **M0-05 – Jedna inštancia.** Druhé spustenie aktivuje existujúce okno (Windows App SDK `AppInstance`).
+- ✅ **M0-05 – Jedna inštancia.** Druhé spustenie aktivuje existujúce okno (Windows App SDK `AppInstance`).
   *Stav:* `AppInstance.FindOrRegisterForKey` + redirect bez blokovania STA. Smoke test: druhé spustenie na rovnakých
   dátach odovzdá aktiváciu (log „Activation redirected…“) a skončí, iný dátový priečinok = vlastná inštancia.
-  Čaká na prvý beh v CI; že sa okno naozaj dostane do popredia, treba pozrieť ručne.
+  Overené smoke testom na Windows (2026-11-16); že sa okno naozaj dostane do popredia, smoke test nevidí.
   *AK:* Dve spustenia = jedno okno.
 
 ## M1 – Directory engine 🟢
@@ -239,6 +240,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ⬜ **M10-01 – MSIX balík** a podpis; overiť prístup k OneDrive a `~/.claude`.
 - ⬜ **M10-02 – winget manifest.**
 - ⬜ **M10-03 – Automatické aktualizácie** (MSIX App Installer alebo vlastný mechanizmus).
-- 🟨 **M10-04 – README a screenshoty.** Anglické README; `--demo <dir>` (izolované demo dáta: poznámky, Claude Code
+- ✅ **M10-04 – README a screenshoty.** Anglické README; `--demo <dir>` (izolované demo dáta: poznámky, Claude Code
   transkripty, nastavenia aj index v jednom priečinku, `DemoDataSeeder`) a `--screenshots <dir>` (RenderTargetBitmap → PNG
-  do `docs/screenshots`, potom koniec). *Stav:* obrázky generuje smoke test v CI (artefakt `smoke-win-x64`); čaká na prvý beh a ich prevzatie do `docs/screenshots`.
+  do `docs/screenshots`, potom koniec). *Stav:* README so screenshotmi v `docs/screenshots` (2026-11-05). Smoke test ich generuje znova pri každom CI behu
+  (artefakt `smoke-win-x64`), na Windows overené 2026-11-16 (8 obrázkov) – aktualizácia = skopírovať ich do `docs/screenshots`.

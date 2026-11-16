@@ -95,7 +95,10 @@ function Test-Dependencies {
 
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     $dumpbin = if (Test-Path $vswhere) {
-        & $vswhere -latest -products * -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1
+        # The same query the Native AOT build uses to find the linker (Microsoft.NETCore.Native.Windows.targets):
+        # without -prerelease/-requires a newer instance without C++ (or an Insiders one with it) is missed.
+        & $vswhere -latest -prerelease -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1
     }
     if (-not $dumpbin) {
         Report 'deps: imports' $true 'skipped – dumpbin (Visual Studio C++ tools) not found'
