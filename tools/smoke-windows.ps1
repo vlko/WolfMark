@@ -24,6 +24,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $PublishDir = (Resolve-Path $PublishDir).Path
+# Absolute: the app runs with WorkDir as its current folder and would resolve a relative --demo path against it.
+$WorkDir = [IO.Path]::GetFullPath($WorkDir, (Get-Location).Path)
 $exe = Join-Path $PublishDir 'WolfMark.exe'
 if (-not (Test-Path $exe)) { throw "WolfMark.exe not found in $PublishDir" }
 if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
