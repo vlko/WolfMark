@@ -129,7 +129,9 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M4-08 – Externé zmeny otvoreného súboru** (tichý reload / porovnanie pri konflikte).
   *Stav:* Tichý reload / InfoBar „Načítať z disku | Ponechať moje“; diff/merge UI nie.
 - 🟨 **M4-09 – Hlavné okno v1.** Hlavička poznámky (výber tagu s farbou, čas, prepínač režimu, `+`), `Ctrl+N`, otvorenie poslednej poznámky pri štarte, vytvorenie súboru až po prvom znaku.
-  *Stav:* Hotové; okno sa ukáže hneď, posledná poznámka sa načíta potom (~0,1 s). Štart < 300 ms nezmeraný.
+  *Stav:* Hotové; okno sa ukáže hneď, posledná poznámka sa načíta potom (~0,1 s). Obe aplikácie logujú
+  „Ready to type <n> ms after the process started“, smoke test (`-Checks startup`) berie medián 3 štartov – čaká
+  na meranie AOT buildu na Windows.
   *AK:* Od spustenia po písanie < 300 ms (AOT, SSD).
 - ✅ **M4-10 – Veľkosť písma a farebné emotikony.** `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+koliesko (podľa znaku na rozložení), uloží sa do nastavení; farebné emotikony v Nastaveniach (Windows).
   *Stav:* Windows aj Avalonia (v0.3.2). Rýchly zoom kolieskom padal (natívny pád WinUI); obídené – zoom sa sčíta na jeden relayout, chyby kreslenia sa logujú („Editor drawing failed“). Skutočná príčina neznáma, čaká na záznam v logu.
@@ -214,7 +216,9 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   registrácia v Nastaveniach (Windows HKCU + Predvolené aplikácie, macOS Launch Services, Linux xdg-mime).
   Smoke test (`-Checks files`): súbor mimo poznámok = vlastné okno, druhé spustenie ho odovzdá bežiacej inštancii,
   ten istý súbor znova = to isté okno, poznámka zo stromu = hlavný editor – na Windows 5/5 (2026-11-16).
-  Registrácia na Windows (HKCU + Predvolené aplikácie) ručne overená 2026-11-16. **Zostáva:** macOS a Linux.
+  Registrácia na Windows (HKCU + Predvolené aplikácie) ručne overená 2026-11-16. Linux: `tools/smoke-linux.sh`
+  (Xvfb, rovnaké kontroly) 10/10 nad buildom vo WSL (2026-11-16), v CI nad AOT binárkou. **Zostáva:** macOS
+  a registrácia na Linuxe (xdg-mime) – ručne.
 - ✅ **M8-09 – Prenosný režim** (ADR 0009): značka `WolfMark.portable.json` vedľa exe, dáta v `WolfMarkData`
   (`local/`, `notes/` – relatívne cesty), zapnutie (Kopírovať/Presunúť) a vypnutie (kopírovať späť) v Nastaveniach
   s upozornením, integrácia so systémom v prenosnom režime vypnutá.

@@ -105,12 +105,22 @@ jobs:
           global-json-file: global.json
       - name: AOT toolchain
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev xvfb
       - name: Build
         run: dotnet build src/WolfMark.Desktop -c Release -r ${{ matrix.rid }}
       - name: AOT publish
         # Two steps (ADR 0005): a direct publish hands ILC the assembly without the compiled XAML.
         run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
+      - name: Smoke test
+        # The AOT binary on demo data under Xvfb: single instance, .md files, startup (report only).
+        if: runner.os == 'Linux'
+        run: tools/smoke-linux.sh publish/${{ matrix.rid }}/WolfMark.Desktop "${{ runner.temp }}/smoke"
+      - uses: actions/upload-artifact@v7
+        if: always() && runner.os == 'Linux'
+        with:
+          name: smoke-${{ matrix.rid }}
+          path: ${{ runner.temp }}/smoke/*/local/logs
+          if-no-files-found: ignore
       - name: Package
         run: bash tools/package-desktop.sh ${{ matrix.rid }} ci publish/${{ matrix.rid }} dist
       - uses: actions/upload-artifact@v7
