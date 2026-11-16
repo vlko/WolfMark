@@ -155,7 +155,11 @@ internal sealed partial class AppHost : IAsyncDisposable
 
         foreach (var file in new[] { paths.IndexDatabase, paths.IndexDatabase + "-wal", paths.IndexDatabase + "-shm", paths.SettingsFile })
         {
-            File.Delete(file);
+            // File.Delete tolerates a missing file but not a missing folder – a brand-new demo has no local/ yet.
+            if (File.Exists(file))
+            {
+                File.Delete(file);
+            }
         }
     }
 
