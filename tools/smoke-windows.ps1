@@ -25,7 +25,9 @@ param(
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
     # "startup,files" or startup, files – run as a script file (pwsh tools/smoke-windows.ps1 …) a list arrives as one string.
     [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'startup'),
-    [int] $StartupBudgetMs = 300
+    [int] $StartupBudgetMs = 300,
+    # A/B: alternate 3 starts with WOLFMARK_EXPERIMENT=<name> and 3 without (StartupExperiment in the app).
+    [string] $StartupExperiment
 )
 
 $ErrorActionPreference = 'Stop'
@@ -329,10 +331,16 @@ function Get-ReadyTimes([string] $demoDir) {
 function Test-Startup {
     $demo = Join-Path $WorkDir 'demo-startup'
     $times = [System.Collections.Generic.List[object]]::new()
-    # Start 0 creates the demo notes and the index – not measured; then three starts on existing data.
-    for ($run = 0; $run -le 3; $run++) {
+    $withExperiment = [System.Collections.Generic.List[object]]::new()
+    $runs = if ($StartupExperiment) { 6 } else { 3 }
+    # Start 0 creates the demo notes and the index – not measured; then starts on existing data
+    # (with -StartupExperiment every second one with the experiment on).
+    for ($run = 0; $run -le $runs; $run++) {
         $before = @(Get-ReadyTimes $demo).Count
+        $experiment = $StartupExperiment -and $run -gt 0 -and $run % 2 -eq 0
+        $env:WOLFMARK_EXPERIMENT = if ($experiment) { $StartupExperiment } else { $null }
         $p = Start-WolfMark @('--demo', $demo)
+        $env:WOLFMARK_EXPERIMENT = $null
         try {
             $deadline = (Get-Date).AddSeconds(90)
             while (@(Get-ReadyTimes $demo).Count -le $before -and -not $p.HasExited -and (Get-Date) -lt $deadline) {
@@ -349,7 +357,7 @@ function Test-Startup {
             return
         }
 
-        if ($run -gt 0) { $times.Add($all[-1]) }
+        if ($run -gt 0) { if ($experiment) { $withExperiment.Add($all[-1]) } else { $times.Add($all[-1]) } }
         Start-Sleep -Milliseconds 500 # let the killed process release its files
     }
 
@@ -358,7 +366,13 @@ function Test-Startup {
     # Where the time goes (logged since 2026-11-16): Main, OnLaunched, data and index open, window built, activated, first frame.
     $phases = @([regex]::Matches((Get-Log $demo), 'Startup \(ms since the process started\): ([^\r\n]+)') | Select-Object -Last 3 |
         ForEach-Object { $_.Groups[1].Value })
-    Report 'startup: ready to type' ($median.Ready -le $StartupBudgetMs) "median $($median.Ready) ms, budget $StartupBudgetMs ms – $list$(if ($phases) { "`n" + ($phases -join "`n") })"
+    Report 'startup: ready to type' ($median.Ready -le $StartupBudgetMs) "median $($median.Ready) ms, budget $StartupBudgetMs ms – $list$(if ($phases -and -not $StartupExperiment) { "`n" + ($phases -join "`n") })"
+    if ($StartupExperiment) {
+        $exMedian = ($withExperiment | Sort-Object Ready)[1]
+        $exList = ($withExperiment | ForEach-Object { "$($_.Ready) ms (first frame $($_.FirstFrame) ms)" }) -join ', '
+        $delta = $exMedian.Ready - $median.Ready
+        Report "startup: experiment $StartupExperiment" ($delta -lt 0) "median $($exMedian.Ready) ms vs $($median.Ready) ms without ($(if ($delta -le 0) { $delta } else { "+$delta" }) ms) – $exList"
+    }
 }
 
 if ($Checks -contains 'deps') { Test-Dependencies }

@@ -10,10 +10,20 @@ namespace WolfMark.App.Infrastructure;
 /// font collection – on the UI thread, before the first frame. Started in Main on a pool thread, that work overlaps
 /// the Windows App SDK start and the window construction instead. Win2D's shared device and text objects are
 /// thread-safe (multithreaded D2D factory); the editor later gets the same shared device.
+/// Experiment (2026-11-16): the first run got slower – the editor waited for the background device creation. Only
+/// with <c>WOLFMARK_EXPERIMENT=win2d-warmup</c> until the A/B run of tools/smoke-windows.ps1 decides.
 /// </summary>
 internal static class Win2DWarmUp
 {
-    public static void Start() => _ = Task.Run(() =>
+    public static void Start()
+    {
+        if (StartupExperiment.Is("win2d-warmup"))
+        {
+            Run();
+        }
+    }
+
+    private static void Run() => _ = Task.Run(() =>
     {
         try
         {

@@ -103,7 +103,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
             {
                 // M4-09 (start to typing < 300 ms): the last note is loaded and the editor has the focus.
                 LogReadyToType(logger, StartupTimeline.Now(), shown);
-                LogStartupMarks(logger, StartupTimeline.TakeMarks() + "; Win2D warm-up done at " + StartupTimeline.WarmUpMs + " ms");
+                LogStartupMarks(logger, StartupTimeline.TakeMarks() + "; Win2D warm-up done at " + StartupTimeline.WarmUpMs + " ms; experiment " + StartupExperiment.Active);
             }
 
             if (LaunchOptions.Current.OpenFile is { } file)
