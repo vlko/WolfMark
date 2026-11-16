@@ -23,11 +23,16 @@
 param(
     [Parameter(Mandatory)] [string] $PublishDir,
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
-    [ValidateSet('deps', 'screenshots', 'instance', 'files', 'startup')] [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'startup'),
+    # "startup,files" or startup, files – run as a script file (pwsh tools/smoke-windows.ps1 …) a list arrives as one string.
+    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'startup'),
     [int] $StartupBudgetMs = 300
 )
 
 $ErrorActionPreference = 'Stop'
+$known = 'deps', 'screenshots', 'instance', 'files', 'startup'
+$Checks = @($Checks | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$unknown = @($Checks | Where-Object { $known -notcontains $_ })
+if ($unknown) { throw "Unknown check(s): $($unknown -join ', '). Known: $($known -join ', ')" }
 $PublishDir = (Resolve-Path $PublishDir).Path
 # Absolute: the app runs with WorkDir as its current folder and would resolve a relative --demo path against it.
 $WorkDir = [IO.Path]::GetFullPath($WorkDir, (Get-Location).Path)
