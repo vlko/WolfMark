@@ -83,6 +83,15 @@ public sealed class LocalSettings
     /// <summary>Closing the window hides it to the notification area; the app ends from the tray menu.</summary>
     public bool CloseToTray { get; set; }
 
+    /// <summary>
+    /// Days a deleted note stays in the trash before it is removed; 0 = it stays until the user empties the trash
+    /// (the default – the app removes nothing on its own unless told to).
+    /// </summary>
+    public int TrashRetentionDays { get; set; }
+
+    /// <summary>The retention periods offered in Settings → Trash; 0 = keep.</summary>
+    public static IReadOnlyList<int> TrashRetentionChoices { get; } = [0, 30, 90, 365];
+
     /// <summary>Global shortcut for the quick note window (M8-01, Windows); off by default.</summary>
     public QuickNoteSettings QuickNote { get; set; } = new();
 

@@ -273,7 +273,24 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *AK:* Indexovanie embeddingov nezvýši latenciu UI (merať); AOT build bez trim warningov. Ak ONNX pod AOT zlyhá, zdokumentovať a navrhnúť alternatívu.
   *Postup:* najprv spike – AOT publish s `Microsoft.ML.OnnxRuntime` (win-x64/arm64, linux-x64, osx-arm64), tokenizér bez reflexie, model (napr. `multilingual-e5-small`) → ADR.
 - ⬜ **M9-03 – 🟡 Podobné poznámky** pod editorom (vektory). *Závisí od M2-05.*
-- ⬜ **M9-04 – 🟡 Wiki odkazy a spätné odkazy.**
+- 🟨 **M9-04 – 🟡 Wiki odkazy a spätné odkazy.** `[[2026/11/16/praca_1403]]` (píše „Kopírovať odkaz“),
+  `[[praca_1403]]` (najnovšia poznámka toho mena) a `[[2026-11-16]]` (deň); `[[cieľ|popis]]`. Ctrl+klik alebo
+  „Otvoriť odkazovanú poznámku“ v ponuke editora; odkaz, ktorý nikam nevedie, sa ohlási. Index má tabuľku
+  `note_links` (schéma 3 – index sa pri prvom štarte prestavia) a pod časom poznámky je tlačidlo „Odkazuje sem: n“
+  s ponukou odkazujúcich poznámok. Logika: `WikiLinks`, `MainViewModel.OpenWikiLinkAsync`, `HistoryService.GetBacklinksAsync`.
+  *Stav:* testy `WikiLinksTests`, `IndexerTests`, `HistoryActionsTests`; Desktop overený na snímke; Windows smoke 30/30 (2026-11-17).
+- 🟨 **M9-12 – 🟡 Hľadanie a nahradenie v poznámke** (Ctrl+F, Ctrl+H; Enter/F3 ďalší, Shift späť, Esc zavrie).
+  Lišta v rohu editora, aktuálny výskyt je výber v editore, počítadlo „3 z 12“, rozlišovanie veľkosti písmen,
+  nahradenie jedného alebo všetkých ako jeden krok späť. Logika: `TextSearch`, `FindViewModel`. Len hlavný editor
+  (nie okná externých súborov a rýchlej poznámky); bez zvýraznenia všetkých výskytov naraz.
+  Lišta sa zavrie, keď sa v editore otvorí iná poznámka. Na Windows vzniká až pri prvom Ctrl+F (nezdržuje štart).
+  *Stav:* testy `TextSearchTests`, `FindViewModelTests`; Desktop overený na snímke; Windows smoke 30/30 a vyskúšané
+  autorom (2026-11-17).
+- 🟨 **M9-13 – 🟡 Jeden kôš a obnova z neho** (ADR 0016): `.wolfmark/trash` na všetkých platformách, Nastavenia →
+  Kôš (zoznam, Obnoviť, Odstrániť, Vyprázdniť, uchovávanie – predvolene „Nikdy“).
+  *AK:* zmazaná poznámka je v zozname s titulkom a časom; Obnoviť ju vráti na pôvodné miesto a otvorí; obsadené meno
+  nič neprepíše; odstránenie ide na Windows do Koša Windows; kôš prežije zmazanie `index.db`.
+  *Stav:* testy `NoteTrashTests`, `TrashModelTests`; Desktop overený na snímke; Windows smoke 30/30 (2026-11-17).
 - ⬜ **M9-05 – 🟡 Šablóny** pre tagy.
 - ⬜ **M9-06 – 🟡 Export** dňa/týždňa/tagu do `.md`/PDF.
 - ⬜ **M9-07 – ⚪ Lokálny MCP server** na čítanie/vyhľadávanie v zápisníku pre Claude.

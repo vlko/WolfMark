@@ -63,7 +63,9 @@ notebook unless I ask.
 | **Calendar** | Week strip with per-tag counts and hatched tag bands, full month view with labels between weeks, keyboard navigation |
 | **Tags** | One tag per note, in the file name (`work_1403.md`); add, rename, merge, recolour or remove tags in Settings; colours travel with the notes |
 | **History** | All notes ordered by last edit, filter by tag, day or open tasks; right-click to change the tag, open the folder, copy a link or move to trash; Markdown files opened from elsewhere appear there too |
-| **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters |
+| **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters; `Ctrl+F` / `Ctrl+H` find and replace within the note |
+| **Links between notes** | `[[2026/11/16/work_1403]]`, `[[work_1403]]` or `[[2026-11-16]]` – `Ctrl`+click follows them, and a note shows which notes link to it |
+| **Trash** | Deleted notes go to a trash folder next to the notes on every system; Settings → *Trash* lists them, restores them to where they were, and empties it |
 | **Quick note** | A small window for a new note of today without the main window: a global shortcut on Windows, `--quick-note` for a shortcut of the system elsewhere |
 | **Links** | `wolfmark://today`, `day/…`, `note/…`, `new`, `search?q=…` open the app where you point them; New note / Today / Search in the taskbar jump list, the Dock menu and Linux launcher actions |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
@@ -155,9 +157,10 @@ rename that fails part-way renames the files back.
 **Safe by design.**
 - Every save is **atomic** – written to a hidden temp file next to the note and swapped in, so OneDrive never
   uploads half a file.
-- Deleting a note sends it to the **Windows Recycle Bin**; nothing is removed permanently. Where there is no
-  Recycle Bin – network shares, removable drives, portable mode, macOS and Linux – it goes to `.wolfmark/trash` in
-  the notes folder instead.
+- Deleting a note moves it to the **trash** – a folder next to your notes (`.wolfmark/trash`), the same on every
+  system, so it travels with them and a note deleted on one PC can be restored on another. Settings → *Trash* lists
+  the deleted notes and restores one to where it was. Nothing leaves the trash unless you remove it or set a
+  retention period; on Windows what you remove goes on to the Recycle Bin ([ADR 0016](docs/adr/0016-one-trash.md)).
 - A note **changed elsewhere while you are typing** (another PC through OneDrive, another editor) is not overwritten:
   WolfMark asks whether to load it or keep yours, and if you move on without answering, your text is saved as a
   note of its own next to it.
@@ -261,6 +264,8 @@ it had before, without the changes made while portable. Details are in
 |---|---|
 | `Ctrl+N` | New note (the file is created with the first character you type) |
 | `Ctrl+K` / `Ctrl+Shift+F` | Search (in the editor with text selected, `Ctrl+K` makes it a link) |
+| `Ctrl+F` / `Ctrl+H` | Find / find and replace in the open note; `Enter` or `F3` next, `Shift+Enter` or `Shift+F3` previous, `Esc` closes |
+| `Ctrl`+click | Follow a wiki link `[[…]]` (also *Open linked note* in the right-click menu) |
 | `Win+Shift+N` | Quick note from anywhere – Windows, off until switched on in Settings (the shortcut can be changed) |
 | `Ctrl+Shift+C` | Full calendar (arrows, `Enter`) |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next week |
@@ -376,8 +381,7 @@ the images itself, so it also works without a screen (under Xvfb, as the smoke t
 
 ## Roadmap
 
-Next on the list: find and replace in a note, wiki links and backlinks (`[[…]]` is already written and highlighted,
-not yet followed), a daily view of all of a day's notes, restoring notes from the trash, templates per tag, export,
+Next on the list: a daily view of all of a day's notes, an overview of open tasks across days, templates per tag, export,
 semantic search with a local embedding model, a local MCP server so Claude can search your notebook, signed packages
 (MSIX/winget, notarised macOS app) and automatic updates.
 See [`BACKLOG.md`](BACKLOG.md).

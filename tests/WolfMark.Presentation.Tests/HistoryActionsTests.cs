@@ -78,6 +78,50 @@ public sealed class HistoryActionsTests : IAsyncLifetime
         Assert.False(File.Exists(_host.Engine.GetFullPath(path)));
     }
 
+    [Fact]
+    public async Task The_find_bar_closes_when_another_note_is_opened()
+    {
+        var first = await _host.Engine.CreateAsync(At, "praca", "# Prvá", Ct);
+        var second = await _host.Engine.CreateAsync(At.AddMinutes(1), "praca", "# Druhá", Ct);
+        await _vm.OpenNoteAsync(first.RelativePath);
+        _vm.Find.Open(replace: true, "Prvá");
+        Assert.True(_vm.Find.IsOpen);
+
+        _vm.Editor.OnTextEdited("# Prvá, upravená"); // typing (and its save) leaves it open
+        await _vm.Editor.FlushAsync();
+        Assert.True(_vm.Find.IsOpen);
+
+        await _vm.OpenNoteAsync(second.RelativePath);
+
+        Assert.False(_vm.Find.IsOpen);
+        Assert.Equal(string.Empty, _vm.Find.Status);
+    }
+
+    [Fact]
+    public async Task A_wiki_link_opens_the_note_it_points_to()
+    {
+        var path = await _host.Engine.CreateAsync(At, "praca", "# Cieľ odkazu", Ct);
+
+        await _vm.OpenWikiLinkAsync(Day + "/praca_1403");
+
+        Assert.Equal(path.RelativePath, _vm.Editor.Path?.RelativePath);
+        Assert.Null(_vm.ErrorNotice);
+    }
+
+    [Theory]
+    [InlineData("2020/01/01/nikde_0000")]
+    [InlineData("../mimo/poznamok")]
+    [InlineData("")]
+    public async Task A_wiki_link_that_leads_nowhere_says_so_and_opens_nothing(string inner)
+    {
+        var before = _vm.Editor.Path?.RelativePath;
+
+        await _vm.OpenWikiLinkAsync(inner);
+
+        Assert.NotNull(_vm.ErrorNotice);
+        Assert.Equal(before, _vm.Editor.Path?.RelativePath);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _host.DisposeAsync();

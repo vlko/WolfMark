@@ -33,6 +33,8 @@ internal sealed partial class MainWindow : Window
     private readonly Grid _titleBar;
     private readonly List<FrameworkElement> _titleBarInteractive = [];
     private readonly MarkdownEditor _editor = new();
+    private readonly Grid _editorCell;
+    private FindBar? _findBar; // built on the first Ctrl+F – not part of the start
     private readonly bool _startupEditorBuilt = StartupTimeline.MarkInline("window: editor control (Win2D)");
     private readonly CalendarPanel _calendar;
     private SearchPalette? _search; // built on first open (M4-09: not on the way to the first frame)
@@ -112,13 +114,45 @@ internal sealed partial class MainWindow : Window
         _continues.StyleButton(Palette.Transparent, Palette.Accent);
         _continues.Click += (_, _) => _editor.ScrollToEnd();
         _fullViewBar = BuildFullViewBar();
-        var gutter = Ui.Ui.Rows((Ui.Ui.Auto, created), (Ui.Ui.Star, null), (Ui.Ui.Auto, Ui.Ui.VStack(2, _continues, _modified)));
+        // Notes that link to this one (M9-04): a small button under the time, its menu opens one of them.
+        var backlinksText = Typo.Caps(string.Empty, 11.5, Palette.Accent);
+        backlinksText.TextWrapping = TextWrapping.Wrap;
+        backlinksText.TextAlignment = TextAlignment.Right;
+        var backlinks = new Button
+        {
+            Content = backlinksText,
+            Padding = new Thickness(4, 2, 0, 2),
+            CornerRadius = Radius.Control,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Visibility = Visibility.Collapsed,
+        };
+        backlinks.StyleButton(Palette.Transparent, Palette.Accent);
+        ToolTipService.SetToolTip(backlinks, Strings.Get(R.Backlinks_Tooltip));
+        backlinks.Bind(vm, nameof(MainViewModel.Backlinks), () =>
+        {
+            var notes = vm.Backlinks;
+            backlinks.Visibility = notes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            backlinksText.Text = Strings.Format(R.Backlinks_Button, notes.Count).ToUpper(System.Globalization.CultureInfo.CurrentCulture);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(backlinks, Strings.Get(R.Backlinks_Tooltip) + ": " + notes.Count.ToString(System.Globalization.CultureInfo.CurrentCulture));
+            var menu = new MenuFlyout();
+            foreach (var note in notes)
+            {
+                var item = new MenuFlyoutItem { Text = NoteTexts.Backlink(note) };
+                var path = note.RelativePath;
+                item.Click += async (_, _) => await vm.OpenNoteAsync(path);
+                menu.Items.Add(item);
+            }
+
+            backlinks.Flyout = menu;
+        });
+        var gutter = Ui.Ui.Rows((Ui.Ui.Auto, Ui.Ui.VStack(4, created, backlinks)), (Ui.Ui.Star, null), (Ui.Ui.Auto, Ui.Ui.VStack(2, _continues, _modified)));
         gutter.Padding = new Thickness(0, 0, Metrics.TimeGutterGap, 26);
         _editor.AlignLeft = true;
         // Same gutter width as history rows: the two dotted lines form one line.
         var editorCell = new Grid();
         editorCell.Children.Add(_editor);
         editorCell.Children.Add(ClaudeBadge());
+        _editorCell = editorCell;
         var editorPane = Ui.Ui.Columns((Ui.Ui.Px(Metrics.TimeGutter), gutter), (Ui.Ui.Px(1), Ui.Ui.DottedLine()), (Ui.Ui.Star, editorCell));
 
         var main = new Grid { Padding = new Thickness(24, 4, 8, 0) };
@@ -549,6 +583,7 @@ internal sealed partial class MainWindow : Window
         EditorSetup.ConfigureTexts(_editor);
         _editor.Mode = editorVm.Mode == EditorMode.Raw ? MarkdownEditorMode.Raw : MarkdownEditorMode.Formatted;
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
+        _editor.NoteLinkRequested += (_, link) => _ = _vm.OpenWikiLinkAsync(link);
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();
         _editor.ModeChanged += (_, mode) => editorVm.Mode = mode == MarkdownEditorMode.Raw ? EditorMode.Raw : EditorMode.Formatted;
         _editor.ImagePasteHandler = async (data, extension) =>
@@ -742,6 +777,34 @@ internal sealed partial class MainWindow : Window
         Accelerator(VirtualKey.E, VirtualKeyModifiers.Control, () =>
             _vm.Editor.Mode = _vm.Editor.Mode == EditorMode.Raw ? EditorMode.Formatted : EditorMode.Raw);
         Accelerator((VirtualKey)188, VirtualKeyModifiers.Control, () => _ = OpenSettingsAsync()); // Ctrl+,
+        // Find and replace in the open note.
+        Accelerator(VirtualKey.F, VirtualKeyModifiers.Control, () => FindBar().Open(replace: false));
+        Accelerator(VirtualKey.H, VirtualKeyModifiers.Control, () => FindBar().Open(replace: true));
+        Accelerator(VirtualKey.F3, VirtualKeyModifiers.None, () =>
+        {
+            if (_vm.Find.IsOpen)
+            {
+                _findBar?.Go(backwards: false);
+            }
+        });
+        Accelerator(VirtualKey.F3, VirtualKeyModifiers.Shift, () =>
+        {
+            if (_vm.Find.IsOpen)
+            {
+                _findBar?.Go(backwards: true);
+            }
+        });
+
+        FindBar FindBar()
+        {
+            if (_findBar is null)
+            {
+                _findBar = new FindBar(_vm.Find, _editor);
+                _editorCell.Children.Add(_findBar.Element);
+            }
+
+            return _findBar;
+        }
         Accelerator(VirtualKey.Escape, VirtualKeyModifiers.None, () =>
         {
             if (_vm.IsSearchOpen)

@@ -7,7 +7,7 @@ namespace WolfMark.Index.Database;
 /// </summary>
 internal static class Schema
 {
-    public const int Version = 2;
+    public const int Version = 3; // 3: note_links (wiki links, M9-04)
 
     public const string Create = """
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
@@ -47,6 +47,14 @@ internal static class Schema
           PRIMARY KEY (note_id, tag_key)
         ) WITHOUT ROWID;
         CREATE INDEX ix_note_tags_key ON note_tags(tag_key);
+
+        -- Wiki links of a note ([[…]]) by their key (WikiLinks.Key): "which notes link here" (M9-04).
+        CREATE TABLE note_links (
+          note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+          target TEXT NOT NULL,
+          PRIMARY KEY (note_id, target)
+        ) WITHOUT ROWID;
+        CREATE INDEX ix_note_links_target ON note_links(target);
 
         CREATE VIRTUAL TABLE notes_fts USING fts5(title, body, tags, tokenize = 'unicode61 remove_diacritics 2');
 

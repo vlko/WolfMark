@@ -25,6 +25,7 @@ internal sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
     private readonly CalendarPanel _calendar;
+    private readonly FindBar _findBar;
     private readonly AppHost _host;
     private readonly MarkdownTextEditor _editor = new();
     private readonly SearchPalette _search;
@@ -72,6 +73,8 @@ internal sealed partial class MainWindow : Window
         var editorPane = EditorPane();
         editorCell.Children.Add(editorPane);
         editorCell.Children.Add(ClaudeBadge());
+        _findBar = new FindBar(vm.Find, _editor);
+        editorCell.Children.Add(_findBar);
         var fullViewBar = FullViewBar();
         var history = new HistoryView(vm);
         Add(main, heading, 0);
@@ -297,10 +300,37 @@ internal sealed partial class MainWindow : Window
         }
 
         Ui.Bind(_vm.Editor, [nameof(NoteEditorViewModel.CreatedAt), nameof(NoteEditorViewModel.ModifiedAt)], UpdateGutter);
+        // Notes that link to this one (M9-04): a small button under the time, its menu opens one of them.
+        var backlinksText = Typo.Caps(string.Empty, 11.5, Palette.Accent);
+        backlinksText.TextWrapping = TextWrapping.Wrap;
+        backlinksText.TextAlignment = TextAlignment.Right;
+        var backlinks = Ui.FlatButton(backlinksText, Palette.Transparent);
+        backlinks.Padding = new Thickness(4, 2, 0, 2);
+        backlinks.HorizontalAlignment = HorizontalAlignment.Right;
+        backlinks.IsVisible = false;
+        ToolTip.SetTip(backlinks, Strings.Get(R.Backlinks_Tooltip));
+        Ui.Bind(_vm, nameof(MainViewModel.Backlinks), () =>
+        {
+            var notes = _vm.Backlinks;
+            backlinks.IsVisible = notes.Count > 0;
+            backlinksText.Text = Strings.Format(R.Backlinks_Button, notes.Count).ToUpper(CultureInfo.CurrentCulture);
+            Avalonia.Automation.AutomationProperties.SetName(backlinks, Strings.Get(R.Backlinks_Tooltip) + ": " + notes.Count.ToString(CultureInfo.CurrentCulture));
+            var menu = new MenuFlyout();
+            foreach (var note in notes)
+            {
+                var item = new MenuItem { Header = NoteTexts.Backlink(note) };
+                var path = note.RelativePath;
+                item.Click += async (_, _) => await _vm.OpenNoteAsync(path);
+                menu.Items.Add(item);
+            }
+
+            backlinks.Flyout = menu;
+        });
+
         var gutter = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 0, Metrics.TimeGutterGap, 26) };
         var bottom = Ui.VStack(2, continues, modified);
         Grid.SetRow(bottom, 2);
-        gutter.Children.Add(created);
+        gutter.Children.Add(Ui.VStack(4, created, backlinks));
         gutter.Children.Add(bottom);
 
         _editor.ShowLineNumbers = _host.Settings.Current.EditorLineNumbers;
@@ -437,6 +467,7 @@ internal sealed partial class MainWindow : Window
             _editor.FocusEditor();
         };
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
+        _editor.NoteLinkRequested += (_, link) => _ = _vm.OpenWikiLinkAsync(link);
         _editor.FontZoomRequested += (_, step) => ZoomEditor(step);
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();
     }
@@ -605,6 +636,14 @@ internal sealed partial class MainWindow : Window
                     Dispatcher.UIThread.Post(_calendar.FocusSelectedDay, DispatcherPriority.Background);
                 },
                 (Key.OemComma, true, false, false) => OpenSettingsAsync,
+                // Find and replace in the open note; Ctrl+Cmd+F on macOS is the full view (below).
+                (Key.F, true, false, false) when !IsMacFullViewChord(e) => () => OpenFind(replace: false),
+                (Key.H, true, false, false) => () => OpenFind(replace: true),
+                (Key.F3, false, _, false) when _vm.Find.IsOpen => () =>
+                {
+                    _findBar.Go(backwards: shift);
+                    return Task.CompletedTask;
+                },
                 (Key.Left, true, false, true) => () => _vm.MoveCalendarAsync(-1),
                 (Key.Right, true, false, true) => () => _vm.MoveCalendarAsync(1),
                 (Key.Escape, false, false, false) when _vm.IsSearchOpen => () =>
@@ -663,6 +702,12 @@ internal sealed partial class MainWindow : Window
 
     [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Opening settings failed")]
     private static partial void LogSettingsFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
+
+    private Task OpenFind(bool replace)
+    {
+        _findBar.Open(replace);
+        return Task.CompletedTask;
+    }
 
     /// <summary>After the settings: theme, editor fonts, line numbers, tray.</summary>
     internal void ApplyAppearance()

@@ -495,6 +495,22 @@ public sealed partial class NoteIndexer
             ins.ExecuteNonQuery();
         }
 
+        // Wiki links – only when the content was read (a placeholder not downloaded yet keeps none).
+        if (info is not null)
+        {
+            using (var del = c.Command("DELETE FROM note_links WHERE note_id = $id;", tx).With("$id", id))
+            {
+                del.ExecuteNonQuery();
+            }
+
+            foreach (var link in info.Links)
+            {
+                using var ins = c.Command("INSERT OR IGNORE INTO note_links (note_id, target) VALUES ($id, $t);", tx)
+                    .With("$id", id).With("$t", link);
+                ins.ExecuteNonQuery();
+            }
+        }
+
         // Full text.
         using (var del = c.Command("DELETE FROM notes_fts WHERE rowid = $id;", tx).With("$id", id))
         {

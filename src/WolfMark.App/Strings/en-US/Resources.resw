@@ -166,10 +166,94 @@
     <value>Copy link</value>
   </data>
   <data name="Menu_Delete" xml:space="preserve">
-    <value>Move to Recycle Bin</value>
+    <value>Move to trash</value>
   </data>
   <data name="Delete_ConfirmTitle" xml:space="preserve">
-    <value>Move this note to the Recycle Bin?</value>
+    <value>Move this note to the trash?</value>
+  </data>
+  <data name="Find_Placeholder" xml:space="preserve">
+    <value>Find in the note</value>
+  </data>
+  <data name="Find_ReplacePlaceholder" xml:space="preserve">
+    <value>Replace with</value>
+  </data>
+  <data name="Find_Next" xml:space="preserve">
+    <value>Next (Enter)</value>
+  </data>
+  <data name="Find_Previous" xml:space="preserve">
+    <value>Previous (Shift+Enter)</value>
+  </data>
+  <data name="Find_Replace" xml:space="preserve">
+    <value>Replace</value>
+  </data>
+  <data name="Find_ReplaceAll" xml:space="preserve">
+    <value>Replace all</value>
+  </data>
+  <data name="Find_MatchCase" xml:space="preserve">
+    <value>Match case</value>
+  </data>
+  <data name="Find_NoResults" xml:space="preserve">
+    <value>No results</value>
+  </data>
+  <data name="Find_Count" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Find_Replaced" xml:space="preserve">
+    <value>{0} replaced</value>
+  </data>
+  <data name="Settings_Trash" xml:space="preserve">
+    <value>Trash</value>
+  </data>
+  <data name="Trash_Intro" xml:space="preserve">
+    <value>Deleted notes stay here, in a folder next to your notes (.wolfmark/trash), until you restore or remove them.</value>
+  </data>
+  <data name="Trash_Empty" xml:space="preserve">
+    <value>The trash is empty.</value>
+  </data>
+  <data name="Trash_Summary" xml:space="preserve">
+    <value>{0} in the trash, {1}</value>
+  </data>
+  <data name="Trash_Untitled" xml:space="preserve">
+    <value>(no text)</value>
+  </data>
+  <data name="Trash_Details" xml:space="preserve">
+    <value>{0} · deleted {1}</value>
+  </data>
+  <data name="Trash_Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="Trash_Restored" xml:space="preserve">
+    <value>Restored: {0}</value>
+  </data>
+  <data name="Trash_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Trash_RemoveConfirm" xml:space="preserve">
+    <value>Remove for good?</value>
+  </data>
+  <data name="Trash_EmptyAll" xml:space="preserve">
+    <value>Empty the trash</value>
+  </data>
+  <data name="Trash_EmptyConfirm" xml:space="preserve">
+    <value>Remove all {0}?</value>
+  </data>
+  <data name="Trash_ToSystemBin" xml:space="preserve">
+    <value>Removed notes go to the Windows Recycle Bin.</value>
+  </data>
+  <data name="Trash_ForGood" xml:space="preserve">
+    <value>Removed notes are deleted for good – there is no recycle bin for this folder.</value>
+  </data>
+  <data name="Trash_Retention" xml:space="preserve">
+    <value>Remove notes from the trash automatically</value>
+  </data>
+  <data name="Trash_RetentionNever" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="Trash_RetentionDays" xml:space="preserve">
+    <value>After {0} days</value>
+  </data>
+  <data name="Trash_Failed" xml:space="preserve">
+    <value>That did not work: {0}</value>
   </data>
   <data name="Common_Cancel" xml:space="preserve">
     <value>Cancel</value>
@@ -662,6 +746,15 @@
   </data>
   <data name="Link_Search" xml:space="preserve">
     <value>Search</value>
+  </data>
+  <data name="Backlinks_Button" xml:space="preserve">
+    <value>Linked from {0}</value>
+  </data>
+  <data name="Backlinks_Tooltip" xml:space="preserve">
+    <value>Notes that link to this one</value>
+  </data>
+  <data name="Menu_OpenNoteLink" xml:space="preserve">
+    <value>Open linked note</value>
   </data>
   <data name="Link_NoteMissing" xml:space="preserve">
     <value>The linked note does not exist: {0}</value>

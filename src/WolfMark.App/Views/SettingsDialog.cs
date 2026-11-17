@@ -366,6 +366,7 @@ internal static class SettingsDialog
                 textWidthHint,
                 Field(Strings.Get(R.Settings_DefaultMode), mode))),
             (Glyphs.Tag, Strings.Get(R.Settings_Tags), TagsPage(vm, () => { showNotesClose = true; dialogRef?.Hide(); })),
+            (Glyphs.Delete, Strings.Get(R.Settings_Trash), TrashPage(vm)),
             (Glyphs.Code, Strings.Get(R.Settings_ClaudeCode), Ui.Ui.VStack(
                 10,
                 ccEnabled,
@@ -913,6 +914,111 @@ internal static class SettingsDialog
 
         combo.SelectedIndex = Math.Clamp(selected, 0, items.Length - 1);
         return combo;
+    }
+
+    /// <summary>
+    /// Trash (ADR 0016): the deleted notes with Restore and Remove, how long they are kept, and emptying. Everything
+    /// applies at once; the texts and the work are in <see cref="TrashModel"/>, shared with the macOS/Linux app.
+    /// Removing for good asks first – the button turns into the question.
+    /// </summary>
+    private static StackPanel TrashPage(MainViewModel vm)
+    {
+        var model = new TrashModel(vm);
+        var intro = Typo.Body(Strings.Get(R.Trash_Intro), 13, Palette.InkSecondary);
+        intro.TextWrapping = TextWrapping.Wrap;
+        var hint = Typo.Body(model.RemovalHint, 12.5, Palette.InkTertiary);
+        hint.TextWrapping = TextWrapping.Wrap;
+        var summary = Typo.Body(string.Empty, 13, Palette.InkSecondary);
+        summary.VerticalAlignment = VerticalAlignment.Center;
+        var status = Typo.Body(string.Empty, 12.5, Palette.InkSecondary);
+        status.TextWrapping = TextWrapping.Wrap;
+        var retention = Combo([.. TrashModel.RetentionChoices.Select(TrashModel.RetentionText)], model.RetentionIndex);
+        retention.SelectionChanged += async (_, _) => await model.SetRetentionAsync(Math.Max(0, retention.SelectedIndex));
+        var emptyAll = Ui.Ui.TextButton(Strings.Get(R.Trash_EmptyAll));
+        var list = new StackPanel { Spacing = 2 };
+        object? asked = null; // the row (or the "empty" button) whose removal waits for a second click
+
+        void Render()
+        {
+            summary.Text = model.Summary;
+            emptyAll.IsEnabled = model.Items.Count > 0;
+            emptyAll.Content = ReferenceEquals(asked, emptyAll) ? Strings.Format(R.Trash_EmptyConfirm, model.Items.Count) : Strings.Get(R.Trash_EmptyAll);
+            list.Children.Clear();
+            foreach (var row in model.Items)
+            {
+                var item = row;
+                var title = Typo.Body(row.Title, 13.5);
+                title.TextTrimming = TextTrimming.CharacterEllipsis;
+                var details = Typo.Body(row.Details, 12, Palette.InkTertiary);
+                details.TextTrimming = TextTrimming.CharacterEllipsis;
+                var restore = Ui.Ui.TextButton(Strings.Get(R.Trash_Restore));
+                restore.Click += async (_, _) => await RunAsync(async () => await model.RestoreAsync(item));
+                var remove = Ui.Ui.TextButton(Strings.Get(ReferenceEquals(asked, item) ? R.Trash_RemoveConfirm : R.Trash_Remove));
+                remove.Click += async (_, _) =>
+                {
+                    if (model.RemovesForGood && !ReferenceEquals(asked, item))
+                    {
+                        asked = item;
+                        Render();
+                        return;
+                    }
+
+                    await RunAsync(() => model.RemoveAsync(item));
+                };
+                var line = Ui.Ui.Columns((Ui.Ui.Star, Ui.Ui.VStack(1, title, details)), (Ui.Ui.Auto, restore), (Ui.Ui.Auto, remove));
+                line.ColumnSpacing = 8;
+                line.Margin = new Thickness(0, 4, 0, 4);
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(restore, Strings.Get(R.Trash_Restore) + " " + row.Title);
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(remove, Strings.Get(R.Trash_Remove) + " " + row.Title);
+                list.Children.Add(line);
+            }
+        }
+
+        async Task RunAsync(Func<Task<string?>> work)
+        {
+            list.IsHitTestVisible = false;
+            list.Opacity = 0.6;
+            try
+            {
+                status.Text = await work() ?? string.Empty;
+            }
+            finally
+            {
+                asked = null;
+                list.IsHitTestVisible = true;
+                list.Opacity = 1;
+                Render();
+            }
+        }
+
+        emptyAll.Click += async (_, _) =>
+        {
+            if (!ReferenceEquals(asked, emptyAll))
+            {
+                asked = emptyAll;
+                Render();
+                return;
+            }
+
+            await RunAsync(model.EmptyAsync);
+        };
+
+        async Task LoadAsync()
+        {
+            await model.LoadAsync();
+            Render();
+        }
+
+        Render();
+        _ = LoadAsync();
+        return Ui.Ui.VStack(
+            10,
+            intro,
+            Ui.Ui.VStack(4, Typo.Body(Strings.Get(R.Trash_Retention), 13, Palette.InkSecondary), retention),
+            hint,
+            Ui.Ui.HStack(12, emptyAll, summary),
+            status,
+            list);
     }
 
     private static TextBlock Section(string title)

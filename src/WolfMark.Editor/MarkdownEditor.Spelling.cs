@@ -19,7 +19,8 @@ public sealed record EditorMenuTexts(
     string AddToDictionary = "Add to dictionary",
     string Ignore = "Ignore",
     string NoSuggestions = "No suggestions",
-    string OpenLink = "Open link in browser");
+    string OpenLink = "Open link in browser",
+    string OpenNoteLink = "Open linked note");
 
 /// <summary>
 /// Spell check of the lines in view: each line's prose (<see cref="MarkdownSpelling.ProseOnly"/>) goes to the
@@ -200,6 +201,13 @@ public sealed partial class MarkdownEditor
             menu.Items.Add(MenuItem(MenuTexts.OpenLink, () => _ = Windows.System.Launcher.LaunchUriAsync(new Uri(url))));
             menu.Items.Add(new MenuFlyoutSeparator());
         }
+        else if (WikiLinks.TargetAt(_doc.GetLineText(line), _doc.GetTokens(line), offset - _doc.GetLineStart(line)) is { } note)
+        {
+            // A wiki link to another note: the app follows it (also with Ctrl+click).
+            menu.Items.Add(MenuItem(MenuTexts.OpenNoteLink, () => NoteLinkRequested?.Invoke(this, note)));
+            menu.Items.Add(new MenuFlyoutSeparator());
+        }
+
         if (Proofing && !_readOnly && ErrorAt(offset) is { } error)
         {
             var suggestions = await _speller!.SuggestAsync(error.Word);

@@ -99,6 +99,40 @@ public sealed class HistoryService(IndexDatabase db)
             },
             ct);
 
+    /// <summary>
+    /// Notes with a wiki link to <paramref name="note"/> – by its path (<c>[[2026/11/16/praca_1403]]</c>) or by its
+    /// file name alone (<c>[[praca_1403]]</c>) – the newest first; the note itself is left out (M9-04).
+    /// </summary>
+    public Task<IReadOnlyList<NoteSummary>> GetBacklinksAsync(Core.Notes.NotePath note, CancellationToken ct) =>
+        db.ReadAsync<IReadOnlyList<NoteSummary>>(
+            c =>
+            {
+                var keys = Core.Markdown.WikiLinks.KeysOf(note);
+                using var cmd = c.Command(
+                    $"""
+                    SELECT {NoteSummaryReader.Columns} FROM notes n
+                    WHERE n.rel_path <> $self
+                      AND EXISTS (SELECT 1 FROM note_links l WHERE l.note_id = n.id AND l.target IN ($path, $name))
+                    ORDER BY n.created_at DESC LIMIT 100;
+                    """)
+                    .With("$self", note.RelativePath).With("$path", keys[0]).With("$name", keys[1]);
+                return NoteSummaryReader.ReadAll(cmd);
+            },
+            ct);
+
+    /// <summary>The newest note whose file is named <paramref name="name"/> (without ".md"), for <c>[[name]]</c> links.</summary>
+    public Task<string?> FindByFileNameAsync(string name, CancellationToken ct) =>
+        db.ReadAsync(
+            c =>
+            {
+                using var cmd = c.Command(
+                    "SELECT rel_path FROM notes WHERE rel_path = $n OR rel_path LIKE $p ESCAPE '\\' ORDER BY created_at DESC LIMIT 1;")
+                    .With("$n", name + ".md")
+                    .With("$p", "%/" + name.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal) + ".md");
+                return cmd.ExecuteScalar() as string;
+            },
+            ct);
+
     /// <summary>All tags ever used (primary and in-text), for the tag picker.</summary>
     public Task<IReadOnlyList<TagUsage>> GetAllTagsAsync(CancellationToken ct) =>
         db.ReadAsync<IReadOnlyList<TagUsage>>(

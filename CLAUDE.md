@@ -12,7 +12,8 @@
 3. **UI vlákno je posvätné:** žiadne I/O, DB, embeddingy ani parsing na UI vlákne. Žiadne `.Result`, `.Wait()`, `GetAwaiter().GetResult()`. `CancellationToken` vo všetkých async API. Výsledky do UI cez `DispatcherQueue`.
    Výnimka: editor upravuje textový model a lexuje **dotknuté riadky** priamo na UI vlákne (ADR 0007) – je to rýchlejšie než prepnutie vlákna; celý dokument sa meria a lexuje na pozadí.
 4. **Súbory sú zdroj pravdy**, SQLite je cache – každá funkcia musí fungovať aj po zmazaní `index.db`.
-5. **Zápisy na disk sú atomické** (temp + replace). Nikdy natrvalo nemazať poznámky – len do koša.
+5. **Zápisy na disk sú atomické** (temp + replace). Nikdy natrvalo nemazať poznámky – len do koša (`.wolfmark/trash`, ADR 0016).
+   Jediná výnimka: odstránenie z koša na výslovný pokyn používateľa (Nastavenia → Kôš), a aj to cez Kôš Windows tam, kde existuje.
 6. **Do DB zapisuje len jeden writer** (kanál). Čítanie z oddelených spojení.
 7. Interop cez **CsWin32**, nie ručné `DllImport`.
 8. MVVM cez **CommunityToolkit.Mvvm** source generátory.

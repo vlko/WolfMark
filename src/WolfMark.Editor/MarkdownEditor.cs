@@ -113,7 +113,41 @@ public sealed partial class MarkdownEditor : UserControl
 
     public event EventHandler<IReadOnlySet<EditorCommand>>? ActiveFormatsChanged;
 
+    /// <summary>
+    /// A wiki link <c>[[…]]</c> was followed (Ctrl+click, or "Open linked note" in the menu): the text between the
+    /// brackets. The app decides where it leads.
+    /// </summary>
+    public event EventHandler<string>? NoteLinkRequested;
+
     public string Text => _doc.GetText();
+
+    public bool IsReadOnly => _readOnly;
+
+    /// <summary>The selection in the text: its start and length (0 = just the caret).</summary>
+    public (int Start, int Length) SelectedRange => (Selection.Start, Selection.End - Selection.Start);
+
+    public string SelectedText => HasSelection ? _doc.GetText()[Selection.Start..Selection.End] : string.Empty;
+
+    /// <summary>Selects a range and scrolls it into view without taking the keyboard focus (find in the note).</summary>
+    public void Select(int start, int length)
+    {
+        start = Math.Clamp(start, 0, _doc.Length);
+        _anchor = start;
+        SetCaret(start + Math.Clamp(length, 0, _doc.Length - start), extend: true);
+    }
+
+    /// <summary>An edit from outside the editor (replace) as one undo step; ignored in a read-only note.</summary>
+    public void ApplyEdit(TextEdit edit)
+    {
+        if (_readOnly || edit.Start < 0 || edit.Start + edit.Length > _doc.Length)
+        {
+            return;
+        }
+
+        _undo.Seal();
+        Edit(edit);
+        _undo.Seal();
+    }
 
     public MarkdownEditorMode Mode
     {

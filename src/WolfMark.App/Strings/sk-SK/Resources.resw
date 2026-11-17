@@ -171,6 +171,90 @@
   <data name="Delete_ConfirmTitle" xml:space="preserve">
     <value>Presunúť poznámku do koša?</value>
   </data>
+  <data name="Find_Placeholder" xml:space="preserve">
+    <value>Hľadať v poznámke</value>
+  </data>
+  <data name="Find_ReplacePlaceholder" xml:space="preserve">
+    <value>Nahradiť čím</value>
+  </data>
+  <data name="Find_Next" xml:space="preserve">
+    <value>Ďalší (Enter)</value>
+  </data>
+  <data name="Find_Previous" xml:space="preserve">
+    <value>Predchádzajúci (Shift+Enter)</value>
+  </data>
+  <data name="Find_Replace" xml:space="preserve">
+    <value>Nahradiť</value>
+  </data>
+  <data name="Find_ReplaceAll" xml:space="preserve">
+    <value>Nahradiť všetky</value>
+  </data>
+  <data name="Find_MatchCase" xml:space="preserve">
+    <value>Rozlišovať veľkosť písmen</value>
+  </data>
+  <data name="Find_NoResults" xml:space="preserve">
+    <value>Nič sa nenašlo</value>
+  </data>
+  <data name="Find_Count" xml:space="preserve">
+    <value>{0} z {1}</value>
+  </data>
+  <data name="Find_Replaced" xml:space="preserve">
+    <value>Nahradené: {0}</value>
+  </data>
+  <data name="Settings_Trash" xml:space="preserve">
+    <value>Kôš</value>
+  </data>
+  <data name="Trash_Intro" xml:space="preserve">
+    <value>Zmazané poznámky ostávajú tu, v priečinku pri poznámkach (.wolfmark/trash), kým ich neobnovíš alebo neodstrániš.</value>
+  </data>
+  <data name="Trash_Empty" xml:space="preserve">
+    <value>Kôš je prázdny.</value>
+  </data>
+  <data name="Trash_Summary" xml:space="preserve">
+    <value>V koši: {0}, {1}</value>
+  </data>
+  <data name="Trash_Untitled" xml:space="preserve">
+    <value>(bez textu)</value>
+  </data>
+  <data name="Trash_Details" xml:space="preserve">
+    <value>{0} · zmazané {1}</value>
+  </data>
+  <data name="Trash_Restore" xml:space="preserve">
+    <value>Obnoviť</value>
+  </data>
+  <data name="Trash_Restored" xml:space="preserve">
+    <value>Obnovené: {0}</value>
+  </data>
+  <data name="Trash_Remove" xml:space="preserve">
+    <value>Odstrániť</value>
+  </data>
+  <data name="Trash_RemoveConfirm" xml:space="preserve">
+    <value>Odstrániť natrvalo?</value>
+  </data>
+  <data name="Trash_EmptyAll" xml:space="preserve">
+    <value>Vyprázdniť kôš</value>
+  </data>
+  <data name="Trash_EmptyConfirm" xml:space="preserve">
+    <value>Odstrániť všetky ({0})?</value>
+  </data>
+  <data name="Trash_ToSystemBin" xml:space="preserve">
+    <value>Odstránené poznámky idú do Koša Windows.</value>
+  </data>
+  <data name="Trash_ForGood" xml:space="preserve">
+    <value>Odstránené poznámky sa zmažú natrvalo – pre tento priečinok systém kôš nemá.</value>
+  </data>
+  <data name="Trash_Retention" xml:space="preserve">
+    <value>Automaticky odstraňovať poznámky z koša</value>
+  </data>
+  <data name="Trash_RetentionNever" xml:space="preserve">
+    <value>Nikdy</value>
+  </data>
+  <data name="Trash_RetentionDays" xml:space="preserve">
+    <value>Po {0} dňoch</value>
+  </data>
+  <data name="Trash_Failed" xml:space="preserve">
+    <value>Nepodarilo sa: {0}</value>
+  </data>
   <data name="Common_Cancel" xml:space="preserve">
     <value>Zrušiť</value>
   </data>
@@ -662,6 +746,15 @@
   </data>
   <data name="Link_Search" xml:space="preserve">
     <value>Hľadať</value>
+  </data>
+  <data name="Backlinks_Button" xml:space="preserve">
+    <value>Odkazuje sem: {0}</value>
+  </data>
+  <data name="Backlinks_Tooltip" xml:space="preserve">
+    <value>Poznámky, ktoré odkazujú na túto</value>
+  </data>
+  <data name="Menu_OpenNoteLink" xml:space="preserve">
+    <value>Otvoriť odkazovanú poznámku</value>
   </data>
   <data name="Link_NoteMissing" xml:space="preserve">
     <value>Odkazovaná poznámka neexistuje: {0}</value>

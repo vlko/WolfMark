@@ -611,6 +611,18 @@ public sealed partial class MarkdownEditor
 
     // ---------------------------------------------------------------- pointer
 
+    /// <summary>The text of the wiki link <c>[[…]]</c> at a source offset, or null.</summary>
+    private string? WikiLinkAt(int offset)
+    {
+        if (_doc.LineCount == 0)
+        {
+            return null;
+        }
+
+        var line = _doc.GetLineAtOffset(offset);
+        return WikiLinks.TargetAt(_doc.GetLineText(line), _doc.GetTokens(line), offset - _doc.GetLineStart(line));
+    }
+
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         _followCaret = false;
@@ -620,6 +632,14 @@ public sealed partial class MarkdownEditor
         var point = e.GetCurrentPoint(_canvas);
         if (!point.Properties.IsLeftButtonPressed)
         {
+            return;
+        }
+
+        if (IsDown(VirtualKey.Control) && !IsDown(VirtualKey.Shift) && WikiLinkAt(OffsetAt(point.Position)) is { } note)
+        {
+            // Ctrl+click follows a wiki link; a plain click places the caret in it, so it can be edited.
+            e.Handled = true;
+            NoteLinkRequested?.Invoke(this, note);
             return;
         }
 

@@ -1,6 +1,7 @@
 # ADR 0015 – Kôš podľa typu disku (M11-02)
 
-- Stav: prijaté (2026-11-17); správanie na sieťovom a vymeniteľnom disku čaká na ručné overenie na Windows
+- Stav: nahradené ADR 0016 pre jednotlivé poznámky (jeden kôš `.wolfmark/trash` všade); ďalej platí pre presun
+  celého priečinka poznámok a pre to, kam ide obsah odstránený z koša
 - Backlog: M1-06, M8-09, M11-02
 
 ## Kontext

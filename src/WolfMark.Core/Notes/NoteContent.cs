@@ -13,7 +13,11 @@ public sealed record NoteContentInfo(
     int DoneTasks,
     string? Source,
     string? SessionId,
-    string Body);
+    string Body)
+{
+    /// <summary>Keys of the wiki links in the note (<see cref="WikiLinks.Key"/>), each once – for backlinks.</summary>
+    public IReadOnlyList<string> Links { get; init; } = [];
+}
 
 /// <summary>
 /// Extracts title, preview, word and task counts (SPEC §4.2). Tags are not read from the content: a note's tag is the
@@ -35,6 +39,7 @@ public static class NoteContentAnalyzer
         var words = 0;
         var open = 0;
         var done = 0;
+        var links = new List<string>();
 
         // Tables read as their cells in the title and preview ("Method · Path · Notes"), not as pipes and dashes.
         // Lines in code blocks are skipped below before this is used, so the code check is not needed here.
@@ -70,6 +75,14 @@ public static class NoteContentAnalyzer
                 {
                     case MarkdownTokenKind.TaskOpen:
                         open++;
+                        break;
+                    case MarkdownTokenKind.WikiLink:
+                        if (WikiLinks.Parse(line.Substring(token.Start, token.Length)) is { } target
+                            && WikiLinks.Key(target) is var key && !links.Contains(key))
+                        {
+                            links.Add(key);
+                        }
+
                         break;
                     case MarkdownTokenKind.TaskDone:
                         done++;
@@ -107,7 +120,10 @@ public static class NoteContentAnalyzer
             done,
             frontMatter.Get("source"),
             frontMatter.Get("session"),
-            body.ToString());
+            body.ToString())
+        {
+            Links = links,
+        };
     }
 
     /// <summary>A table row as its cells' text, separated by " · " (empty cells left out).</summary>

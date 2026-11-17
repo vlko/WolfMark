@@ -46,6 +46,42 @@ public sealed class IndexerTests
     }
 
     [Fact]
+    public async Task A_note_knows_which_notes_link_to_it()
+    {
+        await using var f = await IndexFixture.CreateAsync();
+        f.Write("2026/10/15/praca_1403.md", "# Plan");
+        f.Write("2026/10/16/praca_0900.md", "# By path\n\nSee [[2026/10/15/praca_1403]].");
+        f.Write("2026/10/17/doma_1000.md", "# By name\n\nAs in [[Praca_1403|the plan]].");
+        f.Write("2026/10/18/doma_1100.md", "# Elsewhere\n\n[[2026/10/15/praca_1404]] is another note.");
+        await f.Indexer.FullScanAsync(null, Ct);
+        Assert.True(WolfMark.Core.Notes.NotePath.TryParse("2026/10/15/praca_1403.md", out var plan));
+
+        var links = await f.History.GetBacklinksAsync(plan, Ct);
+
+        Assert.Equal(["2026/10/17/doma_1000.md", "2026/10/16/praca_0900.md"], links.Select(n => n.RelativePath));
+
+        // The link is removed from the text: the backlink goes with the next indexing.
+        f.Write("2026/10/16/praca_0900.md", "# By path\n\nNo link any more.");
+        await f.Indexer.FullScanAsync(null, Ct);
+        Assert.Equal(["2026/10/17/doma_1000.md"], (await f.History.GetBacklinksAsync(plan, Ct)).Select(n => n.RelativePath));
+    }
+
+    [Fact]
+    public async Task A_note_is_found_by_its_file_name_alone_the_newest_first()
+    {
+        await using var f = await IndexFixture.CreateAsync();
+        f.Write("2026/10/15/praca_1403.md", "old");
+        f.Write("2026/10/20/praca_1403.md", "new");
+        f.Write("2026/10/21/xpraca_1403.md", "another name");
+        await f.Indexer.FullScanAsync(null, Ct);
+
+        Assert.Equal("2026/10/20/praca_1403.md", await f.History.FindByFileNameAsync("praca_1403", Ct));
+        Assert.Equal("2026/10/20/praca_1403.md", await f.History.FindByFileNameAsync("PRACA_1403", Ct));
+        Assert.Null(await f.History.FindByFileNameAsync("praca_14%", Ct)); // no wildcards
+        Assert.Null(await f.History.FindByFileNameAsync("nothing", Ct));
+    }
+
+    [Fact]
     public async Task Reopening_database_does_not_reindex()
     {
         await using var f = await IndexFixture.CreateAsync();

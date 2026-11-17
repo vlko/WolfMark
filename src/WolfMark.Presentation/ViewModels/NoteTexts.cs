@@ -31,6 +31,13 @@ internal static class NoteTexts
             c.DateTimeFormat.GetDayName(day.DayOfWeek).ToUpper(c));
     }
 
+    /// <summary>A note in the list of notes linking to the open one: "Stand-up Mon 16 Nov · 16/11/2026".</summary>
+    public static string Backlink(WolfMark.Index.Queries.NoteSummary note)
+    {
+        var title = note.Title.Length > 0 ? note.Title : Path.GetFileNameWithoutExtension(note.RelativePath);
+        return (title.Length > 60 ? title[..60] + "…" : title) + " · " + note.CreatedAt.ToString("d", CultureInfo.CurrentCulture);
+    }
+
     /// <summary>The save state next to the tag, in capitals.</summary>
     public static string SaveState(SaveState state) => Strings.Get(state switch
     {

@@ -5,6 +5,7 @@ using WolfMark.App.Infrastructure;
 using WolfMark.Core.Calendar;
 using WolfMark.Core.Events;
 using WolfMark.Core.Links;
+using WolfMark.Core.Markdown;
 using WolfMark.Core.Notes;
 using WolfMark.Core.Settings;
 using WolfMark.Core.Tags;
@@ -34,11 +35,16 @@ internal sealed partial class MainViewModel : ObservableObject
         History = new HistoryViewModel(host);
         Calendar = new CalendarViewModel(host);
         Search = new SearchViewModel(host);
+        Find = new FindViewModel();
         Today = DateOnly.FromDateTime(DateTime.Now);
         SelectedDay = Today;
         IsCalendarExpanded = host.Settings.Current.CalendarExpanded;
 
         Editor.PathChanged += (_, _) => History.MarkCurrent(Editor.IsPersisted ? Editor.Path?.RelativePath : null);
+        Editor.PathChanged += (_, _) => _ = LoadBacklinksAsync();
+        // Another note in the editor (opened, new, reloaded from disk): a find bar left open would show the query and
+        // the count of the note before.
+        Editor.LoadRequested += (_, _) => Find.Close();
         Search.ResultInvoked += async (_, note) =>
         {
             IsSearchOpen = false;
@@ -74,6 +80,9 @@ internal sealed partial class MainViewModel : ObservableObject
     }
 
     public NoteEditorViewModel Editor { get; }
+
+    /// <summary>Find and replace in the open note (Ctrl+F, Ctrl+H).</summary>
+    public FindViewModel Find { get; }
 
     public WeekStripViewModel Week { get; }
 
@@ -410,6 +419,81 @@ internal sealed partial class MainViewModel : ObservableObject
     /// search). The quick note and the search with its text are the view's (<see cref="AppLinkKind.New"/>,
     /// <see cref="AppLinkKind.Search"/>). A note that does not exist is reported, nothing is created.
     /// </summary>
+    /// <summary>
+    /// Follows a wiki link from the open note (M9-04) – <paramref name="inner"/> is the text between the brackets:
+    /// a note by its path or by its file name alone, or a day. A link that leads nowhere says so.
+    /// </summary>
+    public async Task OpenWikiLinkAsync(string inner)
+    {
+        if (WikiLinks.Parse(inner) is not { } target)
+        {
+            ErrorNotice = Strings.Format(R.Link_NoteMissing, inner);
+            return;
+        }
+
+        switch (target.Kind)
+        {
+            case WikiTargetKind.Day:
+                await SelectDayAsync(target.Day);
+                break;
+            case WikiTargetKind.Note:
+                var full = _host.Engine.GetFullPath(target.Value);
+                if (await Task.Run(() => File.Exists(full)))
+                {
+                    await OpenNoteAsync(target.Value);
+                }
+                else
+                {
+                    ErrorNotice = Strings.Format(R.Link_NoteMissing, target.Value);
+                }
+
+                break;
+            case WikiTargetKind.Name:
+                var found = _host.DatabaseReady.IsCompletedSuccessfully
+                    ? await _host.History.FindByFileNameAsync(target.Value, _host.ShutdownToken)
+                    : null;
+                if (found is not null)
+                {
+                    await OpenNoteAsync(found);
+                }
+                else
+                {
+                    ErrorNotice = Strings.Format(R.Link_NoteMissing, target.Value);
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>Notes that link to the open one, the newest first (M9-04); empty for a note not saved yet.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<NoteSummary> Backlinks { get; private set; } = [];
+
+    private int _backlinksGeneration;
+
+    /// <summary>After the open note changed and after every index change (a link may have been written anywhere).</summary>
+    private async Task LoadBacklinksAsync()
+    {
+        var generation = ++_backlinksGeneration;
+        IReadOnlyList<NoteSummary> links = [];
+        if (Editor is { IsPersisted: true, Path: { } path } && _host.DatabaseReady.IsCompletedSuccessfully)
+        {
+            try
+            {
+                links = await _host.History.GetBacklinksAsync(path, _host.ShutdownToken);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or Microsoft.Data.Sqlite.SqliteException)
+            {
+                return; // shutting down, or the index is being rebuilt – the next index change loads them
+            }
+        }
+
+        if (generation == _backlinksGeneration && (links.Count > 0 || Backlinks.Count > 0))
+        {
+            Backlinks = links;
+        }
+    }
+
     public async Task OpenLinkAsync(AppLink link)
     {
         IsFullView = false;
@@ -572,6 +656,7 @@ internal sealed partial class MainViewModel : ObservableObject
             }
         }
 
+        _ = LoadBacklinksAsync();
         _pendingDays.UnionWith(e.Days);
         _historyRefresh.Schedule(async _ =>
         {

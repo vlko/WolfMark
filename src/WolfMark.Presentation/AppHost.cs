@@ -43,13 +43,15 @@ internal sealed partial class AppHost : IAsyncDisposable
         Root = settings.ResolveRoot();
         Hub = new NoteEventHub();
         SelfWrites = new SelfWriteRegistry(Time);
-        // Portable, network and removable drives have no Recycle Bin – Windows would delete permanently (CLAUDE.md rule 5).
-        // Demo: everything stays in the demo folder – its deleted notes must not land in the user's Recycle Bin.
-        IRecycleBin recycleBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && paths.PortableDataDirectory is null && !isDemo
+        // One trash on every system (ADR 0016): a folder with the notes, listed and restored in Settings → Trash.
+        Trash = new NoteTrash(Root, Time);
+        // What leaves the trash goes to the Windows Recycle Bin where there is one for these notes – not in portable
+        // mode (nothing is written to the computer) nor in a demo (its notes must not land in the user's bin).
+        SystemBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && paths.PortableDataDirectory is null && !isDemo
             && WindowsRecycleBin.CanRecycle(Root)
             ? new WindowsRecycleBin()
-            : new FolderRecycleBin(Root);
-        Engine = new DirectoryEngine(Root, recycleBin, Hub, SelfWrites, loggers.CreateLogger<DirectoryEngine>());
+            : null;
+        Engine = new DirectoryEngine(Root, Trash, Hub, SelfWrites, loggers.CreateLogger<DirectoryEngine>());
         Tags = new TagStore(Root, SelfWrites, loggers.CreateLogger<TagStore>());
         Db = new IndexDatabase(paths.IndexDatabase, loggers.CreateLogger<IndexDatabase>());
         Indexer = new NoteIndexer(Db, Engine, loggers.CreateLogger<NoteIndexer>());
@@ -77,6 +79,15 @@ internal sealed partial class AppHost : IAsyncDisposable
     public SelfWriteRegistry SelfWrites { get; }
 
     public DirectoryEngine Engine { get; }
+
+    /// <summary>Where deleted notes go, on every system.</summary>
+    public NoteTrash Trash { get; }
+
+    /// <summary>
+    /// Takes what is removed from the <see cref="Trash"/> (emptying it, the retention): the system's own recycle bin.
+    /// Null where there is none for these notes – then removing from the trash is final.
+    /// </summary>
+    public IRecycleBin? SystemBin { get; }
 
     public TagStore Tags { get; }
 
@@ -257,6 +268,20 @@ internal sealed partial class AppHost : IAsyncDisposable
 
             _ = Background.Run("index-events", t => Indexer.RunAsync(events, t), token);
             _ = Background.Run("placeholders", t => Indexer.IndexPendingContentAsync(TimeSpan.FromSeconds(2), t), token);
+            if (Settings.Current.TrashRetentionDays is > 0 and var days)
+            {
+                // The retention the user chose in Settings → Trash; off by default.
+                var limit = Time.GetUtcNow().UtcDateTime.AddDays(-days);
+                _ = Background.Run("trash-retention", async t =>
+                {
+                    var removed = await Trash.EmptyAsync(limit, SystemBin, t).ConfigureAwait(false);
+                    if (removed > 0)
+                    {
+                        LogTrashRetention(removed, days);
+                    }
+                }, token);
+            }
+
             StartClaudeSync(token);
 
             if (EmbeddingProvider is { } provider)
@@ -450,6 +475,9 @@ internal sealed partial class AppHost : IAsyncDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "A delayed action (autosave, search, settings) failed")]
     private partial void LogDebouncedFailed(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Trash: {Count} notes deleted more than {Days} days ago were removed")]
+    private partial void LogTrashRetention(int count, int days);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Shut down")]
     private partial void LogShutdown();

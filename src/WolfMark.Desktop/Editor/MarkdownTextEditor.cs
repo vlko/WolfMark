@@ -62,6 +62,7 @@ internal sealed class MarkdownTextEditor : UserControl
     private int _applying;
     private bool _ownLinePending;
     private string? _menuLink; // web link under the last right click, offered by the context menu
+    private string? _menuNote; // wiki link under the last right click
     private readonly LineNumberMargin _lineNumbers;
     private readonly MarkerChips _chips;
     private int _caretLine;
@@ -181,6 +182,33 @@ internal sealed class MarkdownTextEditor : UserControl
 
     public string Text => _text;
 
+    public bool IsReadOnly => _editor.IsReadOnly;
+
+    /// <summary>The selection in the text: its start and length (0 = just the caret).</summary>
+    public (int Start, int Length) SelectedRange => (_editor.SelectionStart, _editor.SelectionLength);
+
+    public string SelectedText => _editor.SelectedText;
+
+    /// <summary>Selects a range and scrolls it into view without taking the keyboard focus (find in the note).</summary>
+    public void Select(int start, int length)
+    {
+        var total = _editor.Document.TextLength;
+        start = Math.Clamp(start, 0, total);
+        length = Math.Clamp(length, 0, total - start);
+        _editor.Select(start, length);
+        _editor.TextArea.Caret.Offset = start + length;
+        _editor.TextArea.Caret.BringCaretToView();
+    }
+
+    /// <summary>An edit from outside the editor (replace); ignored in a read-only note.</summary>
+    public void ApplyEdit(TextEdit edit)
+    {
+        if (!_editor.IsReadOnly)
+        {
+            Apply(edit);
+        }
+    }
+
     public EditorTheme MarkdownTheme
     {
         get => _theme;
@@ -264,6 +292,12 @@ internal sealed class MarkdownTextEditor : UserControl
 
     /// <summary>Formats at the caret (toolbar buttons show them as pressed).</summary>
     public event EventHandler<IReadOnlySet<FormatCommand>>? ActiveFormatsChanged;
+
+    /// <summary>
+    /// A wiki link <c>[[…]]</c> was followed (Ctrl+click, or "Open linked note" in the menu): the text between the
+    /// brackets. The app decides where it leads.
+    /// </summary>
+    public event EventHandler<string>? NoteLinkRequested;
 
     public IReadOnlySet<FormatCommand> ActiveFormats => _activeFormats;
 
@@ -619,11 +653,19 @@ internal sealed class MarkdownTextEditor : UserControl
             }
         });
         var linkSeparator = new Separator();
+        var openNote = Item(R.Menu_OpenNoteLink, () =>
+        {
+            if (_menuNote is { } note)
+            {
+                NoteLinkRequested?.Invoke(this, note);
+            }
+        });
         var menu = new ContextMenu
         {
             Items =
             {
                 openLink,
+                openNote,
                 linkSeparator,
                 Item(R.Menu_Cut, () => _ = CopySelectionAsync(cut: true), "Ctrl+X"),
                 Item(R.Menu_Copy, () => _ = CopySelectionAsync(cut: false), "Ctrl+C"),
@@ -651,20 +693,23 @@ internal sealed class MarkdownTextEditor : UserControl
         };
         menu.Opening += (_, _) =>
         {
-            openLink.IsVisible = linkSeparator.IsVisible = _menuLink is not null;
+            openLink.IsVisible = _menuLink is not null;
+            openNote.IsVisible = _menuNote is not null;
+            linkSeparator.IsVisible = _menuLink is not null || _menuNote is not null;
             // Editing entries only for editable notes; copying always.
             foreach (var item in menu.Items.OfType<MenuItem>())
             {
                 var header = item.Header as string;
                 item.IsEnabled = !_editor.IsReadOnly
                     || header == Strings.Get(R.Menu_OpenLink)
+                    || header == Strings.Get(R.Menu_OpenNoteLink)
                     || header == Strings.Get(R.Menu_Copy)
                     || header == Strings.Get(R.Menu_SelectAll)
                     || header == Strings.Get(R.Copy_Plain)
                     || header == Strings.Get(R.Copy_Html);
             }
         };
-        menu.Closed += (_, _) => _menuLink = null; // a menu from the keyboard has no link under a pointer
+        menu.Closed += (_, _) => _menuLink = _menuNote = null; // a menu from the keyboard has no link under a pointer
         return menu;
     }
 
@@ -881,6 +926,17 @@ internal sealed class MarkdownTextEditor : UserControl
                 && TokensOf(atLine) is { } atTokens
                 ? MarkdownLinks.WebUrlAt(_editor.Document.GetText(atLine), atTokens, at.Column - 1)
                 : null;
+            _menuNote = _menuLink is null ? WikiLinkAt(e.GetPosition(_editor)) : null;
+            return;
+        }
+
+        if (e.KeyModifiers is KeyModifiers.Control or KeyModifiers.Meta
+            && e.GetCurrentPoint(_editor).Properties.IsLeftButtonPressed
+            && WikiLinkAt(e.GetPosition(_editor)) is { } linked)
+        {
+            // Ctrl+click (⌘ on macOS) follows a wiki link; a plain click places the caret in it, so it can be edited.
+            e.Handled = true;
+            NoteLinkRequested?.Invoke(this, linked);
             return;
         }
 
@@ -904,6 +960,14 @@ internal sealed class MarkdownTextEditor : UserControl
             Apply(MarkdownEditing.ToggleTask(_text, line.Offset + column));
         }
     }
+
+    /// <summary>The text of the wiki link <c>[[…]]</c> under a point of the editor, or null.</summary>
+    private string? WikiLinkAt(Point point) =>
+        _editor.GetPositionFromPoint(point) is { } at
+        && _editor.Document.GetLineByNumber(at.Line) is var line
+        && TokensOf(line) is { } tokens
+            ? WikiLinks.TargetAt(_editor.Document.GetText(line), tokens, at.Column - 1)
+            : null;
 
     // ------------------------------------------------------------------ paste and drop
 

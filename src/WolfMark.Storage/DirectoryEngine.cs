@@ -420,6 +420,61 @@ public sealed partial class DirectoryEngine
     }
 
     /// <summary>
+    /// Brings a note back from the trash (<see cref="Trash.NoteTrash"/>) to the place it had. When that name has been
+    /// taken meanwhile, it gets the next free one like any colliding note – nothing is overwritten.
+    /// </summary>
+    /// <returns>Where the note is now.</returns>
+    public async Task<NotePath> RestoreAsync(Trash.TrashedNote note, CancellationToken cancellationToken)
+    {
+        if (!NotePath.TryParse(note.OriginalRelativePath, out var original))
+        {
+            throw new IOException($"'{note.OriginalRelativePath}' is not a place in the notes.");
+        }
+
+        await _createLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            NotePath restored;
+            if (original.IsStandard)
+            {
+                restored = await CreateWithUniqueNameAsync(original.Date!.Value, original.Name!, original.Name!.Time.Second, candidate =>
+                {
+                    SelfWrites.ExpectRemoval(candidate.RelativePath); // the watcher sees a file moved in: ours
+                    File.Move(note.FullPath, GetFullPath(candidate), overwrite: false);
+                    return Task.CompletedTask;
+                }).ConfigureAwait(false);
+            }
+            else
+            {
+                // Not named by the convention (a file the user put there by hand): the same name, numbered when taken.
+                var folder = Path.GetDirectoryName(original.RelativePath)?.Replace('\\', '/') ?? string.Empty;
+                var stem = Path.GetFileNameWithoutExtension(original.FileName);
+                var candidate = original;
+                for (var n = 2; File.Exists(GetFullPath(candidate)); n++)
+                {
+                    var name = $"{stem}-{n.ToString(System.Globalization.CultureInfo.InvariantCulture)}{NoteName.Extension}";
+                    if (!NotePath.TryParse(folder.Length == 0 ? name : folder + "/" + name, out candidate))
+                    {
+                        throw new IOException($"No free name for '{note.OriginalRelativePath}'.");
+                    }
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(GetFullPath(candidate))!);
+                SelfWrites.ExpectRemoval(candidate.RelativePath);
+                File.Move(note.FullPath, GetFullPath(candidate), overwrite: false);
+                restored = candidate;
+            }
+
+            _hub.Publish(new NoteCreated(restored, ChangeOrigin.Local));
+            return restored;
+        }
+        finally
+        {
+            _createLock.Release();
+        }
+    }
+
+    /// <summary>
     /// Stores a pasted image in <c>YYYY/MM/DD/assets/HHmm-NN.ext</c> and returns the link relative to the note.
     /// </summary>
     public async Task<string> SaveAssetAsync(DateOnly day, DateTime nowLocal, string extension, ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
