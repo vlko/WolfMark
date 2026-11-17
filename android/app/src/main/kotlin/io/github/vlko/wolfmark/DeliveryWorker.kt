@@ -66,7 +66,7 @@ class DeliveryWorker(context: Context, parameters: WorkerParameters) : Coroutine
 
     companion object {
         private const val CHANNEL = "delivery"
-        private const val WORK = "deliver"
+        const val WORK = "deliver"
         private const val DEVICES_MAX_AGE_MS = 12 * 3600 * 1000L
 
         /** Asks for a delivery run; one that is already waiting or running is followed by another. */

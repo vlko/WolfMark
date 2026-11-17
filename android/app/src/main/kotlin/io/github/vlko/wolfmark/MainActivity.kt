@@ -15,4 +15,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent { WolfMarkScreen(model, onSignIn = { model.signIn(this) }) }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Coming back from another app (often right after sharing from it): see what is new.
+        model.onForeground()
+    }
 }

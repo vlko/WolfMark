@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import io.github.vlko.wolfmark.core.MirrorNote
 import io.github.vlko.wolfmark.core.NotePath
 import io.github.vlko.wolfmark.core.NoteText
@@ -57,6 +59,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         start()
+        // A share that has just been sent: show it, and take it off the "waiting" count.
+        viewModelScope.launch {
+            var running = false
+            WorkManager.getInstance(app).getWorkInfosForUniqueWorkFlow(DeliveryWorker.WORK).collect { infos ->
+                val now = infos.any { it.state == WorkInfo.State.RUNNING }
+                if (running && !now) onForeground()
+                running = now
+            }
+        }
+    }
+
+    /** The window is in front again, or a delivery finished: the waiting shares are counted and the notes refreshed. */
+    fun onForeground() {
+        if (_state.value.screen != Screen.NOTES) return
+        viewModelScope.launch { _state.update { it.copy(pendingShares = pendingCount()) } }
+        refresh()
     }
 
     private fun start() = viewModelScope.launch {

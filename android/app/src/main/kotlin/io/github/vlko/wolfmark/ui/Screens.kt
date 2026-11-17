@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -39,6 +40,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -218,7 +220,14 @@ private fun Notes(state: UiState, model: MainViewModel) {
             return
         }
         val days = remember(notes) { notes.groupBy { it.day() }.toList() }
-        LazyColumn(Modifier.fillMaxSize()) {
+        // A new note arrives on top. The list keeps its place by the item it was showing, which would leave the
+        // newcomer just above the edge – so a list that was at the top goes back to the top.
+        val list = rememberLazyListState()
+        val newest = notes.firstOrNull()?.path?.relativePath
+        LaunchedEffect(newest, state.filter) {
+            if (list.firstVisibleItemIndex <= 3) list.scrollToItem(0)
+        }
+        LazyColumn(Modifier.fillMaxSize(), state = list) {
             days.forEach { (day, list) ->
                 stickyHeader(key = day.toString()) {
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
