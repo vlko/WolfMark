@@ -9,6 +9,10 @@
 #                    it is asked for), a first launch with it starts the app with that window
 #   links     M8-03  wolfmark:// links on the command line (what the protocol handler and the launcher actions
 #                    run): a later launch hands its link to the running app, a first launch opens it
+#   external  M11-01 the open note changed by another program is reloaded (twice: the watcher keeps working) and the
+#                    app does not write its own version back
+#   recovery  M11-04/05 a damaged settings.json is kept as a copy and the app starts on defaults; an index that
+#                    cannot be opened is logged and the window still comes up
 #   startup   M4-09  process start to typing, median of 3 warm starts, against --budget-ms (report only by default)
 #
 # Usage: tools/smoke-linux.sh <WolfMark executable> [work dir] [--budget-ms N]
@@ -228,6 +232,76 @@ demo="$work/demo-links-first"
 launch "$demo" "wolfmark://today"
 ok=0; wait_for 90 has_log "$demo" "Link opened: Today" && ok=1
 report "links: a first launch opens its link" $ok "$(log_of "$demo" | grep -o 'Link opened: [A-Za-z]*' | paste -sd' ')"
+stop_all
+
+# --- external (M11-01) -----------------------------------------------------------------------------------------
+reload_count() { log_of "$1" | grep -c -- "Changed on disk: .* reloaded"; }
+demo="$work/demo-external"
+launch "$demo"; main=$launched
+if wait_for 90 has_log "$demo" "Ready to type"; then
+    # The note the demo starts on (settings.json, written before the window shows).
+    rel=$(grep -o '"lastNotePath": *"[^"]*"' "$demo/local/settings.json" | sed 's/.*: *"\(.*\)"/\1/')
+    note="$demo/notes/$rel"
+    if [[ -n "$rel" && -f "$note" ]]; then
+        sleep 2 # the first index scan and the watcher are up after the window
+        printf '# Changed outside\n\nby another program, 1\n' >"$note"
+        ok=0; wait_for 20 bash -c "[[ \$(cat '$demo'/local/logs/wolfmark-*.log 2>/dev/null | grep -c 'Changed on disk: .* reloaded') -ge 1 ]]" && ok=1
+        report "external: a change by another program is loaded" $ok "$rel, reloads logged: $(reload_count "$demo")"
+
+        printf '# Changed outside\n\nby another program, 2\n' >"$note"
+        ok=0; wait_for 20 bash -c "[[ \$(cat '$demo'/local/logs/wolfmark-*.log 2>/dev/null | grep -c 'Changed on disk: .* reloaded') -ge 2 ]]" && ok=1
+        report "external: a second change is loaded too" $ok "reloads logged: $(reload_count "$demo")"
+
+        sleep 2 # longer than the autosave delay
+        ok=0; [[ "$(cat "$note")" == $'# Changed outside\n\nby another program, 2' ]] && ok=1
+        running=0; kill -0 "$main" 2>/dev/null && running=1
+        [[ $running == 1 ]] || ok=0
+        report "external: the app leaves the other program's text alone" $ok "app running: $running, file: $(head -c 80 "$note" | tr '\n' '~')"
+        p=$(problems "$demo")
+        ok=0; [[ -z "$p" ]] && ok=1
+        report "external: no errors logged" $ok "${p:-clean log}"
+    else
+        report "external: a change by another program is loaded" 0 "no open note in settings.json (lastNotePath: '${rel:-}')"
+    fi
+else
+    report "external: a change by another program is loaded" 0 "no 'Ready to type' within 90 s"
+fi
+stop_all
+
+# --- recovery (M11-04, M11-05) ---------------------------------------------------------------------------------
+ready_count() { log_of "$1" | grep -c "Ready to type"; }
+demo="$work/demo-recovery"
+launch "$demo"
+if wait_for 90 has_log "$demo" "Ready to type"; then
+    stop_all
+    sleep 0.5
+    printf '{ "rootDirectory": "/somewhere", <<<<<<< broken' >"$demo/local/settings.json"
+    before=$(ready_count "$demo")
+    launch "$demo"; main=$launched
+    started=0; wait_for 90 bash -c "[[ \$(cat '$demo'/local/logs/wolfmark-*.log 2>/dev/null | grep -c 'Ready to type') -gt $before ]]" && started=1
+    copy=$(find "$demo/local" -maxdepth 1 -name 'settings.broken-*.json' | head -1)
+    kept=0; [[ -n "$copy" ]] && grep -q '<<<<<<< broken' "$copy" && kept=1
+    logged=0; has_log "$demo" "is invalid – using defaults" && logged=1
+    ok=0; [[ $started == 1 && $kept == 1 && $logged == 1 ]] && ok=1
+    report "recovery: damaged settings.json – the app starts and keeps a copy" $ok "started: $started, copy: ${copy:-none} (original content: $kept), logged: $logged"
+    p=$(problems "$demo")
+    ok=0; [[ -z "$p" ]] && ok=1
+    report "recovery: damaged settings.json – no errors logged" $ok "${p:-clean log}"
+else
+    report "recovery: damaged settings.json – the app starts and keeps a copy" 0 "no 'Ready to type' within 90 s on the first start"
+fi
+stop_all
+
+# An index that cannot be opened: a folder (with content, so it cannot be replaced) where index.db belongs.
+demo="$work/demo-recovery-index"
+mkdir -p "$demo/local/index.db/blocked"
+launch "$demo"; main=$launched
+logged=0; wait_for 90 has_log "$demo" "Background task startup failed" && logged=1
+window=0; wait_for 30 bash -c "python3 -I '$titles_py' | grep -q '^WolfMark$'" && window=1
+sleep 2
+running=0; kill -0 "$main" 2>/dev/null && running=1
+ok=0; [[ $logged == 1 && $window == 1 && $running == 1 ]] && ok=1
+report "recovery: an index that cannot be opened – logged, the window is there" $ok "failure logged: $logged, main window: $window, app running: $running"
 stop_all
 
 # --- startup (M4-09) -------------------------------------------------------------------------------------------

@@ -14,6 +14,10 @@
                        often it is asked for), a first launch with it starts the app with that window
     links       M8-03  wolfmark:// links on the command line (what the protocol and the jump list run): a later
                        launch hands its link to the running app, a first launch opens it – the registry is not touched
+    external    M11-01 the open note changed by another program is reloaded (twice: the watcher keeps working) and
+                       the app does not write its own version back
+    recovery    M11-04/05 a damaged settings.json is kept as a copy and the app starts on defaults; an index that
+                       cannot be opened is logged and the window still comes up
     startup     M4-09  process start to typing (last note loaded, editor focused), median of 3 warm starts on
                        existing demo data, against -StartupBudgetMs (600 = the acceptance criterion, ADR 0011)
 
@@ -28,14 +32,14 @@ param(
     [Parameter(Mandatory)] [string] $PublishDir,
     [string] $WorkDir = (Join-Path ([IO.Path]::GetTempPath()) "wolfmark-smoke"),
     # "startup,files" or startup, files – run as a script file (pwsh tools/smoke-windows.ps1 …) a list arrives as one string.
-    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'quicknote', 'links', 'startup'),
+    [string[]] $Checks = @('deps', 'screenshots', 'instance', 'files', 'quicknote', 'links', 'external', 'recovery', 'startup'),
     [int] $StartupBudgetMs = 600,
     # A/B: alternate 3 starts with WOLFMARK_EXPERIMENT=<name> and 3 without (StartupExperiment in the app).
     [string] $StartupExperiment
 )
 
 $ErrorActionPreference = 'Stop'
-$known = 'deps', 'screenshots', 'instance', 'files', 'quicknote', 'links', 'startup'
+$known = 'deps', 'screenshots', 'instance', 'files', 'quicknote', 'links', 'external', 'recovery', 'startup'
 $Checks = @($Checks | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $unknown = @($Checks | Where-Object { $known -notcontains $_ })
 if ($unknown) { throw "Unknown check(s): $($unknown -join ', '). Known: $($known -join ', ')" }
@@ -432,6 +436,116 @@ function Test-Links {
     }
 }
 
+# ---------------------------------------------------------------------------------------------------------------
+# external (M11-01): another program (OneDrive, an editor) changes the note that is open. Without unsaved edits the
+# app loads it – and must not save its own older text over it. Typing into the editor is not simulated; the case
+# with unsaved edits is covered by ExternalChangeTests.
+# ---------------------------------------------------------------------------------------------------------------
+function Get-ReloadCount([string] $demoDir) {
+    [regex]::Matches((Get-Log $demoDir), 'Changed on disk: .* reloaded').Count
+}
+
+function Wait-Reloads([string] $demoDir, [int] $count, [int] $seconds) {
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {
+        if ((Get-ReloadCount $demoDir) -ge $count) { return $true }
+        Start-Sleep -Milliseconds 200
+    }
+    return $false
+}
+
+function Test-External {
+    $demo = Join-Path $WorkDir 'demo-external'
+    $main = $null
+    try {
+        $main = Start-WolfMark @('--demo', $demo)
+        if (-not ((Wait-Window $main 90) -and (Wait-Log $demo 'Ready to type' 90))) {
+            Report 'external: a change by another program is loaded' $false "not ready within 90 s (exited: $($main.HasExited))`n$(Get-Problems (Get-Log $demo))"
+            return
+        }
+
+        # The note the demo starts on (settings.json, written before the window shows).
+        $settings = Get-Content (Join-Path $demo 'local\settings.json') -Raw
+        $rel = if ($settings -match '"lastNotePath":\s*"([^"]+)"') { $Matches[1] } else { $null }
+        $note = if ($rel) { Join-Path (Join-Path $demo 'notes') $rel.Replace('/', '\') } else { $null }
+        if (-not $note -or -not (Test-Path $note)) {
+            Report 'external: a change by another program is loaded' $false "no open note in settings.json (lastNotePath: '$rel')"
+            return
+        }
+
+        Start-Sleep -Seconds 2 # the first index scan and the watcher are up after the window
+        Set-Content $note "# Changed outside`n`nby another program, 1" -Encoding utf8 -NoNewline
+        $ok = Wait-Reloads $demo 1 20
+        Report 'external: a change by another program is loaded' $ok "$rel, reloads logged: $(Get-ReloadCount $demo)"
+
+        $text = "# Changed outside`n`nby another program, 2"
+        Set-Content $note $text -Encoding utf8 -NoNewline
+        $ok = Wait-Reloads $demo 2 20
+        Report 'external: a second change is loaded too' $ok "reloads logged: $(Get-ReloadCount $demo)"
+
+        Start-Sleep -Seconds 2 # longer than the autosave delay
+        $onDisk = Get-Content $note -Raw
+        Report "external: the app leaves the other program's text alone" (($onDisk -ceq $text) -and -not $main.HasExited) `
+            "app running: $(-not $main.HasExited), file: $($onDisk.Replace("`n", '~'))"
+
+        $problems = Get-Problems (Get-Log $demo)
+        Report 'external: no errors logged' (-not $problems) $(if ($problems) { $problems } else { 'clean log' })
+    }
+    finally {
+        Stop-WolfMark @($main)
+    }
+}
+
+# ---------------------------------------------------------------------------------------------------------------
+# recovery (M11-04, M11-05): starts that go wrong. A damaged settings.json must not be lost (a copy stays next to
+# it) and must not stop the app; an index that cannot be opened is logged and the window still comes up (it shows
+# the reason – the notice itself is not read here).
+# ---------------------------------------------------------------------------------------------------------------
+function Test-Recovery {
+    $demo = Join-Path $WorkDir 'demo-recovery'
+    $blocked = Join-Path $WorkDir 'demo-recovery-index'
+    $first = $null; $second = $null; $third = $null
+    try {
+        $first = Start-WolfMark @('--demo', $demo)
+        if (-not ((Wait-Window $first 90) -and (Wait-Log $demo 'Ready to type' 90))) {
+            Report 'recovery: damaged settings.json – the app starts and keeps a copy' $false "the first start was not ready within 90 s (exited: $($first.HasExited))"
+            return
+        }
+
+        Stop-WolfMark @($first)
+        Start-Sleep -Milliseconds 500 # let the killed process release its files
+        $local = Join-Path $demo 'local'
+        Set-Content (Join-Path $local 'settings.json') '{ "rootDirectory": "C:/somewhere", <<<<<<< broken' -Encoding utf8 -NoNewline
+        $before = @(Get-ReadyTimes $demo).Count
+
+        $second = Start-WolfMark @('--demo', $demo)
+        $deadline = (Get-Date).AddSeconds(90)
+        while (@(Get-ReadyTimes $demo).Count -le $before -and -not $second.HasExited -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 200
+        }
+        $started = @(Get-ReadyTimes $demo).Count -gt $before -and -not $second.HasExited
+        $copy = Get-ChildItem $local -Filter 'settings.broken-*.json' -ErrorAction SilentlyContinue | Select-Object -First 1
+        $kept = [bool]($copy -and ((Get-Content $copy.FullName -Raw) -match '<<<<<<< broken'))
+        $logged = (Get-Log $demo) -match 'is invalid – using defaults'
+        Report 'recovery: damaged settings.json – the app starts and keeps a copy' ($started -and $kept -and $logged) `
+            "started: $started, copy: $(if ($copy) { $copy.Name } else { 'none' }) (original content: $kept), logged: $logged"
+        $problems = Get-Problems (Get-Log $demo)
+        Report 'recovery: damaged settings.json – no errors logged' (-not $problems) $(if ($problems) { $problems } else { 'clean log' })
+
+        # A folder (with content, so it cannot be replaced) where index.db belongs.
+        New-Item -ItemType Directory (Join-Path $blocked 'local\index.db\blocked') -Force | Out-Null
+        $third = Start-WolfMark @('--demo', $blocked)
+        $window = Wait-Window $third 90
+        $failure = Wait-Log $blocked 'Background task startup failed' 60
+        Start-Sleep -Seconds 2
+        Report 'recovery: an index that cannot be opened – logged, the window is there' ($window -and $failure -and -not $third.HasExited) `
+            "failure logged: $failure, main window: $window, app running: $(-not $third.HasExited)"
+    }
+    finally {
+        Stop-WolfMark @($first, $second, $third)
+    }
+}
+
 function Get-ReadyTimes([string] $demoDir) {
     [regex]::Matches((Get-Log $demoDir), 'Ready to type (\d+) ms after the process started \(first frame (\d+) ms\)') |
         ForEach-Object { [pscustomobject]@{ Ready = [int]$_.Groups[1].Value; FirstFrame = [int]$_.Groups[2].Value } }
@@ -490,6 +604,8 @@ if ($Checks -contains 'instance') { Test-SingleInstance }
 if ($Checks -contains 'files') { Test-OpenFiles }
 if ($Checks -contains 'quicknote') { Test-QuickNote }
 if ($Checks -contains 'links') { Test-Links }
+if ($Checks -contains 'external') { Test-External }
+if ($Checks -contains 'recovery') { Test-Recovery }
 if ($Checks -contains 'startup') { Test-Startup }
 
 $failed = @($script:results | Where-Object { -not $_.Ok })

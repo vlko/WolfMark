@@ -430,10 +430,12 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
                 if (_dirty)
                 {
                     ExternalChangePending = true;
+                    LogChangedOnDiskPending(c.Path.RelativePath);
                 }
                 else
                 {
                     await ReloadFromDiskAsync();
+                    LogChangedOnDiskReloaded(c.Path.RelativePath);
                 }
 
                 break;
@@ -489,6 +491,13 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Path} changed on disk with unsaved edits – the edits were saved as {Copy}")]
     private partial void LogSavedAsCopy(string path, string copy);
+
+    // Both are read by the smoke tests (tools/smoke-*: "external").
+    [LoggerMessage(Level = LogLevel.Information, Message = "Changed on disk: {Path} reloaded")]
+    private partial void LogChangedOnDiskReloaded(string path);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Changed on disk: {Path} has unsaved edits – waiting for the user")]
+    private partial void LogChangedOnDiskPending(string path);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Saving {Path} failed – will retry")]
     private partial void LogSaveFailed(Exception ex, string path);

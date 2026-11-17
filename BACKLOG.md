@@ -302,7 +302,9 @@ Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dá
   poznámku vedľa pôvodnej – nestratí sa ani jedna verzia.
   *AK:* zmena súboru iným programom počas písania sa neprepíše ani pred hlásením watchera; „Ponechať moje“ prepíše
   a ukladanie pokračuje; „Načítať z disku“ ukáže verziu z disku; zmazaný súbor sa ďalším uložením vytvorí znova.
-  *Stav:* Implementované, testy `ExternalChangeTests`, `DirectoryEngineTests.TrySave_*`; čaká na overenie na Windows.
+  *Stav:* Implementované, testy `ExternalChangeTests`, `DirectoryEngineTests.TrySave_*`; smoke `external`
+  (zmena otvorenej poznámky iným programom sa načíta, aplikácia ju neprepíše) – Linux 4/4 vo WSL, Windows 4/4
+  (2026-11-17).
 - 🟨 **M11-02 – Kôš nikdy nemaže natrvalo.** Kôš Windows len na pevných lokálnych diskoch (`WindowsRecycleBin.CanRecycle`);
   na sieťových a vymeniteľných diskoch `.wolfmark/trash` v koreni (ako v prenosnom režime). `FOF_WANTNUKEWARNING`: ak by
   Windows položku predsa zničil (Kôš vypnutý, položka väčšia než Kôš), najprv sa opýta.
@@ -315,7 +317,9 @@ Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dá
   *Stav:* Implementované, testy `SyncSchedulerTests.Dispose_*`; presun v UI čaká na overenie na Windows a Linuxe.
 - 🟨 **M11-04 – Zlyhaný štart sa ohlási.** Ak sa nedajú načítať tagy alebo otvoriť index, hlavné okno ukáže chybu
   (`AppHost.StartupError`, `Error_Startup`) namiesto prázdnych zoznamov bez slova.
-  *Stav:* Implementované, test `DemoHostTests.A_failed_start_is_reported`.
+  *Stav:* Implementované, test `DemoHostTests.A_failed_start_is_reported`; smoke `recovery` (poškodený
+  `settings.json` – kópia a štart; index, ktorý sa nedá otvoriť – záznam v logu a okno) – Linux 3/3 vo WSL,
+  Windows 3/3 (2026-11-17).
 - 🟨 **M11-05 – `tags.json` a `settings.json`.** Nečitateľný alebo poškodený `tags.json` sa pred prvou zmenou odloží ako
   `tags.broken-<čas>.json` (`BrokenFile.KeepCopy`); zápisy `TagStore` idú po jednom a stav berú až vo svojom ťahu.
   Poškodený `settings.json` sa odloží ako `settings.broken-<čas>.json` a hlavné okno to ohlási (`Error_SettingsInvalid`)
