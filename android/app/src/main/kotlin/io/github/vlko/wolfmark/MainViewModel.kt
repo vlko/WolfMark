@@ -126,6 +126,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (syncJob?.isActive == true) return
         syncJob = viewModelScope.launch {
             _state.update { it.copy(syncing = true, syncProgress = 0, error = null) }
+            // The list fills while the notes arrive – the first run of a large notebook takes minutes.
+            val filling = launch {
+                while (true) {
+                    kotlinx.coroutines.delay(2000)
+                    loadNotes()
+                }
+            }
             val error = withContext(Dispatchers.IO) {
                 runCatching {
                     val graph = app.graph()
@@ -136,6 +143,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }.exceptionOrNull()
             }
+            filling.cancel()
             loadNotes()
             _state.update { it.copy(syncing = false, error = error?.let { e -> app.getString(R.string.sync_failed, e.message ?: e.javaClass.simpleName) }) }
         }

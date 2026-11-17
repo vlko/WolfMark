@@ -155,4 +155,32 @@ class NoteMirrorTest {
         assertTrue(error is GraphException && error.status == 503)
         assertEquals(4, mirror.notes().size)
     }
+
+    @Test
+    fun theListFillsWhileNotesAreStillComingAndAnInterruptedRunKeepsWhatArrived() {
+        repeat(30) { drive.put("WolfMark/2026/09/%02d/0900.md".format(it + 1), "note $it") }
+        drive.pageSize = 10
+        val mirror = NoteMirror(temp.root)
+        val seen = ArrayList<Int>()
+
+        // The service gives up after the second page: the first twenty notes stay.
+        val error = runCatching {
+            mirror.sync(drive.client(), "WolfMark") { n ->
+                synchronized(seen) { seen += mirror.notes().size }
+                if (n >= 20) drive.failWith = 503
+            }
+        }.exceptionOrNull()
+
+        assertTrue(error is GraphException)
+        assertTrue(seen.any { it in 1..29 }) // the list was readable, and partly filled, during the run
+        val kept = mirror.notes().size
+        assertTrue("kept $kept", kept in 10..29)
+
+        drive.failWith = null
+        drive.requests.clear()
+        mirror.sync(drive.client(), "WolfMark")
+        assertEquals(30, mirror.notes().size)
+        // What was already here is not fetched again.
+        assertEquals(30 - kept, drive.requests.count { it.startsWith("GET /raw/") })
+    }
 }

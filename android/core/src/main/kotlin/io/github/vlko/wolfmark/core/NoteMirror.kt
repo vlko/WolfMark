@@ -7,6 +7,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /** A note in the phone's copy. */
 data class MirrorNote(
@@ -38,6 +41,7 @@ class NoteMirror(private val root: File) {
     private var deltaLink: String? = null
     private val folders = HashMap<String, String>()
     private val entries = HashMap<String, Entry>()
+    private val syncLock = Any()
 
     init {
         load()
@@ -53,44 +57,100 @@ class NoteMirror(private val root: File) {
         resolve(note.relativePath)?.takeIf { it.isFile }?.readText()
 
     /**
-     * Brings the copy up to date with [vaultPath] in OneDrive.
-     * @param progress called with the number of notes downloaded so far
+     * Brings the copy up to date with [vaultPath] in OneDrive. Notes are downloaded a few at a time, and [notes]
+     * can be read meanwhile – it shows what has arrived so far.
+     * @param progress called with the number of notes added, changed or removed so far
      * @return how many notes were added, changed or removed
      */
-    @Synchronized
-    fun sync(graph: GraphClient, vaultPath: String, progress: (Int) -> Unit = {}): Int {
+    fun sync(graph: GraphClient, vaultPath: String, progress: (Int) -> Unit = {}): Int = synchronized(syncLock) {
         val folder = vaultPath.trim('/')
-        if (!folder.equals(vault, ignoreCase = true)) reset(folder)
-        return try {
+        synchronized(this) { if (!folder.equals(vault, ignoreCase = true)) reset(folder) }
+        try {
             run(graph, folder, progress)
         } catch (_: DeltaExpiredException) {
-            reset(folder)
+            synchronized(this) { reset(folder) }
             run(graph, folder, progress)
         }
     }
 
     private fun run(graph: GraphClient, folder: String, progress: (Int) -> Unit): Int {
         var changed = 0
-        var link = deltaLink
-        while (true) {
-            val page = graph.delta(folder, link)
-            for (item in page.items) {
-                if (apply(graph, folder, item)) {
-                    changed++
-                    progress(changed)
+        var link = synchronized(this) { deltaLink }
+        val pool = Executors.newFixedThreadPool(DOWNLOADS)
+        try {
+            while (true) {
+                val page = graph.delta(folder, link)
+                // What has to be fetched is decided first, fetched side by side, and only then written down –
+                // so the list stays readable while the network is busy.
+                val wanted = synchronized(this) { page.items.mapNotNull { item -> downloadPath(folder, item)?.let { item.id to it } } }
+                val fetched = HashMap<String, ByteArray?>()
+                val failure = AtomicReference<Exception?>()
+                val arrived = AtomicInteger()
+                val before = changed
+                wanted.map { (id, relative) ->
+                    pool.submit {
+                        if (failure.get() != null) return@submit
+                        try {
+                            val bytes = graph.download("$folder/$relative")
+                            synchronized(fetched) { fetched[id] = bytes }
+                            progress(before + arrived.incrementAndGet())
+                        } catch (e: Exception) {
+                            failure.compareAndSet(null, e)
+                        }
+                    }
+                }.forEach { it.get() }
+
+                synchronized(this) {
+                    for (item in page.items) {
+                        // After a failure the notes that did arrive are still kept; the rest come next time.
+                        if (failure.get() != null && item.id !in fetched && downloadPath(folder, item) != null) continue
+                        if (apply(folder, item) { fetched[item.id] }) changed++
+                    }
+                    save()
+                }
+                failure.get()?.let { throw it }
+                progress(changed)
+
+                link = page.nextLink ?: run {
+                    synchronized(this) {
+                        // Without a new delta link the old one stays: the next run repeats this stretch, which is harmless.
+                        page.deltaLink?.let { deltaLink = it }
+                        save()
+                    }
+                    return changed
                 }
             }
-            save()
-            link = page.nextLink ?: run {
-                // Without a new delta link the old one stays: the next run repeats this stretch, which is harmless.
-                page.deltaLink?.let { deltaLink = it }
-                save()
-                return changed
-            }
+        } finally {
+            pool.shutdownNow()
         }
     }
 
-    private fun apply(graph: GraphClient, folder: String, item: DriveItem): Boolean {
+    /** Where the item sits under the notes folder; null for the folder itself and for what is outside it. */
+    private fun relativePath(folder: String, item: DriveItem): String? {
+        val parent = item.parentPath ?: return null
+        return when {
+            parent.equals(folder, ignoreCase = true) -> item.name
+            parent.length > folder.length && parent.startsWith("$folder/", ignoreCase = true) ->
+                parent.substring(folder.length + 1) + "/" + item.name
+            else -> null
+        }
+    }
+
+    /** The path to download for this change, or null when nothing has to be fetched for it. */
+    private fun downloadPath(folder: String, item: DriveItem): String? {
+        if (item.deleted || item.isFolder) return null
+        val relative = relativePath(folder, item) ?: return null
+        if (NotePath.parse(relative) == null) return null
+        val target = resolve(relative) ?: return null
+        val known = entries[item.id]
+        if (known != null && known.tag != null && known.tag == item.contentTag) {
+            // Unchanged, or only moved (a tag change on the desktop is a rename): the text is already here.
+            if ((known.path == relative && target.isFile) || resolve(known.path)?.isFile == true) return null
+        }
+        return relative
+    }
+
+    private fun apply(folder: String, item: DriveItem, fetched: () -> ByteArray?): Boolean {
         if (item.deleted) {
             folders.remove(item.id)?.let { gone ->
                 var any = false
@@ -100,13 +160,7 @@ class NoteMirror(private val root: File) {
             return entries[item.id]?.let(::remove) ?: false
         }
 
-        val parent = item.parentPath ?: return false
-        val relative = when {
-            parent.equals(folder, ignoreCase = true) -> item.name
-            parent.length > folder.length && parent.startsWith("$folder/", ignoreCase = true) ->
-                parent.substring(folder.length + 1) + "/" + item.name
-            else -> return false // the notes folder itself, or something outside it
-        }
+        val relative = relativePath(folder, item) ?: return false
         if (item.isFolder) {
             folders[item.id] = relative
             return false
@@ -123,7 +177,6 @@ class NoteMirror(private val root: File) {
             if (known.path == relative && target.isFile) return false
             val old = resolve(known.path)
             if (old != null && old.isFile) {
-                // Moved or renamed (a tag change on the desktop is a rename): no need to download it again.
                 target.parentFile?.mkdirs()
                 if (old.renameTo(target)) {
                     known.path = relative
@@ -133,7 +186,8 @@ class NoteMirror(private val root: File) {
             }
         }
 
-        val bytes = graph.download("$folder/$relative") ?: return known?.let(::remove) ?: false
+        // Listed but gone by the time it was fetched: deleted in between.
+        val bytes = fetched() ?: return known?.let(::remove) ?: false
         target.parentFile?.mkdirs()
         val temp = File(target.path + ".tmp")
         temp.writeBytes(bytes)
@@ -187,6 +241,11 @@ class NoteMirror(private val root: File) {
         val clean = normalize(relative) ?: return null
         val file = File(notesDir, clean)
         return file.takeIf { it.canonicalPath.startsWith(notesDir.canonicalPath + File.separator) }
+    }
+
+    private companion object {
+        /** Notes fetched at the same time: enough to be several times faster, few enough not to be throttled. */
+        const val DOWNLOADS = 4
     }
 
     private fun decode(bytes: ByteArray): String {
