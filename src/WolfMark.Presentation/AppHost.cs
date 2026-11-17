@@ -23,6 +23,7 @@ internal sealed partial class AppHost : IAsyncDisposable
 {
     private readonly CancellationTokenSource _shutdown = new();
     private readonly TaskCompletionSource _databaseReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _firstClaudeSync = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _logger;
     private Exception? _startupError;
     private NoteWatcher? _watcher;
@@ -126,6 +127,12 @@ internal sealed partial class AppHost : IAsyncDisposable
     public event EventHandler<SyncResult>? ClaudeSynced;
 
     public event EventHandler<Exception>? ClaudeSyncFailed;
+
+    /// <summary>
+    /// Completes after the first Claude Code import of this run, successful or not (never when the sync is off).
+    /// Unlike the events it cannot be missed by someone who starts listening after a fast start.
+    /// </summary>
+    public Task FirstClaudeSync => _firstClaudeSync.Task;
 
     /// <param name="freshDemo">
     /// Screenshots: the demo is generated anew, so the images always show today – an older demo folder would show an
@@ -286,8 +293,16 @@ internal sealed partial class AppHost : IAsyncDisposable
             TimeSpan.FromMinutes(Math.Max(1, s.IntervalMinutes)),
             s.WatchInRealTime,
             Loggers.CreateLogger<ClaudeCodeSyncScheduler>());
-        _claudeScheduler.Synced += (_, r) => ClaudeSynced?.Invoke(this, r);
-        _claudeScheduler.Failed += (_, ex) => ClaudeSyncFailed?.Invoke(this, ex);
+        _claudeScheduler.Synced += (_, r) =>
+        {
+            _firstClaudeSync.TrySetResult();
+            ClaudeSynced?.Invoke(this, r);
+        };
+        _claudeScheduler.Failed += (_, ex) =>
+        {
+            _firstClaudeSync.TrySetResult();
+            ClaudeSyncFailed?.Invoke(this, ex);
+        };
         _ = Background.Run("claude-sync", _claudeScheduler.RunAsync, ct);
     }
 

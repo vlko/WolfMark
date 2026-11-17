@@ -117,13 +117,12 @@ internal sealed partial class ScreenshotRunner(MainWindow window, AppHost host, 
     /// <summary>Index scan done and the Claude Code transcripts imported (with a timeout – never hang).</summary>
     private async Task WaitForDataAsync()
     {
-        var synced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        host.ClaudeSynced += (_, _) => synced.TrySetResult();
-        host.ClaudeSyncFailed += (_, _) => synced.TrySetResult();
         await host.DatabaseReady;
         try
         {
-            await synced.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            // Not the Synced event: the import of the demo is often over before this runs, and waiting for an event
+            // that has already passed cost the full 20 seconds on every run.
+            await host.FirstClaudeSync.WaitAsync(TimeSpan.FromSeconds(20));
         }
         catch (TimeoutException)
         {

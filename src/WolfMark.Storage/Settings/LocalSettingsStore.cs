@@ -36,6 +36,7 @@ public sealed partial class LocalSettingsStore(LocalPaths paths, ILogger<LocalSe
             {
                 // The next save (window placement at exit) replaces the file – what the user had stays next to it.
                 InvalidFileCopy = BrokenFile.KeepCopy(paths.SettingsFile) ?? paths.SettingsFile;
+                LogKeptCopy(InvalidFileCopy);
             }
             catch (Exception copyError) when (copyError is IOException or UnauthorizedAccessException)
             {
@@ -90,6 +91,9 @@ public sealed partial class LocalSettingsStore(LocalPaths paths, ILogger<LocalSe
         paths.PortableDataDirectory is { } data && PathScope.IsSameOrUnder(root, data)
             ? Path.GetRelativePath(data, root)
             : root;
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The invalid settings file was kept as {Copy}")]
+    private partial void LogKeptCopy(string copy);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Settings file {Path} is invalid – using defaults")]
     private partial void LogInvalid(Exception ex, string path);

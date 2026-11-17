@@ -72,4 +72,27 @@ public sealed class DemoHostTests
             Directory.Delete(demo, recursive: true);
         }
     }
+
+    /// <summary>The screenshot run waits for the demo's transcripts: it must not depend on listening early enough.</summary>
+    [Fact]
+    public async Task The_first_claude_code_import_can_be_awaited_after_it_happened()
+    {
+        var demo = Directory.CreateTempSubdirectory("wolfmark-demo-").FullName;
+        try
+        {
+            await using var host = await AppHost.CreateAsync(demo);
+            var synced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            host.ClaudeSynced += (_, _) => synced.TrySetResult();
+            host.StartBackground();
+            await synced.Task.WaitAsync(TimeSpan.FromSeconds(60), Ct);
+
+            await host.FirstClaudeSync.WaitAsync(TimeSpan.FromSeconds(1), Ct); // a late listener still gets it
+
+            Assert.True(Directory.EnumerateFiles(Path.Combine(demo, "notes"), "ClaudeCode_*.md", SearchOption.AllDirectories).Any());
+        }
+        finally
+        {
+            Directory.Delete(demo, recursive: true);
+        }
+    }
 }
