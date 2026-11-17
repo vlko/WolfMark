@@ -534,11 +534,29 @@
   <data name="Settings_AppIcon" xml:space="preserve">
     <value>Ikona aplikácie</value>
   </data>
+  <data name="Icon_RisoWhite" xml:space="preserve">
+    <value>WolfMark W (svetlá)</value>
+  </data>
+  <data name="Icon_RisoBlue" xml:space="preserve">
+    <value>WolfMark W</value>
+  </data>
+  <data name="Icon_TagStrokes" xml:space="preserve">
+    <value>W vo farbách tagov</value>
+  </data>
+  <data name="Icon_CalendarW" xml:space="preserve">
+    <value>Kalendár s W</value>
+  </data>
+  <data name="Icon_PencilW" xml:space="preserve">
+    <value>Ceruzka píše W</value>
+  </data>
+  <data name="Icon_Wolf" xml:space="preserve">
+    <value>Vlk</value>
+  </data>
+  <data name="Icon_WolfPencil" xml:space="preserve">
+    <value>Vlk s ceruzkou</value>
+  </data>
   <data name="Icon_WeekBand" xml:space="preserve">
     <value>Týždenný pás</value>
-  </data>
-  <data name="Icon_RisoWm" xml:space="preserve">
-    <value>WolfMark (W + M)</value>
   </data>
   <data name="Icon_NotebookCalendar" xml:space="preserve">
     <value>Zápisník s kalendárom</value>
@@ -546,14 +564,14 @@
   <data name="Icon_CalendarPage" xml:space="preserve">
     <value>Trhací kalendár</value>
   </data>
-  <data name="Icon_Wolf" xml:space="preserve">
-    <value>Vlk</value>
-  </data>
   <data name="Icon_CalendarPencil" xml:space="preserve">
     <value>Kalendár s ceruzkou</value>
   </data>
-  <data name="Icon_WolfMark" xml:space="preserve">
-    <value>Wolf + Mark</value>
+  <data name="Icon_WolfInk" xml:space="preserve">
+    <value>Znak vlka</value>
+  </data>
+  <data name="Icon_WolfCheck" xml:space="preserve">
+    <value>Zaškrtávacie políčko s ušami</value>
   </data>
   <data name="Error_Title" xml:space="preserve">
     <value>Niečo sa pokazilo</value>

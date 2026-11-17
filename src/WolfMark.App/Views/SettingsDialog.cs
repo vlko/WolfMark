@@ -185,7 +185,7 @@ internal static class SettingsDialog
         var time24 = new ToggleSwitch { IsOn = s.Use24HourTime, Header = Strings.Get(R.Settings_Use24HourTime) };
 
         // App icon: thumbnails, click = live preview of the window/taskbar icon; OK keeps it, Cancel reverts.
-        var chosenIcon = s.AppIcon ?? AppIcons.Default;
+        var chosenIcon = AppIcons.Normalize(s.AppIcon);
         var iconFrames = new List<(string Id, Border Frame)>();
         var iconRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         void MarkIcon()

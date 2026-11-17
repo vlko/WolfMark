@@ -534,11 +534,29 @@
   <data name="Settings_AppIcon" xml:space="preserve">
     <value>App icon</value>
   </data>
+  <data name="Icon_RisoWhite" xml:space="preserve">
+    <value>WolfMark W (light)</value>
+  </data>
+  <data name="Icon_RisoBlue" xml:space="preserve">
+    <value>WolfMark W</value>
+  </data>
+  <data name="Icon_TagStrokes" xml:space="preserve">
+    <value>W in tag colours</value>
+  </data>
+  <data name="Icon_CalendarW" xml:space="preserve">
+    <value>Calendar with W</value>
+  </data>
+  <data name="Icon_PencilW" xml:space="preserve">
+    <value>Pencil writing W</value>
+  </data>
+  <data name="Icon_Wolf" xml:space="preserve">
+    <value>Wolf</value>
+  </data>
+  <data name="Icon_WolfPencil" xml:space="preserve">
+    <value>Wolf with pencil</value>
+  </data>
   <data name="Icon_WeekBand" xml:space="preserve">
     <value>Week band</value>
-  </data>
-  <data name="Icon_RisoWm" xml:space="preserve">
-    <value>WolfMark (W + M)</value>
   </data>
   <data name="Icon_NotebookCalendar" xml:space="preserve">
     <value>Notebook with calendar</value>
@@ -546,14 +564,14 @@
   <data name="Icon_CalendarPage" xml:space="preserve">
     <value>Tear-off calendar</value>
   </data>
-  <data name="Icon_Wolf" xml:space="preserve">
-    <value>Wolf</value>
-  </data>
   <data name="Icon_CalendarPencil" xml:space="preserve">
     <value>Calendar with pencil</value>
   </data>
-  <data name="Icon_WolfMark" xml:space="preserve">
-    <value>Wolf + Mark</value>
+  <data name="Icon_WolfInk" xml:space="preserve">
+    <value>Wolf mark</value>
+  </data>
+  <data name="Icon_WolfCheck" xml:space="preserve">
+    <value>Checkbox with ears</value>
   </data>
   <data name="Error_Title" xml:space="preserve">
     <value>Something went wrong</value>

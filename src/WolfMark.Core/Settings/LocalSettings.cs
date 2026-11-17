@@ -77,7 +77,7 @@ public sealed class LocalSettings
 
     public double HistoryPaneHeight { get; set; } = 260;
 
-    /// <summary>App icon variant (Assets/IconProposals id); null = default.</summary>
+    /// <summary>App icon variant (Assets/IconProposals id, older files may carry a number prefix); null = default.</summary>
     public string? AppIcon { get; set; }
 
     /// <summary>Closing the window hides it to the notification area; the app ends from the tray menu.</summary>
