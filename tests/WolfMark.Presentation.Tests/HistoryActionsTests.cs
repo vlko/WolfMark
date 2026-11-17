@@ -7,7 +7,9 @@ namespace WolfMark.Presentation.Tests;
 /// <summary>M5-04: the history context menu of both apps – link, change tag, delete (to the trash).</summary>
 public sealed class HistoryActionsTests : IAsyncLifetime
 {
-    private static readonly DateTime At = new(2026, 11, 16, 14, 3, 0);
+    // Today: a note of another day makes the view model load that week, which waits for the index (not started here).
+    private static readonly DateTime At = DateTime.Today.AddHours(14).AddMinutes(3);
+    private static readonly string Day = NotePath.FormatDirectory(DateOnly.FromDateTime(At));
     private readonly string _demo = Directory.CreateTempSubdirectory("wolfmark-history-").FullName;
     private AppHost _host = null!;
     private MainViewModel _vm = null!;
@@ -34,7 +36,7 @@ public sealed class HistoryActionsTests : IAsyncLifetime
         await _vm.ChangeNoteTagAsync(path.RelativePath, "rodina");
 
         Assert.False(File.Exists(_host.Engine.GetFullPath(path)));
-        Assert.Equal("# Zo zoznamu", await File.ReadAllTextAsync(_host.Engine.GetFullPath("2026/11/16/rodina_1403.md"), Ct));
+        Assert.Equal("# Zo zoznamu", await File.ReadAllTextAsync(_host.Engine.GetFullPath(Day + "/rodina_1403.md"), Ct));
     }
 
     [Fact]
@@ -45,10 +47,10 @@ public sealed class HistoryActionsTests : IAsyncLifetime
 
         await _vm.ChangeNoteTagAsync(path.RelativePath, null);
 
-        Assert.Equal("2026/11/16/1403.md", _vm.Editor.Path?.RelativePath);
+        Assert.Equal(Day + "/1403.md", _vm.Editor.Path?.RelativePath);
         _vm.Editor.OnTextEdited("# Otvorená a upravená");
         await _vm.Editor.FlushAsync();
-        Assert.Equal("# Otvorená a upravená", await File.ReadAllTextAsync(_host.Engine.GetFullPath("2026/11/16/1403.md"), Ct));
+        Assert.Equal("# Otvorená a upravená", await File.ReadAllTextAsync(_host.Engine.GetFullPath(Day + "/1403.md"), Ct));
     }
 
     /// <summary>A demo keeps its trash in the demo folder on every OS (the real app uses the Windows Recycle Bin there).</summary>

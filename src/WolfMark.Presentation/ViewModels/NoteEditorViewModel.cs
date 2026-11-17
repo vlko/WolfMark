@@ -35,6 +35,9 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     private bool _dirty;
     private bool _useCrLf;
 
+    /// <summary>Hash of the file as this editor last read or wrote it; a save is refused when the disk has something else.</summary>
+    private string? _diskHash;
+
     public NoteEditorViewModel(AppHost host)
     {
         _host = host;
@@ -94,11 +97,12 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
 
     public async Task OpenAsync(NotePath path, bool caretToEnd = true)
     {
-        await FlushAsync();
+        await FlushAsync(leaving: true);
         string text;
+        string hash;
         try
         {
-            text = await Task.Run(() => _host.Engine.ReadAsync(path, _host.ShutdownToken));
+            (text, hash) = await Task.Run(() => _host.Engine.ReadSnapshotAsync(path, _host.ShutdownToken));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -112,6 +116,7 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
 
         _useCrLf = text.Contains("\r\n", StringComparison.Ordinal);
         Text = text.Replace("\r\n", "\n");
+        _diskHash = hash;
         _dirty = false;
         Path = path;
         IsPersisted = true;
@@ -132,9 +137,10 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     /// <summary>New note in today's folder; the file is created on the first typed character (M4-09).</summary>
     public async Task NewAsync(string? tag, string initialText = "")
     {
-        await FlushAsync();
+        await FlushAsync(leaving: true);
         var now = DateTime.Now;
         _useCrLf = false;
+        _diskHash = null;
         Path = _host.Engine.ProposeNewPath(now, tag);
         IsPersisted = false;
         Tag = tag;
@@ -171,17 +177,33 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     }
 
     /// <summary>Saves pending changes now (focus loss, note switch, window close).</summary>
-    public async Task FlushAsync()
+    /// <param name="leaving">
+    /// The editor is about to drop this text (another note, exit). With an unanswered external change the text is then
+    /// saved as a note of its own – neither version is lost; otherwise it waits for the answer.
+    /// </param>
+    public async Task FlushAsync(bool leaving = false)
     {
         _autosave.Cancel();
-        if (_dirty)
+        if (!_dirty)
+        {
+            return;
+        }
+
+        if (leaving && ExternalChangePending)
+        {
+            await SaveAsCopyAsync();
+        }
+        else
         {
             await SaveAsync(CancellationToken.None);
         }
     }
 
     /// <remarks>A started save always completes; the token only exists to fit the debouncer signature.</remarks>
-    private async Task SaveAsync(CancellationToken ct)
+    private Task SaveAsync(CancellationToken ct) => SaveAsync(overwrite: false);
+
+    /// <param name="overwrite">"Keep mine": write even though the file changed on disk.</param>
+    private async Task SaveAsync(bool overwrite)
     {
         await _saveLock.WaitAsync(CancellationToken.None);
         try
@@ -189,6 +211,11 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
             if (!_dirty || IsReadOnly || Path is null)
             {
                 return;
+            }
+
+            if (ExternalChangePending && !overwrite)
+            {
+                return; // the user decides which version stays (M4-08)
             }
 
             WolfMark.Core.Diagnostics.EditorTrace.Current?.Mark("autosave");
@@ -207,15 +234,37 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
                 var createdAt = CreatedAt;
                 var tag = Tag;
                 Path = await Task.Run(() => _host.Engine.CreateAsync(createdAt, tag, content, CancellationToken.None), CancellationToken.None);
+                _diskHash = ContentHash.Compute(content);
                 IsPersisted = true;
                 PathChanged?.Invoke(this, EventArgs.Empty);
                 RememberLastNote();
+            }
+            else if (overwrite || _diskHash is not { } expected)
+            {
+                SaveState = SaveState.Saving;
+                var path = Path;
+                await Task.Run(() => _host.Engine.SaveAsync(path, content, CancellationToken.None), CancellationToken.None);
+                _diskHash = ContentHash.Compute(content);
             }
             else
             {
                 SaveState = SaveState.Saving;
                 var path = Path;
-                await Task.Run(() => _host.Engine.SaveAsync(path, content, CancellationToken.None), CancellationToken.None);
+                var written = await Task.Run(() => _host.Engine.TrySaveAsync(path, content, expected, CancellationToken.None), CancellationToken.None);
+                if (written is null)
+                {
+                    // Changed on disk since it was read, and the watcher has not reported it yet.
+                    ExternalChangePending = true;
+                    SaveState = SaveState.Pending;
+                    return;
+                }
+
+                _diskHash = written;
+            }
+
+            if (overwrite)
+            {
+                ExternalChangePending = false;
             }
 
             ModifiedAt = DateTime.Now;
@@ -230,8 +279,42 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
             _autosave.Schedule(async t =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(5), t);
-                await SaveAsync(t);
+                await SaveAsync(overwrite);
             });
+        }
+        finally
+        {
+            _saveLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// The file changed on disk, the user has not chosen a version and the editor moves on: the editor's text becomes
+    /// a new note next to the original (same day and tag), the file on disk stays as it is.
+    /// </summary>
+    private async Task SaveAsCopyAsync()
+    {
+        await _saveLock.WaitAsync(CancellationToken.None);
+        try
+        {
+            if (!_dirty || IsReadOnly || Path is null || string.IsNullOrWhiteSpace(Text))
+            {
+                return;
+            }
+
+            var content = _useCrLf ? Text.Replace("\n", "\r\n", StringComparison.Ordinal) : Text;
+            var createdAt = CreatedAt;
+            var tag = Tag;
+            var original = Path.RelativePath;
+            var copy = await Task.Run(() => _host.Engine.CreateAsync(createdAt, tag, content, CancellationToken.None), CancellationToken.None);
+            LogSavedAsCopy(original, copy.RelativePath);
+            _dirty = false;
+            ExternalChangePending = false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogSaveFailed(ex, Path?.RelativePath ?? "?");
+            SaveState = SaveState.Error;
         }
         finally
         {
@@ -259,6 +342,9 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         }
 
         await FlushAsync();
+        // Typing goes on while the file is renamed: an autosave must wait and then use the new name, not write
+        // the old file again next to the renamed one.
+        await _saveLock.WaitAsync(CancellationToken.None);
         try
         {
             var path = Path;
@@ -270,6 +356,10 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         catch (IOException ex)
         {
             LogSaveFailed(ex, Path.RelativePath);
+        }
+        finally
+        {
+            _saveLock.Release();
         }
     }
 
@@ -372,9 +462,8 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     /// <summary>Overwrites the external version with the editor content.</summary>
     public async Task KeepMineAsync()
     {
-        ExternalChangePending = false;
         _dirty = true;
-        await SaveAsync(CancellationToken.None);
+        await SaveAsync(overwrite: true); // clears the pending change once written
     }
 
     private bool IsSame(NotePath other) => string.Equals(Path?.RelativePath, other.RelativePath, StringComparison.OrdinalIgnoreCase);
@@ -397,6 +486,9 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Opening {Path} failed")]
     private partial void LogOpenFailed(Exception ex, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "{Path} changed on disk with unsaved edits – the edits were saved as {Copy}")]
+    private partial void LogSavedAsCopy(string path, string copy);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Saving {Path} failed – will retry")]
     private partial void LogSaveFailed(Exception ex, string path);

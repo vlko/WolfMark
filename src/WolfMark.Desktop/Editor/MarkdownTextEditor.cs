@@ -883,7 +883,14 @@ internal sealed class MarkdownTextEditor : UserControl
             ? _editor.Document.GetOffset(position.Location)
             : null;
         e.Handled = true;
-        await InsertImageFilesAsync(files, at);
+        try
+        {
+            await InsertImageFilesAsync(files, at);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // the source went away mid-drop – as in the Windows editor, nothing is inserted
+        }
     }
 
     /// <summary>Copies image files into the note's assets and links them on lines of their own.</summary>

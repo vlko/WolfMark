@@ -136,6 +136,7 @@ internal sealed partial class ExternalNoteWindow : Window
 
         _closing = true;
         _doc.Dispose();
+        _editor.ReleaseSpelling(); // otherwise every window ever opened keeps its spell-check thread
         Close();
         return true;
     }

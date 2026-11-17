@@ -261,6 +261,9 @@
   <data name="Settings_Restart" xml:space="preserve">
     <value>Restart now</value>
   </data>
+  <data name="Settings_MoveFailed" xml:space="preserve">
+    <value>The notes could not be moved, the original folder was kept: {0}</value>
+  </data>
   <data name="Settings_Appearance" xml:space="preserve">
     <value>Appearance</value>
   </data>
@@ -578,6 +581,12 @@
   </data>
   <data name="Error_Settings" xml:space="preserve">
     <value>Settings could not be opened: {0}</value>
+  </data>
+  <data name="Error_SettingsInvalid" xml:space="preserve">
+    <value>The settings file was damaged, so the defaults are used – check the notes folder in Settings. The old file was kept as {0}</value>
+  </data>
+  <data name="Error_Startup" xml:space="preserve">
+    <value>The notes could not be loaded – history, calendar and search stay empty: {0}</value>
   </data>
   <data name="Week_NoTag" xml:space="preserve">
     <value>No tag</value>

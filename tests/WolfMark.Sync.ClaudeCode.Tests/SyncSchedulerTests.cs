@@ -159,6 +159,45 @@ public sealed class SyncSchedulerTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => loop.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
+    /// <summary>Moving the notes (portable mode, new folder) relies on it: no note is written once the dispose returned.</summary>
+    [Fact]
+    public async Task Dispose_waits_for_the_running_sync_and_ends_the_loop()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<SyncResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var scheduler = new ClaudeCodeSyncScheduler(
+            _ =>
+            {
+                entered.TrySetResult();
+                return release.Task;
+            },
+            _projects,
+            Interval,
+            watch: false,
+            _clock,
+            NullLogger.Instance);
+        var loop = scheduler.RunAsync(_stop.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), _stop.Token);
+
+        var disposing = scheduler.DisposeAsync().AsTask();
+        await Task.Delay(Quiet, _stop.Token);
+        Assert.False(disposing.IsCompleted);
+
+        release.SetResult(Empty);
+        await disposing.WaitAsync(TimeSpan.FromSeconds(10), _stop.Token);
+        await loop.WaitAsync(TimeSpan.FromSeconds(10), _stop.Token); // ended, not cancelled
+    }
+
+    [Fact]
+    public async Task Dispose_before_the_loop_started_does_not_wait()
+    {
+        var scheduler = new ClaudeCodeSyncScheduler(_ => Task.FromResult(Empty), _projects, Interval, watch: false, _clock, NullLogger.Instance);
+
+        await scheduler.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10), _stop.Token);
+
+        await scheduler.RunAsync(_stop.Token).WaitAsync(TimeSpan.FromSeconds(10), _stop.Token);
+    }
+
     public void Dispose()
     {
         _stop.Cancel();

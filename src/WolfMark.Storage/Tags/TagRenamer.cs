@@ -68,11 +68,16 @@ public static class TagRenamer
     /// (<see cref="DirectoryEngine.ChangeTagAsync"/>); null removes the tag (<c>praca_1403.md</c> → <c>1403.md</c>).
     /// A started rename is not cancellable: it completes or rolls back.
     /// </summary>
+    /// <param name="restore">
+    /// Renames a done note back to exactly its old name (<see cref="DirectoryEngine.RenameAsync"/>). Without it the
+    /// way back goes through <paramref name="changeTag"/>, which may pick another free name.
+    /// </param>
     public static async Task<Result> RenameAsync(
         IReadOnlyList<NotePath> notes,
         string? newTag,
         Func<NotePath, string?, Task<NotePath>> changeTag,
-        IProgress<int>? progress)
+        IProgress<int>? progress,
+        Func<NotePath, NotePath, Task>? restore = null)
     {
         var done = new List<(NotePath Original, NotePath Renamed)>(notes.Count);
         foreach (var note in notes)
@@ -90,7 +95,14 @@ public static class TagRenamer
                 {
                     try
                     {
-                        await changeTag(done[i].Renamed, done[i].Original.Tag).ConfigureAwait(false);
+                        if (restore is not null)
+                        {
+                            await restore(done[i].Renamed, done[i].Original).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await changeTag(done[i].Renamed, done[i].Original.Tag).ConfigureAwait(false);
+                        }
                     }
                     catch (Exception back) when (back is IOException or UnauthorizedAccessException or InvalidOperationException)
                     {

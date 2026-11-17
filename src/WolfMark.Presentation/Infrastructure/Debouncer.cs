@@ -5,6 +5,12 @@ internal sealed class Debouncer(TimeSpan delay) : IDisposable
 {
     private CancellationTokenSource? _cts;
 
+    /// <summary>
+    /// Where a failed action goes (the app's log). Nobody awaits a debounced action, so without this its exception
+    /// would vanish as an unobserved task exception.
+    /// </summary>
+    public static Action<Exception>? ErrorHandler { get; set; }
+
     public void Schedule(Func<CancellationToken, Task> action)
     {
         var cts = new CancellationTokenSource();
@@ -23,6 +29,10 @@ internal sealed class Debouncer(TimeSpan delay) : IDisposable
         }
         catch (OperationCanceledException)
         {
+        }
+        catch (Exception ex)
+        {
+            ErrorHandler?.Invoke(ex);
         }
     }
 

@@ -254,8 +254,52 @@ public sealed partial class DirectoryEngine
     {
         var bytes = Utf8NoBom.GetBytes(content);
         var full = GetFullPath(path);
-        var existed = File.Exists(full);
-        SelfWrites.RecordWrite(path.RelativePath, ContentHash.Compute(bytes));
+        await WriteAsync(path, full, bytes, ContentHash.Compute(bytes), File.Exists(full), lastWriteTimeUtc, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads a note together with the hash of its bytes on disk – the precondition of <see cref="TrySaveAsync"/>.</summary>
+    public async Task<NoteSnapshot> ReadSnapshotAsync(NotePath path, CancellationToken cancellationToken)
+    {
+        var bytes = await File.ReadAllBytesAsync(GetFullPath(path), cancellationToken).ConfigureAwait(false);
+        return new NoteSnapshot(Decode(bytes), ContentHash.Compute(bytes));
+    }
+
+    /// <summary>
+    /// Saves only while the file still has the content the editor last saw (<paramref name="expectedHash"/>), so a
+    /// change made elsewhere – OneDrive, another editor – is never overwritten unseen (M4-08). A missing file is
+    /// written again.
+    /// </summary>
+    /// <returns>The hash now on disk, or null when the file was changed by someone else and nothing was written.</returns>
+    public async Task<string?> TrySaveAsync(NotePath path, string content, string expectedHash, CancellationToken cancellationToken)
+    {
+        var bytes = Utf8NoBom.GetBytes(content);
+        var hash = ContentHash.Compute(bytes);
+        var full = GetFullPath(path);
+        byte[]? onDisk = null;
+        try
+        {
+            onDisk = await File.ReadAllBytesAsync(full, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+        }
+
+        if (onDisk is not null)
+        {
+            var current = ContentHash.Compute(onDisk);
+            if (!string.Equals(current, expectedHash, StringComparison.Ordinal) && !string.Equals(current, hash, StringComparison.Ordinal))
+            {
+                return null;
+            }
+        }
+
+        await WriteAsync(path, full, bytes, hash, onDisk is not null, lastWriteTimeUtc: null, cancellationToken).ConfigureAwait(false);
+        return hash;
+    }
+
+    private async Task WriteAsync(NotePath path, string full, byte[] bytes, string hash, bool existed, DateTime? lastWriteTimeUtc, CancellationToken cancellationToken)
+    {
+        SelfWrites.RecordWrite(path.RelativePath, hash);
         await AtomicFile.WriteAllBytesAsync(full, bytes, overwrite: true, lastWriteTimeUtc, cancellationToken).ConfigureAwait(false);
         _hub.Publish(existed ? new NoteChanged(path, ChangeOrigin.Local) : new NoteCreated(path, ChangeOrigin.Local));
     }
@@ -296,19 +340,7 @@ public sealed partial class DirectoryEngine
             {
                 SelfWrites.ExpectRemoval(path.RelativePath);
                 SelfWrites.ExpectRemoval(candidate.RelativePath);
-                var targetFull = GetFullPath(candidate);
-                if (string.Equals(source, targetFull, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Case-only rename on a case-insensitive file system.
-                    var temp = source + ".rename" + AtomicFile.TempSuffix;
-                    File.Move(source, temp);
-                    File.Move(temp, targetFull);
-                }
-                else
-                {
-                    File.Move(source, targetFull, overwrite: false);
-                }
-
+                MoveNoteFile(source, GetFullPath(candidate));
                 return Task.CompletedTask;
             }, ignoreExisting: source).ConfigureAwait(false);
 
@@ -319,6 +351,62 @@ public sealed partial class DirectoryEngine
         finally
         {
             _createLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Renames a note to exactly <paramref name="to"/> – the way back after a failed tag rename, where the note must
+    /// get the very name it had (not the next free one). Throws <see cref="IOException"/> when that name is taken.
+    /// </summary>
+    public async Task RenameAsync(NotePath from, NotePath to, CancellationToken cancellationToken)
+    {
+        if (string.Equals(from.RelativePath, to.RelativePath, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await _createLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            SelfWrites.ExpectRemoval(from.RelativePath);
+            SelfWrites.ExpectRemoval(to.RelativePath);
+            MoveNoteFile(GetFullPath(from), GetFullPath(to));
+            SelfWrites.Forget(from.RelativePath);
+            _hub.Publish(new NoteRenamed(from, to, ChangeOrigin.Local));
+        }
+        finally
+        {
+            _createLock.Release();
+        }
+    }
+
+    /// <summary>Moves a note file; never over another file. Handles a change of letter case only.</summary>
+    private static void MoveNoteFile(string source, string target)
+    {
+        if (!string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+        {
+            File.Move(source, target, overwrite: false);
+            return;
+        }
+
+        // Only the letter case differs. On a case-insensitive file system both names are the same file and it takes
+        // two steps; on a case-sensitive one the target may be another note – then the name is simply taken.
+        var name = Path.GetFileName(target);
+        if (Directory.EnumerateFiles(Path.GetDirectoryName(target)!).Any(f => string.Equals(Path.GetFileName(f), name, StringComparison.Ordinal)))
+        {
+            throw new IOException($"'{target}' already exists.");
+        }
+
+        var temp = source + ".rename" + AtomicFile.TempSuffix;
+        File.Move(source, temp);
+        try
+        {
+            File.Move(temp, target, overwrite: false);
+        }
+        catch
+        {
+            File.Move(temp, source); // never leave the note under a name the app does not see
+            throw;
         }
     }
 

@@ -24,6 +24,7 @@ internal sealed partial class AppHost : IAsyncDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly TaskCompletionSource _databaseReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ILogger _logger;
+    private Exception? _startupError;
     private NoteWatcher? _watcher;
     private ClaudeCodeSyncScheduler? _claudeScheduler;
 
@@ -34,15 +35,17 @@ internal sealed partial class AppHost : IAsyncDisposable
         FileLogger = fileLogger;
         Loggers = loggers;
         _logger = loggers.CreateLogger<AppHost>();
+        Infrastructure.Debouncer.ErrorHandler = LogDebouncedFailed;
         Time = TimeProvider.System;
         Background = new BackgroundRunner(loggers.CreateLogger<BackgroundRunner>());
 
         Root = settings.ResolveRoot();
         Hub = new NoteEventHub();
         SelfWrites = new SelfWriteRegistry(Time);
-        // Portable: removable drives have no Recycle Bin – Windows would delete permanently (CLAUDE.md rule 5).
+        // Portable, network and removable drives have no Recycle Bin – Windows would delete permanently (CLAUDE.md rule 5).
         // Demo: everything stays in the demo folder – its deleted notes must not land in the user's Recycle Bin.
         IRecycleBin recycleBin = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && paths.PortableDataDirectory is null && !isDemo
+            && WindowsRecycleBin.CanRecycle(Root)
             ? new WindowsRecycleBin()
             : new FolderRecycleBin(Root);
         Engine = new DirectoryEngine(Root, recycleBin, Hub, SelfWrites, loggers.CreateLogger<DirectoryEngine>());
@@ -93,8 +96,17 @@ internal sealed partial class AppHost : IAsyncDisposable
 
     public CancellationToken ShutdownToken => _shutdown.Token;
 
-    /// <summary>Completes when the index database is open and readable.</summary>
+    /// <summary>
+    /// Completes when the index database is open and readable. It stays pending when the start failed
+    /// (<see cref="StartupError"/>): history, calendar and search have nothing to show then.
+    /// </summary>
     public Task DatabaseReady => _databaseReady.Task;
+
+    /// <summary>Why notes, tags or the index could not be opened at start; null while all is well.</summary>
+    public Exception? StartupError => Volatile.Read(ref _startupError);
+
+    /// <summary>Raised (on a background thread) when <see cref="StartupError"/> is set.</summary>
+    public event EventHandler<Exception>? StartupFailed;
 
     /// <summary>
     /// All tags for the pickers and Settings → Tags: the ones in note file names with their counts (most used first),
@@ -211,9 +223,20 @@ internal sealed partial class AppHost : IAsyncDisposable
         var ct = _shutdown.Token;
         _ = Background.Run("startup", async token =>
         {
-            Directory.CreateDirectory(Root);
-            await Tags.LoadAsync(token).ConfigureAwait(false);
-            await Db.OpenAsync(token).ConfigureAwait(false);
+            try
+            {
+                Directory.CreateDirectory(Root);
+                await Tags.LoadAsync(token).ConfigureAwait(false);
+                await Db.OpenAsync(token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Without this the app would sit there with empty lists and no word about why.
+                Volatile.Write(ref _startupError, ex);
+                StartupFailed?.Invoke(this, ex);
+                throw; // logged by the runner
+            }
+
             _databaseReady.TrySetResult();
 
             // Subscribe before scanning so no change between scan and loop is lost.
@@ -315,8 +338,25 @@ internal sealed partial class AppHost : IAsyncDisposable
             await StopForRelocationAsync().ConfigureAwait(false);
             var target = LocalPaths.Standard;
             var notes = PortableMigrator.StandardNotesRoot(target);
-            IRecycleBin replaced = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) ? new WindowsRecycleBin() : new FolderRecycleBin(notes);
+            IRecycleBin replaced = OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && WindowsRecycleBin.CanRecycle(notes)
+                ? new WindowsRecycleBin()
+                : new FolderRecycleBin(notes);
             return await PortableMigrator.DisableAsync(PortableMode.AppDirectory, source, target, notes, replaced, progress, CancellationToken.None).ConfigureAwait(false);
+        });
+    }
+
+    /// <summary>
+    /// Moves the notes to <paramref name="newRoot"/> (M8-04): copy, verify, then the old folder goes to the recycle
+    /// bin. Call on the UI thread after flushing the editor; watcher and Claude Code sync stop first – nothing may
+    /// write into the old folder any more – so the app must restart afterwards, also after a failure.
+    /// </summary>
+    public Task<NotesMover.Result> MoveNotesAsync(string newRoot, IProgress<int>? progress)
+    {
+        var root = Root;
+        return Task.Run(async () =>
+        {
+            await StopForRelocationAsync().ConfigureAwait(false);
+            return await NotesMover.MoveAsync(root, newRoot, RecycleBinForFolder(root), progress, CancellationToken.None).ConfigureAwait(false);
         });
     }
 
@@ -326,11 +366,19 @@ internal sealed partial class AppHost : IAsyncDisposable
         Settings.CreateSnapshot(),
         async (path, ct) =>
         {
+            if (StartupError is { } error)
+            {
+                throw new IOException("The index is not open.", error);
+            }
+
             await DatabaseReady.WaitAsync(ct).ConfigureAwait(false);
             await Db.BackupToAsync(path, ct).ConfigureAwait(false);
         });
 
-    /// <summary>No new files while the data is copied: the watcher and the Claude Code import stop.</summary>
+    /// <summary>
+    /// No new files while the data is copied: the watcher and the Claude Code import stop – a running import is
+    /// awaited, it must not write a note into the folder after it was copied.
+    /// </summary>
     private async Task StopForRelocationAsync()
     {
         if (_claudeScheduler is { } scheduler)
@@ -349,7 +397,7 @@ internal sealed partial class AppHost : IAsyncDisposable
     /// <summary>A recycle bin that can take a whole notes folder (the folder trash cannot hold its own folder).</summary>
     private static IRecycleBin RecycleBinForFolder(string folder)
     {
-        if (OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000))
+        if (OperatingSystem.IsWindowsVersionAtLeast(6, 0, 6000) && WindowsRecycleBin.CanRecycle(folder))
         {
             return new WindowsRecycleBin();
         }
@@ -384,6 +432,9 @@ internal sealed partial class AppHost : IAsyncDisposable
         Loggers.Dispose();
         await FileLogger.FlushAsync().ConfigureAwait(false);
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "A delayed action (autosave, search, settings) failed")]
+    private partial void LogDebouncedFailed(Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Shut down")]
     private partial void LogShutdown();

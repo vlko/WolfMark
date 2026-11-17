@@ -347,7 +347,7 @@ internal sealed partial class MainWindow : Window
             _quickNote = null;
         }
 
-        await _vm.Editor.FlushAsync();
+        await _vm.Editor.FlushAsync(leaving: true);
         SavePlacement();
         await _host.SaveSettingsAsync();
         _tray?.Dispose();

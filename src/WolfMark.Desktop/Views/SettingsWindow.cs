@@ -82,16 +82,34 @@ internal sealed class SettingsWindow : Window
                 return;
             }
 
-            movePanel.IsVisible = false;
             if (moveNotes)
             {
-                browse.IsEnabled = false;
+                browse.IsEnabled = move.IsEnabled = switchTo.IsEnabled = cancelMove.IsEnabled = false;
                 await vm.Editor.FlushAsync();
-                var bin = new FolderRecycleBin(host.Root);
-                await Task.Run(() => NotesMover.MoveAsync(host.Root, newRoot, bin, null, CancellationToken.None));
-                browse.IsEnabled = true;
+                try
+                {
+                    await host.MoveNotesAsync(newRoot, null);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Watcher and Claude Code sync are stopped: only a restart brings them back.
+                    moveText.Text = Strings.Format(R.Settings_MoveFailed, ex.Message);
+                    cancelMove.IsEnabled = true;
+                    _restartNeeded = true;
+                    restartRow.IsVisible = true;
+                    return;
+                }
+
+                // The old folder is in the trash – nothing may be written there any more.
+                s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
+                await host.SaveSettingsAsync();
+                Program.RestartRequested = true;
+                Close();
+                (Owner as Window)?.Close();
+                return;
             }
 
+            movePanel.IsVisible = false;
             s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
             await host.SaveSettingsAsync();
             rootText.Text = newRoot;
@@ -271,15 +289,23 @@ internal sealed class SettingsWindow : Window
         var lineNumbers = new ToggleSwitch { IsChecked = s.EditorLineNumbers, Content = Strings.Get(R.Settings_LineNumbers) };
         var monospace = new ToggleSwitch { IsChecked = s.EditorMonospace, Content = Strings.Get(R.Settings_Monospace) };
         var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260 };
-        var monoFont = new ComboBox { MinWidth = 260 };
-        var monoFonts = FontManager.Current.SystemFonts.Select(f => f.Name).Where(IsMonospaced).Order(StringComparer.CurrentCultureIgnoreCase).ToList();
-        if (!monoFonts.Contains(s.EditorMonoFontFamily, StringComparer.OrdinalIgnoreCase))
-        {
-            monoFonts.Insert(0, s.EditorMonoFontFamily);
-        }
+        var monoFont = new ComboBox { MinWidth = 260, ItemsSource = new[] { s.EditorMonoFontFamily }, SelectedIndex = 0 };
+        // Looking at every installed font takes a while (it loads each typeface): the window opens first and the
+        // list fills in afterwards.
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () =>
+            {
+                var selected = monoFont.SelectedItem as string ?? s.EditorMonoFontFamily;
+                var monoFonts = FontManager.Current.SystemFonts.Select(f => f.Name).Where(IsMonospaced).Order(StringComparer.CurrentCultureIgnoreCase).ToList();
+                if (!monoFonts.Contains(selected, StringComparer.OrdinalIgnoreCase))
+                {
+                    monoFonts.Insert(0, selected);
+                }
 
-        monoFont.ItemsSource = monoFonts;
-        monoFont.SelectedItem = monoFonts.First(f => string.Equals(f, s.EditorMonoFontFamily, StringComparison.OrdinalIgnoreCase));
+                monoFont.ItemsSource = monoFonts;
+                monoFont.SelectedItem = monoFonts.First(f => string.Equals(f, selected, StringComparison.OrdinalIgnoreCase));
+            },
+            Avalonia.Threading.DispatcherPriority.Background);
         var fontSize = new NumericUpDown { Value = (decimal)s.EditorFontSize, Minimum = 10, Maximum = 28, Increment = 1, MinWidth = 140 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
         // Text width: the offered lengths, plus a value written into settings.json by hand.

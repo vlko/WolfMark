@@ -9,6 +9,9 @@ namespace WolfMark.Sync.ClaudeCode;
 /// </summary>
 public static class SessionNoteRenderer
 {
+    /// <summary>A front matter value stays on its line: a line break in it could end the block or add keys of its own.</summary>
+    private static string OneLine(string value) => value.ReplaceLineEndings(" ").Trim();
+
     public static string Render(string sessionId, IReadOnlyList<(DateTime LocalTime, ClaudePrompt Prompt)> prompts)
     {
         var first = prompts[0].Prompt;
@@ -19,7 +22,7 @@ public static class SessionNoteRenderer
         var sb = new StringBuilder();
         sb.Append("---\n");
         sb.Append("source: claudecode\n");
-        sb.Append("session: ").Append(sessionId).Append('\n');
+        sb.Append("session: ").Append(OneLine(sessionId)).Append('\n');
         if (cwd is not null)
         {
             sb.Append("project: \"").Append(cwd.Replace("\"", "\\\"")).Append("\"\n");
@@ -27,7 +30,7 @@ public static class SessionNoteRenderer
 
         if (branch is not null)
         {
-            sb.Append("branch: ").Append(branch).Append('\n');
+            sb.Append("branch: ").Append(OneLine(branch)).Append('\n');
         }
 
         sb.Append("---\n");

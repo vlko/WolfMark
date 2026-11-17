@@ -47,4 +47,29 @@ public sealed class DemoHostTests
             Directory.Delete(demo, recursive: true);
         }
     }
+
+    /// <summary>A start that cannot read the tags or open the index says so instead of leaving empty lists without a word.</summary>
+    [Fact]
+    public async Task A_failed_start_is_reported()
+    {
+        var demo = Directory.CreateTempSubdirectory("wolfmark-demo-").FullName;
+        try
+        {
+            await using var host = await AppHost.CreateAsync(demo);
+            // A folder with content where the index file belongs: it can be neither opened nor replaced.
+            Directory.CreateDirectory(Path.Combine(host.Paths.IndexDatabase, "x"));
+            var failed = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+            host.StartupFailed += (_, ex) => failed.TrySetResult(ex);
+
+            host.StartBackground();
+
+            var error = await failed.Task.WaitAsync(TimeSpan.FromSeconds(30), Ct);
+            Assert.Same(error, host.StartupError);
+            Assert.False(host.DatabaseReady.IsCompleted);
+        }
+        finally
+        {
+            Directory.Delete(demo, recursive: true);
+        }
+    }
 }

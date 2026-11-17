@@ -53,6 +53,16 @@ internal sealed partial class MainViewModel : ObservableObject
             ClaudeStatusIsError = true;
             ClaudeStatus = Strings.Format(R.Status_ClaudeFailed, DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture));
         });
+        host.StartupFailed += (_, ex) => UiThread.Post(() => ErrorNotice = Strings.Format(R.Error_Startup, ex.Message));
+        if (host.StartupError is { } startupError)
+        {
+            ErrorNotice = Strings.Format(R.Error_Startup, startupError.Message);
+        }
+        else if (host.Settings.InvalidFileCopy is { } settingsCopy)
+        {
+            ErrorNotice = Strings.Format(R.Error_SettingsInvalid, settingsCopy);
+        }
+
         var events = host.Hub.Subscribe();
         _ = host.Background.Run("ui-events", async ct =>
         {
@@ -388,7 +398,8 @@ internal sealed partial class MainViewModel : ObservableObject
                 moved.Add((path.RelativePath, renamed.RelativePath));
                 return renamed;
             },
-            progress));
+            progress,
+            (renamed, original) => engine.RenameAsync(renamed, original, CancellationToken.None)));
         if (result.Error is not null)
         {
             LogTagRenameFailed(result.Error, oldTag, newTag ?? "-", result.RollbackFailures.Count);

@@ -186,6 +186,33 @@ public sealed class ClaudeCodeSyncTests : IAsyncLifetime
         Assert.Contains("token [REDACTED] here", content);
     }
 
+    [Theory]
+    [InlineData("/work/secret", "/work/secret", true)]
+    [InlineData("/work/secret/app", "/work/secret", true)]
+    [InlineData("/work/secret/app", "/work/secret/", true)]
+    [InlineData(@"C:\work\app", @"C:\WORK", true)]
+    [InlineData("/work/secrets", "/work/secret", false)] // a sibling that only starts the same
+    [InlineData(@"C:\workshop", @"C:\work", false)]
+    [InlineData("/work/secret", "  ", false)]
+    public void Excluded_project_covers_the_folder_and_what_is_below_it(string cwd, string excluded, bool expected)
+    {
+        Assert.Equal(expected, ClaudeCodeSync.IsSameOrUnder(cwd, excluded));
+    }
+
+    [Fact]
+    public void A_line_break_in_the_session_or_branch_cannot_add_front_matter()
+    {
+        var prompt = new ClaudePrompt("s1\nsource: user", "u", DateTimeOffset.UnixEpoch, "/work/app", "main\n---\nextra: 1", "text");
+
+        var lines = SessionNoteRenderer.Render(prompt.SessionId, [(DateTime.UnixEpoch, prompt)]).Split('\n');
+
+        var fm = WolfMark.Core.Text.FrontMatter.Parse(lines);
+        Assert.Equal("claudecode", fm.Get("source"));
+        Assert.Equal("s1 source: user", fm.Get("session"));
+        Assert.Equal("main --- extra: 1", fm.Get("branch"));
+        Assert.Null(fm.Get("extra"));
+    }
+
     [Fact]
     public async Task Cleanup_period_check_and_update()
     {

@@ -291,3 +291,73 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   transkripty, nastavenia aj index v jednom priečinku, `DemoDataSeeder`) a `--screenshots <dir>` (RenderTargetBitmap → PNG
   do `docs/screenshots`, potom koniec). *Stav:* README so screenshotmi v `docs/screenshots` (2026-11-05). Smoke test ich generuje znova pri každom CI behu
   (artefakt `smoke-win-x64`), na Windows overené 2026-11-16 (8 obrázkov) – aktualizácia = skopírovať ich do `docs/screenshots`.
+
+## M11 – Stabilita a parita 🟢
+
+Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dát, potom spoľahlivosť, parita, CI a dokumentácia.
+
+- 🟨 **M11-01 – Autosave neprepíše zmenu zvonka.** Uloženie otvorenej poznámky je podmienené hashom obsahu, ktorý editor
+  naposledy videl (`DirectoryEngine.TrySaveAsync`); pri nezhode alebo nezodpovedanom „Načítať z disku / Ponechať moje“
+  sa neukladá. Odchod z poznámky (iná poznámka, koniec aplikácie) s nezodpovedanou zmenou uloží text editora ako novú
+  poznámku vedľa pôvodnej – nestratí sa ani jedna verzia.
+  *AK:* zmena súboru iným programom počas písania sa neprepíše ani pred hlásením watchera; „Ponechať moje“ prepíše
+  a ukladanie pokračuje; „Načítať z disku“ ukáže verziu z disku; zmazaný súbor sa ďalším uložením vytvorí znova.
+  *Stav:* Implementované, testy `ExternalChangeTests`, `DirectoryEngineTests.TrySave_*`; čaká na overenie na Windows.
+- 🟨 **M11-02 – Kôš nikdy nemaže natrvalo.** Kôš Windows len na pevných lokálnych diskoch (`WindowsRecycleBin.CanRecycle`);
+  na sieťových a vymeniteľných diskoch `.wolfmark/trash` v koreni (ako v prenosnom režime). `FOF_WANTNUKEWARNING`: ak by
+  Windows položku predsa zničil (Kôš vypnutý, položka väčšia než Kôš), najprv sa opýta.
+  *AK:* koreň na sieťovom disku alebo USB: zmazaná poznámka je v `.wolfmark/trash`; koreň na `C:`: v Koši.
+  *Stav:* Implementované, **čaká na ručné overenie na Windows** (z WSL sa overiť nedá).
+- 🟨 **M11-03 – Presun dát zastaví import a watcher.** `ClaudeCodeSyncScheduler.DisposeAsync` zastaví slučku a počká
+  na bežiaci import; presun koreňa ide v oboch aplikáciách cez `AppHost.MoveNotesAsync` (zastavenie, kópia, overenie,
+  starý priečinok do koša), chyba sa ohlási v Nastaveniach a po úspechu sa aplikácia hneď reštartuje (do starého
+  priečinka už nesmie nič zapísať). Desktop predtým posielal starý koreň do koša vnútri neho samého.
+  *Stav:* Implementované, testy `SyncSchedulerTests.Dispose_*`; presun v UI čaká na overenie na Windows a Linuxe.
+- 🟨 **M11-04 – Zlyhaný štart sa ohlási.** Ak sa nedajú načítať tagy alebo otvoriť index, hlavné okno ukáže chybu
+  (`AppHost.StartupError`, `Error_Startup`) namiesto prázdnych zoznamov bez slova.
+  *Stav:* Implementované, test `DemoHostTests.A_failed_start_is_reported`.
+- 🟨 **M11-05 – `tags.json` a `settings.json`.** Nečitateľný alebo poškodený `tags.json` sa pred prvou zmenou odloží ako
+  `tags.broken-<čas>.json` (`BrokenFile.KeepCopy`); zápisy `TagStore` idú po jednom a stav berú až vo svojom ťahu.
+  Poškodený `settings.json` sa odloží ako `settings.broken-<čas>.json` a hlavné okno to ohlási (`Error_SettingsInvalid`)
+  – platia predvolené hodnoty vrátane priečinka poznámok.
+  *Stav:* Implementované, testy `TagStoreTests` (kópia, súbežné zmeny), `SettingsTests`; hlásenie v UI čaká na overenie.
+- 🟨 **M11-06 – Premenovanie tagu a súborov.** Konfliktná kópia ostáva konfliktnou (`NoteName.WithTag` aj kolízne mená
+  nesú značku); rollback vracia presné pôvodné mená (`DirectoryEngine.RenameAsync`); premenovanie líšiace sa len
+  veľkosťou písmen na Linuxe už nenechá `.rename.tmp`; autosave čaká, kým editor premenuje svoj súbor.
+  *Stav:* Implementované, testy `NoteNameTests`, `TagRenamerTests`.
+- 🟨 **M11-07 – `NotesMover`:** kópia sa zapíše na disk (flush) a overuje sa obsahom, nie len veľkosťou.
+  *Stav:* Implementované; existujúce testy presunu prechádzajú, nový test na poškodenú kópiu nie je.
+- 🟨 **M11-08 – Index.** Po nedokončenej obnove sa writer otvorí znova pri ďalšom zápise (`ReopenWriter`);
+  `ApplyAsync` čaká na bežiaci sken (starší text už neprepíše novší); súbor zmazaný počas skenu sa neindexuje;
+  „nezmenený“ súbor bez riadku v DB sa pri ďalšom skene prečíta. `IOERR`/`READONLY` ostávajú dôvodom na obnovu
+  zámerne – index je cache a zmazaný súbor DB sa inak neopraví.
+  *Stav:* Implementované; bez nových testov (súbehy sa v teste nedajú spoľahlivo vyvolať).
+- 🟨 **M11-09 – Watcher.** Presun poznámky do skrytého priečinka = zmazanie; A→B→C je jedno premenovanie A→C; zmazaný
+  priečinok s bodkou v názve sa preskenuje; po chybe sa watcher vytvorí znova (aj opakovane, kým je priečinok preč);
+  návrat súboru na skôr uložený obsah je zmena. Rast `SelfWriteRegistry` neriešený – je ohraničený počtom poznámok.
+  *Stav:* Implementované, testy `NoteWatcherTests` (5 nových); odpojenie sieťového disku čaká na overenie na Windows.
+- 🟨 **M11-10 – Claude Code sync.** Hotové: vylúčený projekt platí pre priečinok a jeho obsah, nie pre susedov
+  s rovnakým začiatkom; zalomenie riadka v `session`/`branch` nepridá kľúče do front matter (testy).
+  **Otvorené:** kurzor namiesto parsovania celého transkriptu (SPEC §4.7) – obnovené relácie kopírujú staršie správy
+  do nového súboru, takže poradie v súbore nie je spoľahlivé; treba reálne vzorky a ADR. **Rozhodnuté 2026-11-17:** zahodená poznámka
+  Claude Code sa pri ďalšom importe vráti – je to synchronizácia (záloha promptov), nie vlastná poznámka; vlastná
+  verzia vzniká kópiou („Kopírovať do vlastnej poznámky“). Zmenu tagu týchto poznámok obe aplikácie nedovolia.
+- 🟨 **M11-11 – Úniky a UI vlákno.** Desktop: `Palette.Changed` len kým je prvok na obrazovke / okno otvorené
+  (`Ui.OnPaletteChanged`), zoznam písiem sa plní až po zobrazení Nastavení (stále na UI vlákne – `FontManager`
+  mimo neho neoverený), `OnDrop` s ošetrením chyby. App: externé okno pri zatvorení ukončí kontrolu pravopisu
+  (`MarkdownEditor.ReleaseSpelling`). `Debouncer` chyby loguje. Otvorené: `async void` lambda v `MainViewModel`.
+  *Stav:* Implementované, len skompilované – čaká na overenie na Windows a Linuxe.
+- ⬜ **M11-12 – Spoločná logika do `WolfMark.Presentation`:** nastavenia a kontrola reštartu, prenosný režim, rýchla
+  poznámka, `OpenLinkAsync`, texty stavu uloženia, `SavePlacement`, `crash.txt` (~1 000 riadkov je v oboch aplikáciách).
+- ⬜ **M11-13 – Parita Desktopu:** nastavenia Claude Code (vylúčené projekty, sledovanie, interval), Index a diagnostika,
+  farebné emotikony, výber ikony, placeholder editora, kopírovanie rozšírené na Markdown, klávesnica v kalendári,
+  čip filtra a synchronizácia „Nedokončené“, štart po prihlásení, `--screenshots`, `AutomationProperties`,
+  ošetrenie chýb pri otvorení Nastavení a rýchlej poznámky. Kontrola pravopisu ostáva v ADR 0005.
+- ⬜ **M11-14 – CI a release:** testy a smoke pred vydaním v `release.yml`, benchmark projekt (BenchmarkDotNet),
+  `.editorconfig` a `.gitattributes`, verzia na jednom mieste, `THIRD-PARTY-NOTICES`, test parity kľúčov reťazcov.
+- ⬜ **M11-15 – Dokumentácia:** README (roadmap, tabuľka funkcií, sémantické hľadanie, ktoré ešte nebeží), SPEC
+  (Avalonia, zrušený ročný pohľad a backdrop, rozhodnuté otázky §9), BACKLOG M2-02 vs. ADR 0010, výnimka lexera
+  na UI vlákne v `CLAUDE.md` (ADR 0007).
+
+Návrhy funkcií z review (mimo existujúcich M9): hľadanie a nahradenie v poznámke (Ctrl+F/H), obnova z koša v UI,
+záloha/verzie poznámok (SPEC §7), osnova dlhej poznámky, pripnuté poznámky.

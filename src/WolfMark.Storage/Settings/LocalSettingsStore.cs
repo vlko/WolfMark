@@ -11,6 +11,12 @@ public sealed partial class LocalSettingsStore(LocalPaths paths, ILogger<LocalSe
 
     public LocalSettings Current { get; private set; } = new();
 
+    /// <summary>
+    /// Set when the settings file could not be parsed at load: the copy of it that was kept. The app then runs on
+    /// defaults – also the default notes folder – and has to say so.
+    /// </summary>
+    public string? InvalidFileCopy { get; private set; }
+
     public async Task<LocalSettings> LoadAsync(CancellationToken cancellationToken)
     {
         try
@@ -26,6 +32,16 @@ public sealed partial class LocalSettingsStore(LocalPaths paths, ILogger<LocalSe
         {
             LogInvalid(ex, paths.SettingsFile);
             Current = new LocalSettings();
+            try
+            {
+                // The next save (window placement at exit) replaces the file – what the user had stays next to it.
+                InvalidFileCopy = BrokenFile.KeepCopy(paths.SettingsFile) ?? paths.SettingsFile;
+            }
+            catch (Exception copyError) when (copyError is IOException or UnauthorizedAccessException)
+            {
+                LogInvalid(copyError, paths.SettingsFile);
+                InvalidFileCopy = paths.SettingsFile;
+            }
         }
 
         return Current;

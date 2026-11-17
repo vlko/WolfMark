@@ -261,6 +261,9 @@
   <data name="Settings_Restart" xml:space="preserve">
     <value>Reštartovať</value>
   </data>
+  <data name="Settings_MoveFailed" xml:space="preserve">
+    <value>Poznámky sa nepodarilo presunúť, pôvodný priečinok ostal: {0}</value>
+  </data>
   <data name="Settings_Appearance" xml:space="preserve">
     <value>Vzhľad</value>
   </data>
@@ -578,6 +581,12 @@
   </data>
   <data name="Error_Settings" xml:space="preserve">
     <value>Nastavenia sa nepodarilo otvoriť: {0}</value>
+  </data>
+  <data name="Error_SettingsInvalid" xml:space="preserve">
+    <value>Súbor nastavení bol poškodený, platia predvolené hodnoty – skontroluj priečinok poznámok v Nastaveniach. Pôvodný súbor ostal ako {0}</value>
+  </data>
+  <data name="Error_Startup" xml:space="preserve">
+    <value>Poznámky sa nepodarilo načítať – história, kalendár a hľadanie ostanú prázdne: {0}</value>
   </data>
   <data name="Week_NoTag" xml:space="preserve">
     <value>Bez tagu</value>

@@ -36,6 +36,48 @@ public sealed class DirectoryEngineTests
     }
 
     [Fact]
+    public async Task TrySave_writes_while_the_file_is_what_the_caller_last_saw()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, null, "old", Ct);
+        var seen = await f.Engine.ReadSnapshotAsync(path, Ct);
+
+        var written = await f.Engine.TrySaveAsync(path, "new", seen.Hash, Ct);
+
+        Assert.Equal("old", seen.Text);
+        Assert.Equal("new", await File.ReadAllTextAsync(f.Engine.GetFullPath(path), Ct));
+        Assert.Equal((await f.Engine.ReadSnapshotAsync(path, Ct)).Hash, written);
+    }
+
+    [Fact]
+    public async Task TrySave_refuses_a_file_changed_by_someone_else()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, null, "old", Ct);
+        var seen = await f.Engine.ReadSnapshotAsync(path, Ct);
+        await File.WriteAllTextAsync(f.Engine.GetFullPath(path), "theirs", Ct);
+        f.DrainEvents();
+
+        Assert.Null(await f.Engine.TrySaveAsync(path, "mine", seen.Hash, Ct));
+
+        Assert.Equal("theirs", await File.ReadAllTextAsync(f.Engine.GetFullPath(path), Ct));
+        Assert.Empty(f.DrainEvents());
+    }
+
+    [Fact]
+    public async Task TrySave_writes_a_missing_file_again()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, null, "old", Ct);
+        var seen = await f.Engine.ReadSnapshotAsync(path, Ct);
+        File.Delete(f.Engine.GetFullPath(path));
+
+        Assert.NotNull(await f.Engine.TrySaveAsync(path, "mine", seen.Hash, Ct));
+
+        Assert.Equal("mine", await File.ReadAllTextAsync(f.Engine.GetFullPath(path), Ct));
+    }
+
+    [Fact]
     public async Task Save_is_atomic_and_leaves_no_temp_file()
     {
         using var f = new EngineFixture();

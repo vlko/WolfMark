@@ -142,9 +142,16 @@ public sealed partial class ClaudeCodeSync
         return new SyncResult(parsed, created, updated, prompts);
     }
 
-    private bool IsExcluded(string? cwd) =>
-        cwd is not null && _options.ExcludedProjects.Any(p =>
-            !string.IsNullOrWhiteSpace(p) && cwd.StartsWith(p.TrimEnd('/', '\\'), StringComparison.OrdinalIgnoreCase));
+    private bool IsExcluded(string? cwd) => cwd is not null && _options.ExcludedProjects.Any(p => IsSameOrUnder(cwd, p));
+
+    /// <summary>The folder itself or anything below it – not a sibling that merely starts the same (work, workshop).</summary>
+    internal static bool IsSameOrUnder(string path, string folder)
+    {
+        folder = folder.Trim().TrimEnd('/', '\\');
+        return folder.Length > 0
+            && path.StartsWith(folder, StringComparison.OrdinalIgnoreCase)
+            && (path.Length == folder.Length || path[folder.Length] is '/' or '\\');
+    }
 
     private async Task<WriteResult> WriteSessionNoteAsync(string sessionId, DateOnly day, DateTime firstLocal, DateTime lastPromptUtc, string content, CancellationToken ct)
     {

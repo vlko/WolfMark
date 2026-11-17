@@ -188,7 +188,9 @@ public sealed partial class IndexDatabase : IAsyncDisposable
 
                 try
                 {
-                    item.Completion.TrySetResult(item.Work(_writer!));
+                    // Null after a recovery that could not finish (the file was still held by a reader): try again
+                    // with this write instead of failing every write until the app restarts.
+                    item.Completion.TrySetResult(item.Work(_writer ??= ReopenWriter()));
                 }
                 catch (SqliteException ex) when (IsCorruption(ex))
                 {
@@ -289,6 +291,21 @@ public sealed partial class IndexDatabase : IAsyncDisposable
 
         tx.Commit();
         WasRebuilt = true;
+    }
+
+    private SqliteConnection ReopenWriter()
+    {
+        var connection = OpenConnection();
+        try
+        {
+            EnsureSchema(connection);
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
     }
 
     private void RecreateFile()

@@ -34,7 +34,7 @@ internal sealed class ExternalNoteWindow : Window
         _doc = doc;
         _host = vm.Host;
         Background = Palette.WindowTint;
-        Palette.Changed += (_, _) => Background = Palette.WindowTint;
+        Ui.OnPaletteChangedUntilClosed(this, () => Background = Palette.WindowTint);
         Icon = owner.Icon;
         Width = 1000;
         Height = 860;
@@ -229,7 +229,7 @@ internal sealed class ExternalNoteWindow : Window
     private void WireEditor()
     {
         MainWindow.ApplyEditorTheme(Editor, _host);
-        Palette.Changed += (_, _) => MainWindow.ApplyEditorTheme(Editor, _host);
+        Ui.OnPaletteChangedUntilClosed(this, () => MainWindow.ApplyEditorTheme(Editor, _host));
         Editor.PreviewCacheDirectory = _host.Paths.PreviewCacheDirectory;
         Editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
         // Relative images and links resolve next to the file; nothing is pasted into a folder that is not ours.

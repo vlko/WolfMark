@@ -24,6 +24,30 @@ internal static class Ui
 
     public static void Bind(INotifyPropertyChanged source, string property, Action update) => Bind(source, [property], update);
 
+    /// <summary>
+    /// Runs <paramref name="update"/> on a theme change while the control is on screen. <see cref="Palette.Changed"/>
+    /// is static: a plain subscription keeps every control ever created alive – history rows by the thousand.
+    /// </summary>
+    public static void OnPaletteChanged(Control control, Action update)
+    {
+        EventHandler handler = (_, _) => update();
+        control.AttachedToVisualTree += (_, _) =>
+        {
+            Palette.Changed -= handler;
+            Palette.Changed += handler;
+            update(); // the theme may have changed while it was away
+        };
+        control.DetachedFromVisualTree += (_, _) => Palette.Changed -= handler;
+    }
+
+    /// <summary>The same for a window: until it is closed.</summary>
+    public static void OnPaletteChangedUntilClosed(Window window, Action update)
+    {
+        EventHandler handler = (_, _) => update();
+        Palette.Changed += handler;
+        window.Closed += (_, _) => Palette.Changed -= handler;
+    }
+
     public static StackPanel VStack(double spacing, params Control[] children)
     {
         var panel = new StackPanel { Spacing = spacing };
@@ -150,7 +174,7 @@ internal sealed class DottedLine : Control
     public DottedLine()
     {
         Width = 1;
-        Palette.Changed += (_, _) => InvalidateVisual();
+        Ui.OnPaletteChanged(this, InvalidateVisual);
     }
 
     public override void Render(DrawingContext context)

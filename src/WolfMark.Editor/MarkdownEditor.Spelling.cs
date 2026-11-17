@@ -56,6 +56,19 @@ public sealed partial class MarkdownEditor
 
     private bool Proofing => _spellCheck && !_readOnly && _speller is not null;
 
+    /// <summary>
+    /// Ends the spell-check worker (its thread and the system spell checkers live until then). For a window that
+    /// closes while the app goes on; switching <see cref="IsSpellCheckEnabled"/> on again starts a new worker.
+    /// </summary>
+    public void ReleaseSpelling()
+    {
+        _speller?.Dispose();
+        _speller = null;
+        _spellCheck = false;
+        _spellCache.Clear();
+        _spellPending.Clear();
+    }
+
     /// <summary>Errors of a line in source columns, or none yet (then the check is requested).</summary>
     private SpellError[] SpellErrors(int line)
     {

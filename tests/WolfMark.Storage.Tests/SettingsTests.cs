@@ -40,6 +40,34 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task A_damaged_settings_file_is_kept_as_a_copy_and_reported()
+    {
+        using var dir = new TempDirectory();
+        var paths = new LocalPaths(dir.Path);
+        await File.WriteAllTextAsync(paths.SettingsFile, "{ \"rootDirectory\": \"D:/Notes\", <<<", Ct);
+        var store = new LocalSettingsStore(paths, NullLogger<LocalSettingsStore>.Instance);
+
+        await store.LoadAsync(Ct);
+        await store.SaveAsync(Ct); // the save at exit replaces the damaged file
+
+        Assert.NotNull(store.InvalidFileCopy);
+        Assert.Contains("D:/Notes", await File.ReadAllTextAsync(store.InvalidFileCopy, Ct));
+        Assert.NotEqual(paths.SettingsFile, store.InvalidFileCopy);
+    }
+
+    [Fact]
+    public async Task Valid_settings_report_nothing()
+    {
+        using var dir = new TempDirectory();
+        var store = new LocalSettingsStore(new LocalPaths(dir.Path), NullLogger<LocalSettingsStore>.Instance);
+        await store.SaveAsync(Ct);
+
+        await store.LoadAsync(Ct);
+
+        Assert.Null(store.InvalidFileCopy);
+    }
+
+    [Fact]
     public void Settings_from_an_older_version_with_removed_keys_still_load()
     {
         // 0.5.0 wrote "windowRendering" (a resize-flicker diagnostic, removed in 0.6.0): unknown keys are skipped.

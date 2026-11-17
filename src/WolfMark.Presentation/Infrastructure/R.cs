@@ -86,6 +86,7 @@ internal static class R
     public const string Settings_Switch = nameof(Settings_Switch);
     public const string Settings_RestartRequired = nameof(Settings_RestartRequired);
     public const string Settings_Restart = nameof(Settings_Restart);
+    public const string Settings_MoveFailed = nameof(Settings_MoveFailed);
     public const string Settings_Appearance = nameof(Settings_Appearance);
     public const string Settings_Theme = nameof(Settings_Theme);
     public const string Settings_ThemeSystem = nameof(Settings_ThemeSystem);
@@ -192,6 +193,8 @@ internal static class R
     public const string Icon_WolfCheck = nameof(Icon_WolfCheck);
     public const string Error_Title = nameof(Error_Title);
     public const string Error_Settings = nameof(Error_Settings);
+    public const string Error_SettingsInvalid = nameof(Error_SettingsInvalid);
+    public const string Error_Startup = nameof(Error_Startup);
     public const string Week_NoTag = nameof(Week_NoTag);
     public const string Settings_System = nameof(Settings_System);
     public const string Settings_StartWithWindows = nameof(Settings_StartWithWindows);

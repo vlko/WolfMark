@@ -74,16 +74,32 @@ internal static class SettingsDialog
                 return;
             }
 
-            movePanel.Visibility = Visibility.Collapsed;
             if (move)
             {
-                browse.IsEnabled = false;
+                browse.IsEnabled = moveButton.IsEnabled = switchButton.IsEnabled = cancelMove.IsEnabled = false;
                 await vm.Editor.FlushAsync();
-                var bin = new WolfMark.Storage.Trash.WindowsRecycleBin();
-                await Task.Run(() => NotesMover.MoveAsync(host.Root, newRoot, bin, null, CancellationToken.None));
-                browse.IsEnabled = true;
+                try
+                {
+                    await host.MoveNotesAsync(newRoot, null);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Watcher and Claude Code sync are stopped: only a restart brings them back.
+                    moveText.Text = Strings.Format(R.Settings_MoveFailed, ex.Message);
+                    cancelMove.IsEnabled = true;
+                    restartNeeded = true;
+                    restartBar.IsOpen = true;
+                    return;
+                }
+
+                // The old folder is in the Recycle Bin – nothing may be written there any more.
+                s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
+                await host.SaveSettingsAsync();
+                AppInstance.Restart(string.Empty);
+                return;
             }
 
+            movePanel.Visibility = Visibility.Collapsed;
             s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
             await host.SaveSettingsAsync();
             rootText.Text = newRoot;

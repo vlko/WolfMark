@@ -3,7 +3,7 @@ using WolfMark.Storage.Trash;
 namespace WolfMark.Storage;
 
 /// <summary>
-/// Moves the notes root to another folder (SPEC §3.1, M8-04): copy everything, verify sizes, then
+/// Moves the notes root to another folder (SPEC §3.1, M8-04): copy everything, verify the content, then
 /// send the old folder to the Recycle Bin. Nothing is deleted permanently; if verification fails the
 /// old folder stays untouched.
 /// </summary>
@@ -24,7 +24,7 @@ public static class NotesMover
     }
 
     /// <summary>
-    /// Copies every file of <paramref name="sourceRoot"/> into <paramref name="targetRoot"/> and verifies the sizes.
+    /// Copies every file of <paramref name="sourceRoot"/> into <paramref name="targetRoot"/> and verifies the content.
     /// Nothing is removed from the source. A file already in the target with the same content is skipped; one with
     /// other content stops the copy – or, with <paramref name="replaceDifferent"/>, goes to that recycle bin and is
     /// replaced (never overwritten in place).
@@ -86,6 +86,7 @@ public static class NotesMover
             await using (var dst = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
             {
                 await src.CopyToAsync(dst, ct).ConfigureAwait(false);
+                dst.Flush(flushToDisk: true); // the source goes to the recycle bin next – the copy must really be on disk
             }
 
             File.SetLastWriteTimeUtc(target, File.GetLastWriteTimeUtc(file));
@@ -97,7 +98,8 @@ public static class NotesMover
         foreach (var file in files)
         {
             var target = Path.Combine(targetRoot, Path.GetRelativePath(sourceRoot, file));
-            if (!File.Exists(target) || new FileInfo(target).Length != new FileInfo(file).Length)
+            ct.ThrowIfCancellationRequested();
+            if (!File.Exists(target) || !await SameContentAsync(file, target, ct).ConfigureAwait(false))
             {
                 throw new IOException($"Verification failed for '{target}'. The original folder was kept.");
             }

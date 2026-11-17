@@ -18,6 +18,9 @@ public sealed partial class ClaudeCodeSyncScheduler : IAsyncDisposable
     private readonly TimeProvider _time;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _wake = new(0, 1);
+    private readonly CancellationTokenSource _stop = new();
+    private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _started;
     private int _manual;
     private FileSystemWatcher? _watcher;
 
@@ -50,7 +53,26 @@ public sealed partial class ClaudeCodeSyncScheduler : IAsyncDisposable
     /// <summary>True while the transcript folder is being watched.</summary>
     internal bool IsWatching => _watcher is not null;
 
+    /// <summary>Runs until <paramref name="ct"/> is cancelled (throws) or the scheduler is disposed (returns).</summary>
     public async Task RunAsync(CancellationToken ct)
+    {
+        Volatile.Write(ref _started, 1);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _stop.Token);
+        try
+        {
+            await RunLoopAsync(linked.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Disposed – a normal end.
+        }
+        finally
+        {
+            _stopped.TrySetResult();
+        }
+    }
+
+    private async Task RunLoopAsync(CancellationToken ct)
     {
         if (_watch && Directory.Exists(_projectsDirectory))
         {
@@ -126,11 +148,16 @@ public sealed partial class ClaudeCodeSyncScheduler : IAsyncDisposable
         }
     }
 
-    public ValueTask DisposeAsync()
+    /// <summary>Stops the loop and waits for a sync in progress to end: afterwards no note is written any more.</summary>
+    public async ValueTask DisposeAsync()
     {
-        // _wake stays undisposed: a late "Sync now" click during shutdown must not throw.
+        // _wake and _stop stay undisposed: a late "Sync now" click during shutdown must not throw.
         _watcher?.Dispose();
-        return ValueTask.CompletedTask;
+        await _stop.CancelAsync().ConfigureAwait(false);
+        if (Volatile.Read(ref _started) == 1)
+        {
+            await _stopped.Task.ConfigureAwait(false);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Claude Code sync failed")]

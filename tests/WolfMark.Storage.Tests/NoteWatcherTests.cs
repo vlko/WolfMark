@@ -115,6 +115,94 @@ public sealed class NoteWatcherTests
     }
 
     [Fact]
+    public async Task A_note_moved_into_a_hidden_folder_is_reported_as_deleted()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, "praca", "v1", Ct);
+        Directory.CreateDirectory(Path.Combine(f.Root, ".archive"));
+        f.DrainEvents();
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        watcher.Start();
+
+        File.Move(f.Engine.GetFullPath(path), Path.Combine(f.Root, ".archive", "praca_1403.md"));
+
+        var deleted = Assert.IsType<NoteDeleted>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+        Assert.Equal(path, deleted.Path);
+    }
+
+    [Fact]
+    public async Task Two_renames_in_a_row_are_one_rename_from_the_first_name()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, "praca", "v1", Ct);
+        f.DrainEvents();
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(300));
+        watcher.Start();
+        var day = Path.GetDirectoryName(f.Engine.GetFullPath(path))!;
+
+        File.Move(Path.Combine(day, "praca_1403.md"), Path.Combine(day, "robota_1403.md"));
+        File.Move(Path.Combine(day, "robota_1403.md"), Path.Combine(day, "doma_1403.md"));
+
+        var renamed = Assert.IsType<NoteRenamed>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1.5))));
+        Assert.Equal("2026/10/15/praca_1403.md", renamed.OldPath.RelativePath);
+        Assert.Equal("2026/10/15/doma_1403.md", renamed.NewPath.RelativePath);
+    }
+
+    [Fact]
+    public async Task A_file_set_back_to_what_the_app_saved_earlier_is_a_change()
+    {
+        using var f = new EngineFixture();
+        var path = await f.Engine.CreateAsync(At, "praca", "mine", Ct);
+        f.DrainEvents();
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        watcher.Start();
+        var full = f.Engine.GetFullPath(path);
+
+        await File.WriteAllTextAsync(full, "theirs", Ct);
+        Assert.IsType<NoteChanged>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+
+        // The other machine goes back to the text this app wrote: the editor shows "theirs" and must hear about it.
+        await File.WriteAllTextAsync(full, "mine", Ct);
+        var change = Assert.IsType<NoteChanged>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+        Assert.Equal(ChangeOrigin.External, change.Origin);
+    }
+
+    [Fact]
+    public async Task A_deleted_folder_with_a_dot_in_its_name_is_rescanned()
+    {
+        using var f = new EngineFixture();
+        var folder = Path.Combine(f.Root, "old.notes");
+        Directory.CreateDirectory(folder);
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150));
+        watcher.Start();
+
+        Directory.Delete(folder);
+
+        var rescan = Assert.IsType<RescanRequested>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+        Assert.Equal("old.notes", rescan.RelativeDirectory);
+    }
+
+    [Fact]
+    public async Task After_a_watcher_error_the_folder_is_rescanned_and_watched_again()
+    {
+        using var f = new EngineFixture();
+        Directory.CreateDirectory(f.Engine.GetDayDirectory(new DateOnly(2026, 10, 15)));
+        await using var watcher = new NoteWatcher(f.Engine, f.Hub, TimeProvider.System, NullLogger<NoteWatcher>.Instance, TimeSpan.FromMilliseconds(150))
+        {
+            RearmDelay = TimeSpan.FromMilliseconds(50),
+        };
+        watcher.Start();
+
+        watcher.OnWatcherError(new IOException("network name no longer available"));
+        var rescans = await CollectAsync(f, TimeSpan.FromSeconds(1.5));
+        Assert.NotEmpty(rescans);
+        Assert.All(rescans, e => Assert.Null(Assert.IsType<RescanRequested>(e).RelativeDirectory));
+
+        await File.WriteAllTextAsync(Path.Combine(f.Root, "2026", "10", "15", "0800.md"), "hello", Ct);
+        Assert.IsType<NoteCreated>(Assert.Single(await CollectAsync(f, TimeSpan.FromSeconds(1))));
+    }
+
+    [Fact]
     public async Task Own_save_raises_no_external_event()
     {
         using var f = new EngineFixture();

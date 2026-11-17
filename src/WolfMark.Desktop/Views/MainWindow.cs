@@ -460,7 +460,7 @@ internal sealed class MainWindow : Window
                     await _quickNote.CloseForExitAsync();
                 }
 
-                await _vm.Editor.FlushAsync();
+                await _vm.Editor.FlushAsync(leaving: true);
                 SavePlacement();
                 _host.Settings.Current.HistoryPaneHeight = _historyRow.ActualHeight;
                 await _host.SaveSettingsAsync();

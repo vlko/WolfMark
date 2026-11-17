@@ -96,6 +96,17 @@ public sealed class NoteNameTests
     }
 
     [Fact]
+    public void Changing_tag_keeps_the_conflict_marker()
+    {
+        Assert.True(NoteName.TryParse("praca_1403-MYPC.md", out var name));
+
+        Assert.Equal("robota_1403-MYPC.md", name.WithTag("robota").FileName);
+        Assert.Equal("1403-MYPC.md", name.WithTag(null).FileName);
+        Assert.Equal("robota_140312-MYPC.md", name.WithTag("robota").NextCollisionCandidate(12).FileName);
+        Assert.True(name.WithTag("robota").IsConflictCopy);
+    }
+
+    [Fact]
     public void Create_rejects_invalid_tag()
     {
         Assert.Throws<ArgumentException>(() => NoteName.Create("a_b", new TimeOnly(1, 2)));

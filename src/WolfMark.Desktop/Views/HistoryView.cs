@@ -147,7 +147,7 @@ internal sealed class HistoryView : UserControl
             Click += async (_, _) => await vm.OpenNoteAsync(_row.Note.RelativePath);
             ContextMenu = CreateMenu(vm, note, row.Title);
             Ui.Bind(row, nameof(HistoryRowViewModel.IsCurrent), UpdateCurrent);
-            Palette.Changed += (_, _) => UpdateCurrent();
+            Ui.OnPaletteChanged(this, UpdateCurrent);
         }
 
         private void UpdateCurrent() => Background = _row.IsCurrent ? Palette.SubtleFill : Palette.Transparent;

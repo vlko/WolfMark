@@ -88,6 +88,63 @@ public sealed class TagRenamerTests
     }
 
     [Fact]
+    public async Task A_failure_gives_the_notes_exactly_their_old_names()
+    {
+        using var f = new EngineFixture();
+        await f.Engine.CreateAsync(At, "praca", "a", Ct);
+        await f.Engine.CreateAsync(At, "robota", "taken", Ct); // praca_1403 → robota_140312, the minute is taken
+        await f.Engine.CreateAsync(At.AddDays(1), "praca", "b", Ct);
+        var before = Files(f);
+        var notes = await TagRenamer.FindAsync(f.Engine, "praca", Ct);
+        var calls = 0;
+
+        var result = await TagRenamer.RenameAsync(
+            notes,
+            "robota",
+            (p, t) => ++calls == 2 ? throw new IOException("locked") : f.Engine.ChangeTagAsync(p, t, CancellationToken.None),
+            null,
+            (renamed, original) => f.Engine.RenameAsync(renamed, original, CancellationToken.None));
+
+        Assert.IsType<IOException>(result.Error);
+        Assert.Empty(result.RollbackFailures);
+        Assert.Equal(before, Files(f));
+    }
+
+    [Fact]
+    public async Task A_conflict_copy_stays_a_conflict_copy()
+    {
+        using var f = new EngineFixture();
+        await f.Engine.CreateAsync(At, "praca", "mine", Ct);
+        await File.WriteAllTextAsync(Path.Combine(f.Root, "2026/10/15/praca_1403-MYPC.md"), "theirs", Ct);
+        var notes = await TagRenamer.FindAsync(f.Engine, "praca", Ct);
+
+        var result = await RenameAsync(f, notes, "robota");
+
+        Assert.Null(result.Error);
+        Assert.Equal(["2026/10/15/robota_1403-MYPC.md", "2026/10/15/robota_1403.md"], Files(f));
+    }
+
+    [Fact]
+    public async Task Letter_case_rename_next_to_a_note_with_that_very_name_loses_nothing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "Two names differing only in letter case need a case-sensitive file system.");
+        using var f = new EngineFixture();
+        var day = Path.Combine(f.Root, "2026/10/15");
+        Directory.CreateDirectory(day);
+        await File.WriteAllTextAsync(Path.Combine(day, "Work_1403.md"), "upper", Ct);
+        await File.WriteAllTextAsync(Path.Combine(day, "work_1403.md"), "lower", Ct);
+        Assert.True(NotePath.TryParse("2026/10/15/Work_1403.md", out var upper));
+
+        var renamed = await f.Engine.ChangeTagAsync(upper, "work", Ct);
+
+        var files = Files(f);
+        Assert.Equal(2, files.Length);
+        Assert.All(files, p => Assert.EndsWith(".md", p, StringComparison.Ordinal));
+        Assert.Equal("upper", await File.ReadAllTextAsync(f.Engine.GetFullPath(renamed), Ct));
+        Assert.Equal("lower", await File.ReadAllTextAsync(Path.Combine(day, "work_1403.md"), Ct));
+    }
+
+    [Fact]
     public async Task Removing_the_tag_keeps_the_notes_untagged()
     {
         using var f = new EngineFixture();

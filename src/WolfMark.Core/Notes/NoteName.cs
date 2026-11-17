@@ -66,7 +66,8 @@ public sealed record NoteName
         return new NoteName(normalizedTag, t, includeSeconds, suffix, null);
     }
 
-    public NoteName WithTag(string? tag) => Create(tag, Time, HasSeconds, Suffix);
+    /// <summary>The same note under another tag; a OneDrive conflict copy stays marked as one.</summary>
+    public NoteName WithTag(string? tag) => new(Create(tag, Time, HasSeconds, Suffix).Tag, Time, HasSeconds, Suffix, ConflictMarker);
 
     /// <summary>
     /// Next candidate name when this one is taken: first add seconds, then -2, -3, …
@@ -75,10 +76,10 @@ public sealed record NoteName
     {
         if (!HasSeconds)
         {
-            return new NoteName(Tag, new TimeOnly(Time.Hour, Time.Minute, secondsIfMissing), true, 0, null);
+            return new NoteName(Tag, new TimeOnly(Time.Hour, Time.Minute, secondsIfMissing), true, 0, ConflictMarker);
         }
 
-        return new NoteName(Tag, Time, true, Suffix == 0 ? 2 : Suffix + 1, null);
+        return new NoteName(Tag, Time, true, Suffix == 0 ? 2 : Suffix + 1, ConflictMarker);
     }
 
     public string FileName

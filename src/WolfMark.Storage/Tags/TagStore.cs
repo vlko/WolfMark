@@ -17,6 +17,10 @@ public sealed partial class TagStore
     private readonly SelfWriteRegistry _selfWrites;
     private readonly ILogger _logger;
     private readonly Lock _gate = new();
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
+
+    /// <summary>The file on disk was not what is in memory (unreadable or invalid): keep a copy before the first write.</summary>
+    private bool _keepCopyBeforeWrite;
     private TagsDocument _document = new();
     private Dictionary<string, TagDefinition> _byKey = new(StringComparer.Ordinal);
 
@@ -35,6 +39,7 @@ public sealed partial class TagStore
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
         TagsDocument doc;
+        var unread = false;
         try
         {
             if (!File.Exists(_path))
@@ -48,15 +53,18 @@ public sealed partial class TagStore
                       ?? new TagsDocument();
             }
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            // A broken file must not break the app; keep palette colours and do not overwrite it silently.
+            // A broken or locked file must not break the app: palette colours for now, and the first change keeps
+            // a copy of the file instead of silently replacing the user's colours and order.
             LogInvalidFile(ex, _path);
             doc = new TagsDocument();
+            unread = true;
         }
 
         lock (_gate)
         {
+            _keepCopyBeforeWrite = unread;
             _document = doc;
             _byKey = doc.Tags
                 .Where(t => TagName.IsValid(t.Name))
@@ -136,7 +144,6 @@ public sealed partial class TagStore
     /// <summary>A removed tag (Settings → Tags): its colour, labels and order are forgotten.</summary>
     public async Task RemoveAsync(string tag, CancellationToken cancellationToken)
     {
-        string json;
         lock (_gate)
         {
             var key = TagName.ToKey(tag);
@@ -146,11 +153,9 @@ public sealed partial class TagStore
             }
 
             _document.Tags.Remove(def);
-            json = JsonSerializer.Serialize(_document, WolfMarkJsonContext.Default.TagsDocument);
         }
 
-        _selfWrites.RecordWrite(_relativePath, ContentHash.Compute(json));
-        await AtomicFile.WriteAllTextAsync(_path, json, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(cancellationToken).ConfigureAwait(false);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -169,7 +174,6 @@ public sealed partial class TagStore
     /// </summary>
     public async Task RenameAsync(string oldTag, string newTag, CancellationToken cancellationToken)
     {
-        string json;
         lock (_gate)
         {
             var oldKey = TagName.ToKey(oldTag);
@@ -213,11 +217,9 @@ public sealed partial class TagStore
                 _byKey[newKey] = old;
             }
 
-            json = JsonSerializer.Serialize(_document, WolfMarkJsonContext.Default.TagsDocument);
         }
 
-        _selfWrites.RecordWrite(_relativePath, ContentHash.Compute(json));
-        await AtomicFile.WriteAllTextAsync(_path, json, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(cancellationToken).ConfigureAwait(false);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -228,7 +230,6 @@ public sealed partial class TagStore
             throw new ArgumentException($"Invalid tag '{tag}'.", nameof(tag));
         }
 
-        string json;
         lock (_gate)
         {
             var key = TagName.ToKey(normalized);
@@ -240,13 +241,53 @@ public sealed partial class TagStore
             }
 
             update(def);
-            json = JsonSerializer.Serialize(_document, WolfMarkJsonContext.Default.TagsDocument);
         }
 
-        _selfWrites.RecordWrite(_relativePath, ContentHash.Compute(json));
-        await AtomicFile.WriteAllTextAsync(_path, json, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(cancellationToken).ConfigureAwait(false);
         Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Writes the current state. One write at a time and the state is taken inside the turn, so two quick changes
+    /// can neither land in the wrong order nor share the temp file.
+    /// </summary>
+    private async Task WriteAsync(CancellationToken cancellationToken)
+    {
+        await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            string json;
+            bool keepCopy;
+            lock (_gate)
+            {
+                json = JsonSerializer.Serialize(_document, WolfMarkJsonContext.Default.TagsDocument);
+                keepCopy = _keepCopyBeforeWrite;
+            }
+
+            if (keepCopy)
+            {
+                if (BrokenFile.KeepCopy(_path) is { } copy)
+                {
+                    LogKeptCopy(_path, copy);
+                }
+
+                lock (_gate)
+                {
+                    _keepCopyBeforeWrite = false;
+                }
+            }
+
+            _selfWrites.RecordWrite(_relativePath, ContentHash.Compute(json));
+            await AtomicFile.WriteAllTextAsync(_path, json, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Tags file {Path} could not be read – the old file was kept as {Copy}")]
+    private partial void LogKeptCopy(string path, string copy);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Ignoring invalid tags file {Path}")]
     private partial void LogInvalidFile(Exception ex, string path);

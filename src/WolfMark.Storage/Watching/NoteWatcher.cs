@@ -26,8 +26,13 @@ public sealed partial class NoteWatcher : IAsyncDisposable
 
     // Hash of the content last reported as an external create/change, per note; touched only by the loop.
     private readonly Dictionary<string, string> _reported = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _watcherGate = new();
     private FileSystemWatcher? _watcher;
     private Task? _loop;
+    private int _rearming;
+
+    /// <summary>How long after a watcher error the folder is watched again (and between attempts while it is away).</summary>
+    internal TimeSpan RearmDelay { get; set; } = TimeSpan.FromSeconds(2);
 
     public NoteWatcher(DirectoryEngine engine, NoteEventHub hub, TimeProvider time, ILogger<NoteWatcher> logger, TimeSpan? debounce = null)
     {
@@ -41,24 +46,97 @@ public sealed partial class NoteWatcher : IAsyncDisposable
     public void Start()
     {
         Directory.CreateDirectory(_engine.Root);
-        _watcher = new FileSystemWatcher(_engine.Root)
+        lock (_watcherGate)
+        {
+            _watcher = CreateWatcher();
+        }
+
+        _loop = Task.Run(() => RunAsync(_cts.Token));
+    }
+
+    private FileSystemWatcher CreateWatcher()
+    {
+        var watcher = new FileSystemWatcher(_engine.Root)
         {
             IncludeSubdirectories = true,
             InternalBufferSize = 64 * 1024,
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
         };
-        _watcher.Created += (_, e) => Enqueue(RawKind.Created, e.FullPath, null);
-        _watcher.Changed += (_, e) => Enqueue(RawKind.Changed, e.FullPath, null);
-        _watcher.Deleted += (_, e) => Enqueue(RawKind.Deleted, e.FullPath, null);
-        _watcher.Renamed += (_, e) => Enqueue(RawKind.Renamed, e.FullPath, e.OldFullPath);
-        _watcher.Error += (_, e) =>
+        try
         {
-            LogWatcherError(e.GetException());
-            _raw.Writer.TryWrite(new RawChange(RawKind.Overflow, string.Empty, null, _time.GetUtcNow()));
-        };
-        _watcher.EnableRaisingEvents = true;
-        _loop = Task.Run(() => RunAsync(_cts.Token));
+            watcher.Created += (_, e) => Enqueue(RawKind.Created, e.FullPath, null);
+            watcher.Changed += (_, e) => Enqueue(RawKind.Changed, e.FullPath, null);
+            watcher.Deleted += (_, e) => Enqueue(RawKind.Deleted, e.FullPath, null);
+            watcher.Renamed += (_, e) => Enqueue(RawKind.Renamed, e.FullPath, e.OldFullPath);
+            watcher.Error += (_, e) => OnWatcherError(e.GetException());
+            watcher.EnableRaisingEvents = true;
+            return watcher;
+        }
+        catch
+        {
+            watcher.Dispose();
+            throw;
+        }
     }
+
+    /// <summary>
+    /// A buffer overflow only loses events (a rescan covers them), but after a lost folder – a network share or
+    /// OneDrive going away – the watcher stays silent for good. So besides the rescan it is created anew.
+    /// </summary>
+    internal void OnWatcherError(Exception error)
+    {
+        LogWatcherError(error);
+        _raw.Writer.TryWrite(new RawChange(RawKind.Overflow, string.Empty, null, _time.GetUtcNow()));
+        if (Interlocked.Exchange(ref _rearming, 1) == 0)
+        {
+            _ = Task.Run(() => RearmAsync(_cts.Token));
+        }
+    }
+
+    private async Task RearmAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(RearmDelay, _time, ct).ConfigureAwait(false);
+                FileSystemWatcher fresh;
+                try
+                {
+                    fresh = CreateWatcher();
+                }
+                catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+                {
+                    continue; // the folder is still away
+                }
+
+                FileSystemWatcher? old;
+                lock (_watcherGate)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        fresh.Dispose();
+                        return;
+                    }
+
+                    old = _watcher;
+                    _watcher = fresh;
+                }
+
+                old?.Dispose();
+                Volatile.Write(ref _rearming, 0);
+                // Whatever happened while nobody watched.
+                _raw.Writer.TryWrite(new RawChange(RawKind.Overflow, string.Empty, null, _time.GetUtcNow()));
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static bool IsIgnored(string rel) =>
+        rel.StartsWith('.') || rel.Contains("/.", StringComparison.Ordinal) || rel.Contains("/assets/", StringComparison.OrdinalIgnoreCase);
 
     private void Enqueue(RawKind kind, string fullPath, string? oldFullPath) =>
         _raw.Writer.TryWrite(new RawChange(kind, fullPath, oldFullPath, _time.GetUtcNow()));
@@ -154,13 +232,24 @@ public sealed partial class NoteWatcher : IAsyncDisposable
             return;
         }
 
-        if (rel.StartsWith('.') || rel.Contains("/.", StringComparison.Ordinal) || rel.Contains("/assets/", StringComparison.OrdinalIgnoreCase))
+        if (IsIgnored(rel))
         {
+            // A note moved out of sight (into .archive/, assets/) is gone as far as the index is concerned.
+            if (change.Kind == RawKind.Renamed && change.OldFullPath is not null
+                && NotePath.IsCandidateFileName(Path.GetFileName(change.OldFullPath))
+                && _engine.GetRelativePath(change.OldFullPath) is var hidden && !IsIgnored(hidden))
+            {
+                Upsert(pending, hidden, PendingKind.Deleted, change.At);
+            }
+
             return;
         }
 
         var isNoteFile = NotePath.IsCandidateFileName(fileName);
-        var isDirectory = !isNoteFile && (Directory.Exists(change.FullPath) || !Path.HasExtension(fileName));
+        // A deleted folder can no longer be asked what it was, and its name may well have a dot ("v1.2"): anything
+        // deleted that is not a note is rescanned as a folder – for a plain file that finds nothing.
+        var isDirectory = !isNoteFile
+            && (Directory.Exists(change.FullPath) || !Path.HasExtension(fileName) || change.Kind == RawKind.Deleted);
 
         switch (change.Kind)
         {
@@ -188,8 +277,19 @@ public sealed partial class NoteWatcher : IAsyncDisposable
                 var oldIsNote = NotePath.IsCandidateFileName(oldName);
                 if (oldIsNote && isNoteFile)
                 {
+                    // A → B → C within the debounce is one rename A → C; forgetting A would leave it in the index.
+                    var origin = pending.TryGetValue(oldRel, out var earlier) && earlier is { Kind: PendingKind.Renamed, OldKey: not null }
+                        ? earlier.OldKey
+                        : oldRel;
                     pending.Remove(oldRel);
-                    pending[rel] = new PendingChange(rel, PendingKind.Renamed, oldRel, null, change.At);
+                    if (string.Equals(origin, rel, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Upsert(pending, rel, PendingKind.Changed, change.At); // renamed there and back
+                    }
+                    else
+                    {
+                        pending[rel] = new PendingChange(rel, PendingKind.Renamed, origin, null, change.At);
+                    }
                 }
                 else if (oldIsNote)
                 {
@@ -327,6 +427,8 @@ public sealed partial class NoteWatcher : IAsyncDisposable
                 _reported[path.RelativePath] = hash;
             }
 
+            // The file is someone else's now: if it later returns to what we last wrote, that is a change again.
+            _engine.SelfWrites.Forget(path.RelativePath);
             _hub.Publish(p.Kind == PendingKind.Created ? new NoteCreated(path, ChangeOrigin.External) : new NoteChanged(path, ChangeOrigin.External));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -367,14 +469,14 @@ public sealed partial class NoteWatcher : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_watcher is not null)
+        await _cts.CancelAsync().ConfigureAwait(false);
+        lock (_watcherGate)
         {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Dispose();
+            _watcher?.Dispose();
+            _watcher = null;
         }
 
         _raw.Writer.TryComplete();
-        await _cts.CancelAsync().ConfigureAwait(false);
         if (_loop is not null)
         {
             try

@@ -191,6 +191,20 @@ public sealed partial class NoteIndexer
     /// <summary>Index specific notes now (also used right after the editor saves).</summary>
     public async Task ApplyAsync(IReadOnlyCollection<string> upserts, IReadOnlyCollection<string> deletes, CancellationToken ct)
     {
+        // Not during a scan: the scan may have read a note before this save and would write the older text after it.
+        await _scanLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await ApplyCoreAsync(upserts, deletes, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _scanLock.Release();
+        }
+    }
+
+    private async Task ApplyCoreAsync(IReadOnlyCollection<string> upserts, IReadOnlyCollection<string> deletes, CancellationToken ct)
+    {
         var files = new List<(NoteFile File, KnownNote? Known)>();
         var missing = new List<string>(deletes);
         foreach (var rel in upserts)
@@ -244,7 +258,11 @@ public sealed partial class NoteIndexer
                 continue;
             }
 
-            var row = await PrepareRowAsync(file, forceContent: true, ct).ConfigureAwait(false);
+            if (await PrepareRowAsync(file, forceContent: true, ct).ConfigureAwait(false) is not { } row)
+            {
+                continue;
+            }
+
             var days = await _db.WriteAsync(c => WriteRows(c, [row], []), ct).ConfigureAwait(false);
             Changed?.Invoke(this, new IndexChangedEventArgs(days, new HashSet<string> { rel }, isFullScan: false));
             await Task.Delay(delayBetweenFiles, ct).ConfigureAwait(false);
@@ -255,7 +273,7 @@ public sealed partial class NoteIndexer
 
     private async Task<List<PreparedRow>> PrepareRowsAsync(IReadOnlyList<(NoteFile File, KnownNote? Known)> batch, CancellationToken ct)
     {
-        var rows = new PreparedRow[batch.Count];
+        var rows = new PreparedRow?[batch.Count];
         await Parallel.ForAsync(
             0,
             batch.Count,
@@ -266,10 +284,11 @@ public sealed partial class NoteIndexer
                 rows[i] = await PrepareRowAsync(file, forceContent: false, token, known).ConfigureAwait(false);
             }).ConfigureAwait(false);
 
-        return [.. rows.Where(r => r is not null)];
+        return [.. rows.OfType<PreparedRow>()];
     }
 
-    private async Task<PreparedRow> PrepareRowAsync(NoteFile file, bool forceContent, CancellationToken ct, KnownNote? known = null)
+    /// <returns>Null when the file is gone (deleted or renamed since it was listed) – there is nothing to index.</returns>
+    private async Task<PreparedRow?> PrepareRowAsync(NoteFile file, bool forceContent, CancellationToken ct, KnownNote? known = null)
     {
         if (file.IsCloudPlaceholder && !forceContent)
         {
@@ -289,6 +308,10 @@ public sealed partial class NoteIndexer
             var info = NoteContentAnalyzer.Analyze(DirectoryEngine.Decode(bytes));
             Interlocked.Increment(ref _indexedCount);
             return new PreparedRow(file, info, hash, TouchOnly: false);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -441,7 +464,9 @@ public sealed partial class NoteIndexer
                .With("$tagKey", tag is null ? null : TagName.ToKey(tag))
                .With("$title", info?.Title.Length > 0 ? info.Title : FallbackTitle(path))
                .With("$preview", info?.Preview ?? string.Empty)
-               .With("$hash", row.Hash)
+               // "Unchanged" but the row is gone (deleted meanwhile): there is no content to keep, so the note
+               // counts as not read yet and the next scan indexes its text.
+               .With("$hash", row.TouchOnly ? string.Empty : row.Hash)
                .With("$mtime", file.MtimeTicks)
                .With("$size", file.Length)
                .With("$words", info?.WordCount ?? 0)
