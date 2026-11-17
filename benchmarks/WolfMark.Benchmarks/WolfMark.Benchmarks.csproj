@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(WolfMarkCoreTargetFramework)</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- BenchmarkDotNet wants public, non-sealed benchmark classes with instance methods. -->
+    <NoWarn>$(NoWarn);CA1707;CA1001;CA1050</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <ProjectReference Include="..\..\src\WolfMark.Core\WolfMark.Core.csproj" />
+  </ItemGroup>
+</Project>

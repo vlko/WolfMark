@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "WolfMark.Desktop": {
-      "commandName": "Project",
-      "commandLineArgs": "--demo C:\\\\temp\\\\wmtables  --trace-editor"
-    }
-  }
-}

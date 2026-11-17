@@ -27,6 +27,8 @@
     <PackageVersion Include="Microsoft.WindowsAppSDK.Base" Version="2.6.5" />
     <PackageVersion Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.5" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <!-- Benchmarks (benchmarks/WolfMark.Benchmarks) – not shipped, so not subject to the AOT rule. -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <!-- Tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.0" />

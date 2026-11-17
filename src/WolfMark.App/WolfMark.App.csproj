@@ -24,7 +24,6 @@
     <EnableUnsupportedPlatformTargetCheck>false</EnableUnsupportedPlatformTargetCheck>
     <ApplicationIcon Condition="Exists('Assets\WolfMark.ico')">Assets\WolfMark.ico</ApplicationIcon>
     <Product>WolfMark</Product>
-    <Version>0.7.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +34,8 @@
     <None Remove="Assets\IconProposals\sheet.png;Assets\IconProposals\README.md" />
     <!-- Barlow (SIL OFL 1.1, see Assets/Fonts/OFL-Barlow.txt) -->
     <Content Include="Assets\Fonts\*.ttf;Assets\Fonts\OFL-Barlow.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Licences of what the download contains -->
+    <Content Include="..\..\THIRD-PARTY-NOTICES.md;..\..\LICENSE" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,7 +11,6 @@
     <AssemblyName>WolfMark.Desktop</AssemblyName>
     <PublishAot>true</PublishAot>
     <Product>WolfMark</Product>
-    <Version>0.7.0</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- LibraryImport (macOS Launch Services, Infrastructure/DefaultHandler.cs) generates unsafe stubs. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -22,6 +21,8 @@
     <AvaloniaResource Include="..\WolfMark.App\Assets\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\WolfMark.App\Assets\WolfMark-256.png" Link="Assets\WolfMark-256.png" />
     <Content Include="..\WolfMark.App\Assets\Fonts\OFL-Barlow.txt" Link="OFL-Barlow.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Licences of what the download contains -->
+    <Content Include="..\..\THIRD-PARTY-NOTICES.md;..\..\LICENSE" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

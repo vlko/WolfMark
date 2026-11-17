@@ -8,6 +8,7 @@
       "src\\WolfMark.Sync.ClaudeCode\\WolfMark.Sync.ClaudeCode.csproj",
       "src\\WolfMark.Presentation\\WolfMark.Presentation.csproj",
       "src\\WolfMark.Desktop\\WolfMark.Desktop.csproj",
+      "benchmarks\\WolfMark.Benchmarks\\WolfMark.Benchmarks.csproj",
       "tests\\WolfMark.Core.Tests\\WolfMark.Core.Tests.csproj",
       "tests\\WolfMark.Storage.Tests\\WolfMark.Storage.Tests.csproj",
       "tests\\WolfMark.Index.Tests\\WolfMark.Index.Tests.csproj",

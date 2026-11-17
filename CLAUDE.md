@@ -10,6 +10,7 @@
 1. **AOT:** žiadna reflexia, `Activator.CreateInstance`, `Type.GetType` zo stringu, `dynamic`, reflexná JSON serializácia. JSON len cez `System.Text.Json` source generation (`JsonSerializerContext`). AOT a trim warningy sú chyby. Pred pridaním NuGet balíka over jeho AOT kompatibilitu (`IsAotCompatible`, testovací AOT publish).
 2. **Bez EF Core** – `Microsoft.Data.Sqlite` s ručným mapovaním.
 3. **UI vlákno je posvätné:** žiadne I/O, DB, embeddingy ani parsing na UI vlákne. Žiadne `.Result`, `.Wait()`, `GetAwaiter().GetResult()`. `CancellationToken` vo všetkých async API. Výsledky do UI cez `DispatcherQueue`.
+   Výnimka: editor upravuje textový model a lexuje **dotknuté riadky** priamo na UI vlákne (ADR 0007) – je to rýchlejšie než prepnutie vlákna; celý dokument sa meria a lexuje na pozadí.
 4. **Súbory sú zdroj pravdy**, SQLite je cache – každá funkcia musí fungovať aj po zmazaní `index.db`.
 5. **Zápisy na disk sú atomické** (temp + replace). Nikdy natrvalo nemazať poznámky – len do koša.
 6. **Do DB zapisuje len jeden writer** (kanál). Čítanie z oddelených spojení.
@@ -38,6 +39,11 @@ typovo skontroluje aj WinUI projekty (PRI/manifest kroky sú mimo Windows vypnut
 - UI je v C# bez XAML (ADR 0002): väzby cez `Ui.Bind`, zoznamy cez `ItemsRepeater` + `ElementFactory`,
   farby cez `Theming/Palette`. View modely (`partial`, CommunityToolkit.Mvvm) nesmú robiť I/O na UI vlákne –
   volania služieb obaľ do `Task.Run`.
+- Dve aplikácie: `WolfMark.App` (WinUI, Windows) a `WolfMark.Desktop` (Avalonia, macOS/Linux; ADR 0005). Každá
+  funkcia ide do oboch v tej istej zmene. Logika patrí do `WolfMark.Presentation` (view modely, `SettingsEdit`,
+  `NoteTexts`, `LaunchCommand`…) s unit testami; v UI projektoch ostáva len skladanie prvkov a väzby.
+- Po zmene overiť: testy, `dotnet build WolfMark.sln`, `tools/smoke-linux.sh` nad buildom Desktopu; Windows smoke
+  (`tools/smoke-windows.ps1`) beží na Windows a v CI.
 
 ## Pri neistote
 - Ak sa API Windows App SDK / .NET 11 líši od tvojich predpokladov, over v dokumentácii (odkazy v `SPEC.md` §10) – špecifikácia vznikla počas RC verzií .NET 11 (GA 11.0.100 je od 10. 11. 2026).

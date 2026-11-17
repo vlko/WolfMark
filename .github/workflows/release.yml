@@ -7,16 +7,30 @@ on:
   push:
     tags: ['v*']
 
+# Only the job that creates the release may write.
 permissions:
-  contents: write
+  contents: read
 
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
+  test:
+    # A tag is released only when the tests pass on it – the CI workflow may not have run on this very commit.
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Test
+        run: dotnet test --solution WolfMark.CrossPlatform.slnf -c Release
+
   build:
     name: Publish ${{ matrix.rid }}
+    needs: test
     runs-on: windows-latest
     strategy:
       fail-fast: true
@@ -59,6 +73,12 @@ jobs:
           -p:FileVersion=${{ steps.version.outputs.numeric }}.0
           -o publish/${{ matrix.rid }}
 
+      - name: Smoke test
+        # The very binary that gets released, on demo data (the x64 runner cannot start the ARM64 build). The
+        # startup budget is the CI one: shared cores and no GPU.
+        if: matrix.rid == 'win-x64'
+        run: pwsh tools/smoke-windows.ps1 -PublishDir publish/${{ matrix.rid }} -WorkDir "${{ runner.temp }}/smoke" -StartupBudgetMs 3000
+
       - name: Zip
         shell: pwsh
         run: |
@@ -73,6 +93,7 @@ jobs:
 
   desktop:
     name: Publish ${{ matrix.rid }}
+    needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -100,7 +121,7 @@ jobs:
 
       - name: AOT toolchain
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev xvfb
 
       - name: Build
         run: >
@@ -112,6 +133,11 @@ jobs:
       - name: AOT publish
         # Two steps (ADR 0005): a direct publish hands ILC the assembly without the compiled XAML.
         run: dotnet publish src/WolfMark.Desktop -c Release -r ${{ matrix.rid }} --no-build -o publish/${{ matrix.rid }}
+
+      - name: Smoke test
+        # The very binary that gets released, on demo data under Xvfb (Linux only – no such test for macOS yet).
+        if: runner.os == 'Linux'
+        run: bash tools/smoke-linux.sh publish/${{ matrix.rid }}/WolfMark.Desktop "${{ runner.temp }}/smoke"
 
       - name: Package
         run: bash tools/package-desktop.sh ${{ matrix.rid }} ${{ steps.version.outputs.full }} publish/${{ matrix.rid }} dist
@@ -125,6 +151,8 @@ jobs:
     name: GitHub Release
     needs: [build, desktop]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -144,7 +172,9 @@ jobs:
           # Release notes written for the tag (docs/release-notes/v0.3.1.md) win over the generated commit list.
           notes=(--generate-notes)
           if [[ -f "docs/release-notes/$TAG.md" ]]; then notes=(--notes-file "docs/release-notes/$TAG.md"); fi
-          gh release create "$TAG" WolfMark-*.zip WolfMark-*.tar.gz \
+          # So a download can be checked against what was built here.
+          sha256sum WolfMark-*.zip WolfMark-*.tar.gz > SHA256SUMS.txt
+          gh release create "$TAG" WolfMark-*.zip WolfMark-*.tar.gz SHA256SUMS.txt \
             --title "WolfMark ${TAG#v}" \
             "${notes[@]}" \
             $prerelease

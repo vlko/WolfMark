@@ -1,0 +1,13 @@
+# The repository is edited from Windows (Visual Studio) and from Linux/WSL: text is stored with LF and checked
+# out as the platform (or the user's git config) wants it.
+* text=auto
+
+# Run by bash / python also from a Windows checkout (WSL, CI): always LF.
+*.sh text eol=lf
+*.py text eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary

@@ -8,7 +8,7 @@
 - Pravidlá projektu: Native AOT, žiadna reflexia (`{Binding}` je reflexný), warningy = chyby.
 - XAML kompilátor (`XamlCompiler.exe`) a PRI nástroje bežia len na Windows. Doménové knižnice sa
   vyvíjajú a testujú aj na Linuxe (CI job `domain`, vývoj vo WSL).
-- Studený štart < 300 ms.
+- Studený štart < 300 ms (neskôr zmenené na 600 ms – ADR 0011).
 
 ## Rozhodnutie
 

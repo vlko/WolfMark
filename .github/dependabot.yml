@@ -1,0 +1,20 @@
+# Weekly pull requests for NuGet packages (Directory.Packages.props) and the actions used by the workflows.
+# A new package version still has to pass the AOT publish and the smoke tests in CI (CLAUDE.md rule 1).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      windows-app-sdk:
+        patterns: ["Microsoft.WindowsAppSDK*", "Microsoft.Windows.SDK.BuildTools", "Microsoft.Graphics.Win2D"]
+      avalonia:
+        patterns: ["Avalonia*"]
+      dotnet:
+        patterns: ["Microsoft.Extensions.*", "Microsoft.Data.Sqlite", "System.IO.Hashing"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -47,6 +47,9 @@ ScaffoldingReadMe.txt
 *~
 CodeCoverage/
 
+# BenchmarkDotNet results (benchmarks/WolfMark.Benchmarks)
+BenchmarkDotNet.Artifacts/
+
 # MSBuild Binary and Structured Log
 *.binlog
 
@@ -61,6 +64,8 @@ nunit-*.xml
 
 # Visual Studio
 .vs/
+# Debug profiles are personal (command-line arguments with local paths)
+**/Properties/launchSettings.json
 
 # Claude Code – personal settings (local paths)
 .claude/settings.local.json

@@ -1,13 +1,23 @@
-# WolfMark – špecifikácia natívnej Windows aplikácie
+# WolfMark – špecifikácia
 
 > Názov: **WolfMark** (kódové meno `WolfMark`, pôvodný pracovný názov Zápisník).
 > Dokument je písaný pre Claude Code: popisuje *čo* a *prečo*, backlog v `BACKLOG.md` popisuje *v akom poradí*, `CLAUDE.md` obsahuje pravidlá pre implementáciu.
+
+> **Stav (2026-11-17).** Špecifikácia vznikla pre aplikáciu len pre Windows a opisuje zámer; kde sa od nej
+> implementácia odchýlila, platí príslušné ADR v `docs/adr` a pri texte je poznámka. Hlavné zmeny:
+> - **Dve aplikácie:** WinUI 3 pre Windows a Avalonia pre macOS/Linux nad spoločnou vrstvou `WolfMark.Presentation`
+>   (ADR 0005). Každá funkcia ide do oboch.
+> - **Plochý dizajn** bez karty s tieňom a bez ročného pohľadu; kalendár je týždenná lišta a mesiac (ADR 0004).
+> - **Jeden tag, len v názve súboru** – `#slovo` v texte nie je tag (ADR 0010).
+> - **Vlastný editor** kreslený cez Win2D, na Desktope AvaloniaEdit (ADR 0001, 0007).
+> - **Štart do 600 ms**, nie 300 ms (ADR 0011).
+> - **Sémantické hľadanie** je pripravené v indexe, model zatiaľ nie je (M2-05).
 
 ---
 
 ## 1. Vízia
 
-Rýchly, natívny denný zápisník pre Windows. Otvorím aplikáciu → okamžite píšem. Poznámky sú obyčajné `.md` súbory v adresári (štandardne OneDrive), takže sú zálohované, čitateľné aj bez aplikácie a nezávislé od nej. Aplikácia nad nimi stavia rýchle UI: markdown editor, kalendár s farebnými hashtagmi, históriu a sémantické vyhľadávanie.
+Rýchly, natívny denný zápisník pre Windows, macOS a Linux. Otvorím aplikáciu → okamžite píšem. Poznámky sú obyčajné `.md` súbory v adresári (štandardne OneDrive), takže sú zálohované, čitateľné aj bez aplikácie a nezávislé od nej. Aplikácia nad nimi stavia rýchle UI: markdown editor, kalendár s farebnými hashtagmi, históriu a sémantické vyhľadávanie.
 
 ### Princípy
 
@@ -47,12 +57,16 @@ WolfMark.sln
 │  ├─ WolfMark.Storage/       # directory engine, file watcher, atomické zápisy
 │  ├─ WolfMark.Index/         # SQLite, FTS5, sqlite-vec, embeddingy, kalendárové agregácie
 │  ├─ WolfMark.Sync.ClaudeCode/ # import promptov z Claude Code
-│  ├─ WolfMark.Editor/        # vlastný markdown editor control (WinUI)
-│  └─ WolfMark.App/           # WinUI 3 aplikácia, views, viewmodels, composition root
+│  ├─ WolfMark.Presentation/  # view modely, AppHost (composition root) a logika spoločná pre obe aplikácie
+│  ├─ WolfMark.Editor/        # vlastný markdown editor control (WinUI, Win2D)
+│  ├─ WolfMark.App/           # WinUI 3 aplikácia pre Windows – len views
+│  └─ WolfMark.Desktop/       # Avalonia aplikácia pre macOS a Linux – len views
 └─ tests/
    ├─ WolfMark.Core.Tests/
    ├─ WolfMark.Storage.Tests/
-   └─ WolfMark.Index.Tests/
+   ├─ WolfMark.Index.Tests/
+   ├─ WolfMark.Sync.ClaudeCode.Tests/
+   └─ WolfMark.Presentation.Tests/
 ```
 
 ---
@@ -79,8 +93,10 @@ WolfMark.sln
 │           └─ 1403-01.png
 └─ .wolfmark/
    ├─ tags.json                     # farby a poradie tagov (synchronizuje sa s poznámkami!)
-   └─ settings.shared.json          # nastavenia, ktoré majú cestovať medzi počítačmi
+   └─ trash/                        # kôš tam, kde systém žiadny nemá (sieťový/vymeniteľný disk, prenosný režim, macOS, Linux)
 ```
+
+Zdieľané nastavenia (`settings.shared.json`) sa nerealizovali – medzi počítačmi cestuje len `tags.json`.
 
 Lokálne (nesynchronizované) dáta: `%LOCALAPPDATA%\WolfMark\` – SQLite index, embedding model, logy, pozícia okna.
 
@@ -224,7 +240,7 @@ Správanie:
 ### 4.6 Nastavenia
 
 - Koreňový adresár poznámok (+ presun/prepnutie).
-- Téma: systém / svetlá / tmavá; backdrop Mica / Acrylic / žiadny.
+- Téma: systém / svetlá / tmavá (voľba backdropu zrušená, ADR 0004); ikona aplikácie (Windows).
 - Font editora a veľkosť, šírka textu (max. šírka riadku pre čitateľnosť), farebné emotikony.
 - Predvolený režim editora (raw/formát).
 - Farby tagov, premenovanie tagu (hromadné premenovanie súborov), zlúčenie tagov.
@@ -235,7 +251,7 @@ Správanie:
 ### 4.7 Synchronizácia z Claude Code (`WolfMark.Sync.ClaudeCode`)
 
 Zdroje dát (lokálne súbory Claude Code, formát sa medzi verziami mení – parser musí byť tolerantný a ignorovať neznáme polia):
-- `%USERPROFILE%\.claude\history.jsonl` – história promptov naprieč sedeniami (timestamp, projekt).
+- `%USERPROFILE%\.claude\history.jsonl` – história promptov naprieč sedeniami (timestamp, projekt). *Nepoužíva sa – transkripty projektov obsahujú všetko potrebné.*
 - `%USERPROFILE%\.claude\projects\<zakódovaná-cesta-projektu>\<session-uuid>.jsonl` – kompletné transkripty, append-only, riadok = JSON objekt s `type`, `timestamp`, `sessionId`, `cwd`, `gitBranch`, `message`.
 
 Pravidlá importu:
@@ -256,6 +272,8 @@ Inšpirácia: aplikácia **Finalist 4** (referenčné screenshoty: ročný plán
 
 ### 5.1 Charakter
 
+> Platí plochý dizajn z ADR 0004: papierové pozadie bez karty a tieňa, tagy ako farebné pásy a štítky.
+
 - Svetlé, teplé „papierové“ pozadie (jemne sivobéžové), hlavný obsah na zaoblenej karte s mäkkým tieňom; v tmavom režime tmavý papier, nie čistá čierna.
 - Výrazná **veľká typografia dátumu** (veľké číslo dňa + deň v týždni, napr. „15 · STREDA“).
 - **Farby tagov sú hlavný vizuálny jazyk:** sýte, plné farby (modrá, žltá, oranžová, červená, zelená, tyrkysová, fialová…) na bunkách kalendára a ako zvislý pruh / pilulka pri poznámkach.
@@ -263,7 +281,10 @@ Inšpirácia: aplikácia **Finalist 4** (referenčné screenshoty: ročný plán
 - Kompaktné, veľké písmená pre malé popisky (mesiac, sekcie: „OKTÓBER 2026“, „DNES“, „STARŠIE“).
 - Spodná **týždenná lišta s krúžkami dní** – v našom prípade hore pod title barom; krúžok môže zobrazovať progres (pomer splnených úloh).
 
-### 5.2 Plný kalendár (ročný/mesačný pohľad)
+### 5.2 Plný kalendár (mesačný pohľad)
+
+> Ročný pohľad, „lupa“ na týždeň a prepínanie Rok / Mesiac sa nerealizovali (ADR 0004): je týždenná lišta
+> a rozbaliteľný mesiac so štítkami medzi týždňami a zvislou lištou tagov.
 
 - Vertikálne scrollovateľný zoznam mesiacov; každý mesiac = mriežka 7 stĺpcov (Po–Ne) + stĺpec čísla týždňa.
 - **Bunka dňa:** číslo dňa, pozadie vyplnené farbami tagov daného dňa – pri viacerých tagoch rozdelené na diagonálne pruhy/segmenty v pomere počtu poznámok; malá značka počtu záznamov. Dni bez záznamov neutrálne.
@@ -330,24 +351,25 @@ Rozdelené podľa priority; zaradené do backlogu ako samostatné míľniky aleb
 
 ## 8. Nefunkčné požiadavky
 
-- **Podporované OS:** Windows 11 (22H2+); Windows 10 22H2 len ak to nič nekomplikuje.
-- **Architektúry:** `win-x64` a `win-arm64`.
+- **Podporované OS:** Windows 11 (22H2+); macOS (Apple Silicon) a Linux x64 cez Avalonia aplikáciu (ADR 0005).
+- **Architektúry:** `win-x64`, `win-arm64`, `osx-arm64`, `linux-x64`.
 - **Distribúcia:** nezabalená (unpackaged) aplikácia s `WindowsAppSDKSelfContained=true` pre jednoduché spúšťanie, neskôr MSIX + `winget` manifest. Overiť dopad MSIX na prístup k OneDrive a `~/.claude` (MSIX s `runFullTrust` je OK).
 - **Lokalizácia:** slovenčina a angličtina (`.resw`), formát dátumu podľa systému.
-- **Telemetria:** žiadna. Logy lokálne, crash dump lokálne.
+- **Telemetria:** žiadna. Logy lokálne; neošetrené výnimky sa zapisujú do `logs/crash.txt` (plné crash dumpy sa nerobia).
 - **Bezpečnosť:** žiadne sieťové volania okrem voliteľných (stiahnutie embedding modelu, budúce LLM). Model sťahovať z overeného zdroja, overiť hash.
 - **Robustnosť:** index sa musí vedieť zotaviť z poškodenia (detekcia `PRAGMA integrity_check` pri štarte → rebuild).
 
 ---
 
-## 9. Otvorené otázky (rozhodnúť pred/počas implementácie)
+## 9. Otvorené otázky – rozhodnuté
 
-1. Prázdna poznámka bez tagu – názov `HHmm.md`, alebo vždy predvolený tag (napr. `poznamka_HHmm.md`) kvôli konzistentnej farbe?
-2. Majú byť importované Claude Code poznámky editovateľné?
-3. Jeden primárny tag v názve + ďalšie v texte (navrhnuté), alebo striktne jeden tag?
-4. Časové pásmo: ukladať čas lokálne (navrhnuté, zodpovedá adresárom), pri cestovaní akceptovať posun.
-5. Pri zmene koreňového adresára presúvať súbory automaticky, alebo len prepnúť?
-6. Má editor podporovať viac otvorených poznámok (taby), alebo striktne jednu?
+1. Poznámka bez tagu má názov `HHmm.md`; predvolený tag sa nepoužíva.
+2. Importované poznámky Claude Code sú len na čítanie – je to záloha promptov. Vlastná verzia vzniká kópiou
+   („Kopírovať do vlastnej poznámky“); zahodená poznámka sa pri ďalšom importe vráti (rozhodnuté 2026-11-17).
+3. Striktne jeden tag, v názve súboru (ADR 0010).
+4. Čas sa ukladá lokálne, zodpovedá adresárom; posun pri cestovaní sa akceptuje.
+5. Používateľ si vyberie: presunúť poznámky (kópia, overenie obsahu, starý priečinok do koša, reštart) alebo len prepnúť.
+6. Jedna poznámka v hlavnom okne; súbory mimo poznámok majú vlastné okná (ADR 0008) a rýchla poznámka svoje (ADR 0012).
 
 ---
 

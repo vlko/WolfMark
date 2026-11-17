@@ -71,7 +71,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M2-01 – Schéma a single-writer.** Schéma zo SPEC §4.2, WAL, jedno zapisovacie spojenie za kanálom, migrácie cez `meta.schema_version`.
   *Stav:* Single writer + test 200 paralelných zápisov.
   *AK:* Paralelné požiadavky na zápis sa serializujú bez `database is locked`.
-- ✅ **M2-02 – Inkrementálny indexer.** Odber `NoteEvent` + počiatočný sken; porovnanie `mtime` + hash; extrakcia titulku, náhľadu, tagov (názov, `#tag` v texte, front matter), počtu slov a úloh.
+- ✅ **M2-02 – Inkrementálny indexer.** Odber `NoteEvent` + počiatočný sken; porovnanie `mtime` + hash; extrakcia titulku, náhľadu, tagu (len z názvu súboru – ADR 0010; pôvodne aj `#tag` v texte a front matter), počtu slov a úloh.
   *Stav:* mtime+size+hash; testy „druhý sken nič“, „1 zmena = 1 reindex“.
   *AK:* Druhé spustenie bez zmien nereindexuje nič; zmena jedného súboru reindexuje práve jeden.
 - ✅ **M2-03 – FTS5 vyhľadávanie.** Tokenizer `unicode61 remove_diacritics 2`, zvýraznenie výsledkov (`highlight`/`snippet`).
@@ -369,11 +369,24 @@ Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dá
   `--screenshots` a `--trace-editor`, výber ikony, farebné emotikony (Avalonia ich vypnúť nevie bez iného písma),
   ďalšie `AutomationProperties`. Kontrola pravopisu ostáva v ADR 0005.
   *Stav:* Linux smoke 27/27; okno Nastavení Desktopu smoke neotvára – **čaká na ručné overenie na Linuxe/macOS**.
-- ⬜ **M11-14 – CI a release:** testy a smoke pred vydaním v `release.yml`, benchmark projekt (BenchmarkDotNet),
-  `.editorconfig` a `.gitattributes`, verzia na jednom mieste, `THIRD-PARTY-NOTICES`, test parity kľúčov reťazcov.
-- ⬜ **M11-15 – Dokumentácia:** README (roadmap, tabuľka funkcií, sémantické hľadanie, ktoré ešte nebeží), SPEC
-  (Avalonia, zrušený ročný pohľad a backdrop, rozhodnuté otázky §9), BACKLOG M2-02 vs. ADR 0010, výnimka lexera
-  na UI vlákne v `CLAUDE.md` (ADR 0007).
+- 🟨 **M11-14 – CI a release.** Hotové: `release.yml` pred vydaním spúšťa unit testy a smoke (Windows x64, Linux)
+  nad binárkou, ktorá sa vydáva, zapisuje `SHA256SUMS.txt` a právo zápisu má len job vydania; CI ruší prekonané behy,
+  na macOS spúšťa unit testy (zatiaľ len informatívne) a stráži vygenerované reťazce; `benchmarks/WolfMark.Benchmarks`
+  (BenchmarkDotNet, v procese – 0.15 ešte nepozná .NET 11); verzia na jednom mieste (`Directory.Build.props`);
+  `.editorconfig`, `.gitattributes`; Dependabot (NuGet, Actions); `THIRD-PARTY-NOTICES.md` v oboch balíkoch;
+  `launchSettings.json` mimo repozitára; analyzátory CA2000, CA2213 a CA1849 znova zapnuté (bez nálezov).
+  Benchmark 2026-11-17 (WSL, krátky beh): lexovanie riadka 70 ns (AK M4-02 „< 1 ms“), otvorenie poznámky s 5 000
+  riadkami 0,6 ms, znak uprostred nej 15 µs.
+  **Otvorené:** smoke na macOS a win-arm64 (bežec ARM64 build nespustí), podpis a notarizácia (M10), benchmarky
+  indexera a enumerácie súborov, CA1001.
+  *Stav:* testy 563, Linux smoke 27/27 a Windows smoke 30/30 (2026-11-17). Workflowy sú overené len parserom
+  YAML – **prvý beh na GitHube ukáže zvyšok**; `release.yml` až pri tagu.
+- 🟨 **M11-15 – Dokumentácia.** README: rýchla poznámka, odkazy a jump list, šírka textu, kôš mimo Koša Windows,
+  zmena zvonka, kópia poškodených nastavení, skutočné správanie Ctrl+K, sémantické hľadanie ako plán, nový roadmap.
+  SPEC: úvodná poznámka o odchýlkach s odkazmi na ADR, obe aplikácie v štruktúre a požiadavkách, zrušené časti
+  označené, §9 rozhodnuté. BACKLOG M2-02 podľa ADR 0010. `CLAUDE.md`: výnimka lexera (ADR 0007), dve aplikácie
+  a postup overenia. ADR 0002 odkazuje na 0011. Nové ADR 0014 (zmena zvonka) a 0015 (kôš podľa disku).
+  **Otvorené:** riadok „Stav“ v starších ADR, ADR k stratégii smoke testov a redakcii tajomstiev.
 
 Návrhy funkcií z review (mimo existujúcich M9): hľadanie a nahradenie v poznámke (Ctrl+F/H), obnova z koša v UI,
 záloha/verzie poznámok (SPEC §7), osnova dlhej poznámky, pripnuté poznámky.

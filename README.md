@@ -48,8 +48,9 @@ notebook unless I ask.
   on it.
 - **A README to fix.** Double-click a `.md` file in Explorer or Finder: it opens in its own WolfMark window, saved only
   when you press *Save*, and shows up in the history so you can find it again.
-- **"What did we decide last month?"** `Ctrl+K`, a few words, `#tag` or `@2026-10` – and with text selected, the result
-  becomes a link.
+- **A thought in the middle of something else.** `Win+Shift+N` (once switched on in Settings) opens a small quick-note
+  window over whatever you are doing; `Esc` saves it into today and gets out of the way.
+- **"What did we decide last month?"** `Ctrl+K`, a few words, `#tag` or `@2026-10`.
 - **Evening.** The week strip says what the week was about – `■ WORK 6  ■ MEETING 5  ■ WOLFMARK 4`, Claude Code
   sessions counted per project. `F11` hides everything but the note for a last calm read.
 
@@ -57,18 +58,20 @@ notebook unless I ask.
 
 | | |
 |---|---|
-| **Markdown editor** | Formatted (live preview) and raw mode over one text model, `Ctrl+E` to switch; headings, lists, tasks, quotes, code, links, tables; toolbar and context menu; native spell check (Windows); font size with `Ctrl` `+`/`−`; colour emoji |
+| **Markdown editor** | Formatted (live preview) and raw mode over one text model, `Ctrl+E` to switch; headings, lists, tasks, quotes, code, links, tables; toolbar and context menu; native spell check (Windows); font size with `Ctrl` `+`/`−`; optional text width for wide monitors; colour emoji |
 | **Tables & images** | GFM pipe tables as a grid with aligned, wrapped columns; pasted or dropped images copied next to the note and previewed inline |
 | **Calendar** | Week strip with per-tag counts and hatched tag bands, full month view with labels between weeks, keyboard navigation |
 | **Tags** | One tag per note, in the file name (`work_1403.md`); add, rename, merge, recolour or remove tags in Settings; colours travel with the notes |
 | **History** | All notes ordered by last edit, filter by tag, day or open tasks; right-click to change the tag, open the folder, copy a link or move to trash; Markdown files opened from elsewhere appear there too |
-| **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters; optional semantic search |
+| **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters |
+| **Quick note** | A small window for a new note of today without the main window: a global shortcut on Windows, `--quick-note` for a shortcut of the system elsewhere |
+| **Links** | `wolfmark://today`, `day/…`, `note/…`, `new`, `search?q=…` open the app where you point them; New note / Today / Search in the taskbar jump list, the Dock menu and Linux launcher actions |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
 | **Markdown files anywhere** | WolfMark can open every `.md` file: notes switch the main window, other files open in their own window with *Save*, a status bar and *Copy to my notes* |
 | **Full view** | `F11` (macOS `Ctrl+Cmd+F`): only the day, the formatting buttons and the note |
 | **Portable mode** | Notes, settings and index in a `WolfMarkData` folder next to the app – carry it on a USB drive, nothing written to the computer |
-| **Desktop integration** | Light/dark theme, notification-area icon, single instance; start with Windows and app icon choice on Windows |
-| **Robust storage** | Atomic writes, recycle bin instead of delete, OneDrive placeholders and conflict copies handled |
+| **Desktop integration** | Light/dark theme, notification-area icon, single instance; start at sign-in (Windows, Linux); app icon choice on Windows |
+| **Robust storage** | Atomic writes, recycle bin instead of delete, OneDrive placeholders and conflict copies handled; a note changed elsewhere while you type is never overwritten unseen |
 
 ---
 
@@ -90,8 +93,8 @@ up to date, so it stays instant even with years of notes.
   `■ V1.0 RELEASE ———`).
 - **Tag rail.** Vertical tabs on the right edge select an active tag: the history is filtered, other days are dimmed
   and new notes get that tag.
-- **Keyboard first.** Arrows move between days, `Enter` opens a day, `Esc` closes the month view,
-  `Ctrl+Alt+←/→` moves by week. Cells are announced by Narrator.
+- **Keyboard first.** `Ctrl+Alt+←/→` moves by week. In the Windows app arrows move between days, `Enter` opens a
+  day and cells are announced by Narrator (the macOS/Linux app does not have this yet).
 - Weeks start on Monday, month and day names follow the UI language (English or Slovak).
 
 ## Claude Code sync
@@ -105,7 +108,9 @@ WolfMark reads the transcripts Claude Code keeps on your machine
   compaction notices are skipped.
 - **One note per session and day** – `YYYY/MM/DD/ClaudeCode_HHmm.md`, titled with the project name. Each prompt is
   a `### 14:03` section with its text; sessions that run past midnight continue in the next day's note.
-- **Idempotent.** The import position per session is stored in the index; re-running only appends new prompts.
+- **Idempotent.** Importing the same transcript again gives the same note, also after the index is deleted – the
+  session is written in the note itself. A session note you move to the trash comes back with the next import: it is
+  a backup of your prompts, and *Copy to my note* is the way to a version of your own.
 - **Runs by itself** at start-up, on an interval (default 10 minutes) and optionally in real time with a file watcher.
 - **Privacy built in.** API keys and tokens (`sk-…`, `ghp_…`, connection strings and similar) are redacted before
   anything is written to OneDrive, and whole projects can be excluded by path.
@@ -150,15 +155,21 @@ rename that fails part-way renames the files back.
 **Safe by design.**
 - Every save is **atomic** – written to a hidden temp file next to the note and swapped in, so OneDrive never
   uploads half a file.
-- Deleting a note sends it to the **Windows Recycle Bin**; nothing is removed permanently.
+- Deleting a note sends it to the **Windows Recycle Bin**; nothing is removed permanently. Where there is no
+  Recycle Bin – network shares, removable drives, portable mode, macOS and Linux – it goes to `.wolfmark/trash` in
+  the notes folder instead.
+- A note **changed elsewhere while you are typing** (another PC through OneDrive, another editor) is not overwritten:
+  WolfMark asks whether to load it or keep yours, and if you move on without answering, your text is saved as a
+  note of its own next to it.
+- A damaged `settings.json` or `tags.json` is **kept as a copy** (`settings.broken-<time>.json`) before anything
+  replaces it, and the app tells you.
 - **Files On-Demand** placeholders are recognised: the calendar uses metadata only and content is fetched lazily in
   the background, so opening the app never downloads your whole archive.
 - **Conflict copies** that OneDrive creates when two PCs edit the same note (`work_1403-LAPTOP.md`) are detected
   and shown in the UI.
 - Changes made outside the app (another PC, a text editor) are picked up by a file watcher and re-indexed.
 
-**What stays on the machine.** `%LOCALAPPDATA%\WolfMark` holds the SQLite index (WAL mode, single writer, FTS5 and
-optional vectors), downscaled image previews (`cache\previews`), logs, window placement and the list of Markdown
+**What stays on the machine.** `%LOCALAPPDATA%\WolfMark` holds the SQLite index (WAL mode, single writer, FTS5), downscaled image previews (`cache\previews`), logs, window placement and the list of Markdown
 files you opened from outside the notes folder (`settings.json`). It is a cache – delete `index.db` and WolfMark
 rebuilds it from the files. On macOS it is `~/Library/Application Support/WolfMark`, on Linux `~/.local/share/WolfMark`.
 
@@ -188,13 +199,14 @@ it had before, without the changes made while portable. Details are in
 ![Search palette](docs/screenshots/search.png)
 
 - **Search** (`Ctrl+K`): full-text over titles and bodies with diacritics-insensitive matching, `#tag` and
-  `@YYYY-MM` filters, results ranked with BM25 and, when the embedding model is available, fused with semantic
-  similarity. With text selected in the editor, picking a result inserts a link to it.
+  `@YYYY-MM` filters, results ranked with BM25. (Semantic search over embeddings is prepared in the index but no
+  model ships yet – see the roadmap.)
 - **Editor**: formatted mode hides Markdown markers outside the current line, checkboxes are clickable; raw mode
   keeps the markers visible but muted. Highlighting runs incrementally in the background and never blocks typing.
   Quote, lists, task and code apply to every selected line (code over several lines becomes a fenced block).
   Inline code shows in the monospaced font on a soft chip. Copy as Markdown, plain text or HTML. Optional line numbers (an image counts as one line). Font size with
-  `Ctrl` `+` / `Ctrl` `−` (or `Ctrl`+wheel); colour emoji. Links are not clickable – a click places the caret – but
+  `Ctrl` `+` / `Ctrl` `−` (or `Ctrl`+wheel); colour emoji; Settings → *Editor* → *Text width* keeps lines to about
+  60–120 characters in a wide window. `Ctrl+K` with text selected makes it a Markdown link. Links are not clickable – a click places the caret – but
   right-click on a web link offers *Open link in browser* (only `http`, `https` and `mailto`).
 - **Tables**: GFM pipe tables show as a grid – bold header, columns sized to their text and aligned as the
   delimiter row says, cells wrapped when the table is wider than the note. Step into it with the arrows and it is
@@ -248,8 +260,9 @@ it had before, without the changes made while portable. Details are in
 | Shortcut | Action |
 |---|---|
 | `Ctrl+N` | New note (the file is created with the first character you type) |
-| `Ctrl+K` / `Ctrl+Shift+F` | Search; with selected text, insert a link to the chosen note |
-| `Ctrl+Shift+C` | Full calendar (arrows, `Enter`, `Esc`) |
+| `Ctrl+K` / `Ctrl+Shift+F` | Search (in the editor with text selected, `Ctrl+K` makes it a link) |
+| `Win+Shift+N` | Quick note from anywhere – Windows, off until switched on in Settings (the shortcut can be changed) |
+| `Ctrl+Shift+C` | Full calendar (Windows: arrows, `Enter`) |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next week |
 | `Ctrl+E` | Raw ↔ formatted mode |
 | `F11` (macOS `Ctrl+Cmd+F`) | Full view: only the day, the formatting buttons and the note (again or `Esc` to leave) |
@@ -286,7 +299,8 @@ view and Markdown files from anywhere – on an [Avalonia](https://avaloniaui.ne
 - **Portable:** unpack anywhere you can write (a USB drive, not `Program Files`) and switch on Settings → *General* →
   *Portable mode*; see [Portable mode](#your-data-plain-markdown-in-onedrive). Works for the Windows and Linux
   builds and for a macOS app run from outside Applications.
-- Windows only so far: spell check, start with the system, app icon choice.
+- Windows only so far: spell check, app icon choice, a global quick-note shortcut of the app's own, keyboard
+  navigation in the calendar. Start at sign-in: Windows and Linux.
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed:
 
@@ -311,9 +325,13 @@ dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64   # Native
 The domain libraries and all tests also build and run on Linux/WSL
 (`dotnet test --solution WolfMark.CrossPlatform.slnf`); the WinUI projects can be type-checked there but not run.
 
+Benchmarks of the editor's hot paths (lexing a line, opening a note, a keystroke in a long note) and of file-name
+parsing: `dotnet run -c Release --project benchmarks/WolfMark.Benchmarks -- --filter *`.
+
 Smoke tests run the published apps on isolated demo data (CI runs both): `pwsh tools/smoke-windows.ps1 -PublishDir
-publish/win-x64` checks the AOT build's dependencies, single instance, `.md` files as arguments, the screenshots and the
-startup time ([ADR 0011](docs/adr/0011-startup-time.md)); `tools/smoke-linux.sh <WolfMark.Desktop>` does the same for
+publish/win-x64` checks the AOT build's dependencies, single instance, `.md` files as arguments, the quick note, links,
+a note changed by another program, starts with damaged settings or an unusable index, the screenshots and the startup
+time ([ADR 0011](docs/adr/0011-startup-time.md)); `tools/smoke-linux.sh <WolfMark.Desktop>` does the same for
 the macOS/Linux app on Linux (under Xvfb).
 
 The macOS/Linux app needs `clang` and `zlib1g-dev` (Linux) or Xcode command line tools (macOS) for Native AOT, and
@@ -355,11 +373,14 @@ WolfMark.App.exe --demo %TEMP%\WolfMarkDemo --screenshots docs\screenshots   # c
 
 ## Roadmap
 
-Next on the list: a global quick-capture shortcut, jump list and `wolfmark://` links, tag rename and merge, a daily
-view of all of a day's notes, wiki links and backlinks, templates per tag, export, a local MCP server so Claude can
-search your notebook, signed packages (MSIX/winget, notarised macOS app) and automatic updates.
+Next on the list: find and replace in a note, wiki links and backlinks (`[[…]]` is already written and highlighted,
+not yet followed), a daily view of all of a day's notes, restoring notes from the trash, templates per tag, export,
+semantic search with a local embedding model, a local MCP server so Claude can search your notebook, signed packages
+(MSIX/winget, notarised macOS app) and automatic updates. The macOS/Linux app still catches up with the Windows one
+in a few places (keyboard in the calendar, spell check).
 See [`BACKLOG.md`](BACKLOG.md).
 
 ## License
 
-[MIT](LICENSE) © 2026 vlko. Barlow fonts are licensed under the SIL Open Font License.
+[MIT](LICENSE) © 2026 vlko. Barlow fonts are licensed under the SIL Open Font License. The libraries the builds
+contain and their licences are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
