@@ -48,6 +48,7 @@ internal sealed class MarkdownTextEditor : UserControl
     private const string LineLengthSample = "the quick brown fox jumps over the lazy dog. The Quick Brown Fox, 1234567890";
 
     private readonly TextEditor _editor = new();
+    private readonly TextBlock _placeholder = new() { IsHitTestVisible = false, IsVisible = false, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Opacity = 0.45 };
     private readonly MarkdownHighlighter _highlighter = new();
     private readonly Dictionary<int, List<MarkupSegment>> _segments = [];
     private readonly Dictionary<string, ImagePreview?> _previews = new(StringComparer.Ordinal);
@@ -106,7 +107,53 @@ internal sealed class MarkdownTextEditor : UserControl
         var host = new Grid();
         host.Children.Add(_editor);
         host.Children.Add(_chips);
+        host.Children.Add(_placeholder);
         Content = host;
+        _editor.TextChanged += (_, _) => UpdatePlaceholder();
+        _editor.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextEditor.IsReadOnlyProperty)
+            {
+                UpdatePlaceholder();
+            }
+        };
+        _editor.TextArea.TextView.LayoutUpdated += (_, _) => PlacePlaceholder();
+    }
+
+    /// <summary>Shown in an empty, editable note ("Start writing…"), where the first character will be.</summary>
+    public string PlaceholderText
+    {
+        get => _placeholder.Text ?? string.Empty;
+        set
+        {
+            _placeholder.Text = value;
+            UpdatePlaceholder();
+        }
+    }
+
+    private void UpdatePlaceholder()
+    {
+        _placeholder.IsVisible = !string.IsNullOrEmpty(_placeholder.Text) && !_editor.IsReadOnly && _editor.Document.TextLength == 0;
+        PlacePlaceholder();
+    }
+
+    /// <summary>At the text's origin: right of the line numbers and of a centred column's margin, in the editor's font.</summary>
+    private void PlacePlaceholder()
+    {
+        if (!_placeholder.IsVisible || Content is not Visual host
+            || _editor.TextArea.TextView.TranslatePoint(default, host) is not { } origin)
+        {
+            return;
+        }
+
+        _placeholder.FontFamily = _editor.FontFamily;
+        _placeholder.FontSize = _editor.FontSize;
+        _placeholder.Foreground = _editor.Foreground;
+        var margin = new Thickness(origin.X, origin.Y, 0, 0);
+        if (_placeholder.Margin != margin)
+        {
+            _placeholder.Margin = margin;
+        }
     }
 
     /// <summary>Raised after every user edit with the full new text.</summary>
@@ -226,6 +273,8 @@ internal sealed class MarkdownTextEditor : UserControl
     public event EventHandler<bool>? OverflowChanged;
 
     public void ScrollToEnd() => _editor.ScrollToEnd();
+
+    public void ScrollToStart() => _editor.ScrollToHome();
 
     private void UpdateOverflow()
     {
@@ -576,8 +625,8 @@ internal sealed class MarkdownTextEditor : UserControl
             {
                 openLink,
                 linkSeparator,
-                Item(R.Menu_Cut, () => _editor.Cut(), "Ctrl+X"),
-                Item(R.Menu_Copy, () => _editor.Copy(), "Ctrl+C"),
+                Item(R.Menu_Cut, () => _ = CopySelectionAsync(cut: true), "Ctrl+X"),
+                Item(R.Menu_Copy, () => _ = CopySelectionAsync(cut: false), "Ctrl+C"),
                 Item(R.Menu_Paste, () => _ = PasteAsync(), "Ctrl+V"),
                 Item(R.Menu_SelectAll, () => _editor.SelectAll(), "Ctrl+A"),
                 new Separator(),
@@ -617,6 +666,28 @@ internal sealed class MarkdownTextEditor : UserControl
         };
         menu.Closed += (_, _) => _menuLink = null; // a menu from the keyboard has no link under a pointer
         return menu;
+    }
+
+    /// <summary>
+    /// Copy and cut give the Markdown, widened to the markup around the selection – "**bold**" and not just "bold",
+    /// whose asterisks formatted mode hides (as the Windows editor does).
+    /// </summary>
+    private async Task CopySelectionAsync(bool cut)
+    {
+        var start = _editor.SelectionStart;
+        var length = _editor.SelectionLength;
+        var text = _text;
+        if (length <= 0 || start < 0 || start + length > text.Length)
+        {
+            return;
+        }
+
+        var (from, to) = MarkdownEditing.ExpandToMarkup(text, start, start + length);
+        await CopyAsync(text[from..to]);
+        if (cut && !_editor.IsReadOnly && ReferenceEquals(text, _text))
+        {
+            Apply(new TextEdit(from, to - from, string.Empty, from, 0));
+        }
     }
 
     private async Task CopyAsync(string text)
@@ -748,6 +819,14 @@ internal sealed class MarkdownTextEditor : UserControl
         var start = _editor.SelectionStart;
         var length = _editor.SelectionLength;
         var text = _text;
+        if (ctrl && !shift && length > 0 && (e.Key is Key.C or Key.X) && !e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            // With a selection: the editor's own copy would leave the hidden markup behind.
+            e.Handled = true;
+            _ = CopySelectionAsync(cut: e.Key == Key.X);
+            return;
+        }
+
         if (ctrl && e.Key == Key.E && !shift)
         {
             e.Handled = true;
@@ -791,7 +870,7 @@ internal sealed class MarkdownTextEditor : UserControl
 
     /// <summary>
     /// A right click remembers the web link under the pointer for the context menu; a click on a task checkbox
-    /// toggles it (formatted mode, editable notes).
+    /// toggles it (formatted mode, or with Ctrl in raw mode; editable notes).
     /// </summary>
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -805,7 +884,11 @@ internal sealed class MarkdownTextEditor : UserControl
             return;
         }
 
-        if (_mode != EditorMode.Formatted || _editor.IsReadOnly || e.KeyModifiers != KeyModifiers.None
+        // Raw mode shows "[ ]" as text to edit: there the box is toggled only with Ctrl (⌘ on macOS).
+        var modifiersFit = _mode == EditorMode.Formatted
+            ? e.KeyModifiers == KeyModifiers.None
+            : e.KeyModifiers is KeyModifiers.Control or KeyModifiers.Meta;
+        if (!modifiersFit || _editor.IsReadOnly
             || !e.GetCurrentPoint(_editor).Properties.IsLeftButtonPressed
             || _editor.GetPositionFromPoint(e.GetPosition(_editor)) is not { } position)
         {

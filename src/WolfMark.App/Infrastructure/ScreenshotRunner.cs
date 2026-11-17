@@ -1,150 +1,68 @@
 using System.Runtime.InteropServices.WindowsRuntime;
-using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
+using WolfMark.App.ViewModels;
 using WolfMark.App.Views;
 using WolfMark.Core.Settings;
 
 namespace WolfMark.App.Infrastructure;
 
 /// <summary>
-/// <c>--screenshots &lt;dir&gt;</c>: puts the demo window into a few states and saves each as a PNG of the window
-/// content (RenderTargetBitmap – the system caption buttons are not part of it), then exits. Used for the
-/// README images in docs/screenshots.
+/// <c>--screenshots &lt;dir&gt;</c> on Windows: the stage of <see cref="ScreenshotScript"/> (which states are shown is
+/// shared with the macOS/Linux app). A window's content is saved with RenderTargetBitmap – the system caption buttons
+/// are not part of it.
 /// </summary>
-internal sealed partial class ScreenshotRunner(MainWindow window, AppHost host, string outputDirectory)
+internal sealed class ScreenshotRunner : IScreenshotStage
 {
-    private const int Width = 1440, Height = 960;
-    private readonly ILogger _logger = host.Loggers.CreateLogger<ScreenshotRunner>();
+    private readonly MainWindow _window;
+    private readonly AppHost _host;
+    private readonly string _outputDirectory;
+    private readonly ScreenshotScript _script;
+
+    public ScreenshotRunner(MainWindow window, AppHost host, string outputDirectory)
+    {
+        _window = window;
+        _host = host;
+        _outputDirectory = outputDirectory;
+        _script = new ScreenshotScript(window.ViewModel, this);
+    }
 
     public async Task RunAsync()
     {
-        try
-        {
-            await Task.Run(() => Directory.CreateDirectory(outputDirectory));
-            var scale = window.Content.XamlRoot?.RasterizationScale ?? 1.0;
-            window.AppWindow.Resize(new SizeInt32((int)(Width * scale), (int)(Height * scale)));
-            await WaitForDataAsync();
-
-            var vm = window.ViewModel;
-            var root = host.Root;
-            var today = DateOnly.FromDateTime(DateTime.Now);
-            var main = await Task.Run(() => FindNote(root, today, "work_"));
-            var claude = await Task.Run(() => FindNote(root, today, "ClaudeCode_")
-                                              ?? FindNote(root, today.AddDays(-1), "ClaudeCode_"));
-
-            SetTheme(AppTheme.Light);
-            await vm.GoToTodayAsync();
-            vm.Editor.Mode = EditorMode.Formatted;
-            await OpenAsync(main);
-            await ShotAsync("main-light.png");
-
-            vm.Editor.Mode = EditorMode.Raw;
-            await ShotAsync("raw-mode.png");
-            vm.Editor.Mode = EditorMode.Formatted;
-
-            await vm.ToggleCalendarAsync();
-            await ShotAsync("calendar-month.png", settle: 2000); // the toolbar fades back in after the expand
-            await vm.ToggleCalendarAsync();
-
-            if (claude is not null)
-            {
-                await OpenAsync(claude);
-                await ShotAsync("claude-session.png");
-            }
-
-            await OpenAsync(main);
-            vm.OpenSearch();
-            vm.Search.Query = "calendar";
-            await ShotAsync("search.png", settle: 1500);
-            vm.IsSearchOpen = false;
-
-            // Full view: only the day, the formatting and the note (the table at the top).
-            vm.IsFullView = true;
-            await ShotAsync("full-view.png");
-            vm.IsFullView = false;
-
-            // A README outside the notes in its own window – the demo has it in the history.
-            if (host.Settings.Current.ExternalFiles.FirstOrDefault()?.Path is { } external)
-            {
-                await vm.OpenFileAsync(external);
-                await Task.Delay(600);
-                if (window.ExternalWindowOf(external) is { } externalWindow)
-                {
-                    var s = externalWindow.Content.XamlRoot?.RasterizationScale ?? scale;
-                    externalWindow.AppWindow.Resize(new SizeInt32((int)(1100 * s), (int)(820 * s)));
-                    await ShotAsync("external-file.png", externalWindow.RootElement, externalWindow.Content.XamlRoot);
-                    await externalWindow.TryCloseAsync();
-                }
-            }
-
-            SetTheme(AppTheme.Dark);
-            await ShotAsync("main-dark.png");
-            SetTheme(AppTheme.Light);
-        }
-        catch (Exception ex)
-        {
-            LogFailed(_logger, ex);
-        }
-        finally
-        {
-            await window.ExitAsync();
-        }
+        await Task.Run(() => Directory.CreateDirectory(_outputDirectory));
+        var scale = _window.Content.XamlRoot?.RasterizationScale ?? 1.0;
+        _window.AppWindow.Resize(new SizeInt32((int)(ScreenshotScript.Width * scale), (int)(ScreenshotScript.Height * scale)));
+        await _script.RunAsync();
     }
 
-    /// <summary>Opens a note and shows it from its title (opening puts the caret at the end).</summary>
-    private async Task OpenAsync(string? relativePath)
+    public Task ShotAsync(string name, int settleMilliseconds = 900) =>
+        ShotAsync(name, _window.RootElement, _window.Content.XamlRoot, settleMilliseconds);
+
+    public async Task ShotExternalAsync(string fullPath, string name)
     {
-        if (relativePath is null)
+        await _window.ViewModel.OpenFileAsync(fullPath);
+        await Task.Delay(600);
+        if (_window.ExternalWindowOf(fullPath) is { } externalWindow)
         {
-            return;
+            var scale = externalWindow.Content.XamlRoot?.RasterizationScale ?? 1.0;
+            externalWindow.AppWindow.Resize(new SizeInt32((int)(ScreenshotScript.ExternalWidth * scale), (int)(ScreenshotScript.ExternalHeight * scale)));
+            await ShotAsync(name, externalWindow.RootElement, externalWindow.Content.XamlRoot);
+            await externalWindow.TryCloseAsync();
         }
-
-        await window.ViewModel.OpenNoteAsync(relativePath);
-        await Task.Delay(400);
-        window.ScrollEditorToStart();
     }
 
-    private void SetTheme(AppTheme theme)
+    public void SetTheme(AppTheme theme)
     {
-        host.Settings.Current.Theme = theme;
-        window.ApplyAppearance();
+        _host.Settings.Current.Theme = theme;
+        _window.ApplyAppearance();
     }
 
-    /// <summary>Index scan done and the Claude Code transcripts imported (with a timeout – never hang).</summary>
-    private async Task WaitForDataAsync()
-    {
-        await host.DatabaseReady;
-        try
-        {
-            // Not the Synced event: the import of the demo is often over before this runs, and waiting for an event
-            // that has already passed cost the full 20 seconds on every run.
-            await host.FirstClaudeSync.WaitAsync(TimeSpan.FromSeconds(20));
-        }
-        catch (TimeoutException)
-        {
-        }
+    public void ScrollEditorToStart() => _window.ScrollEditorToStart();
 
-        // The watcher indexes the imported notes after its debounce.
-        await Task.Delay(TimeSpan.FromSeconds(4));
-    }
-
-    private static string? FindNote(string root, DateOnly day, string prefix)
-    {
-        var dir = Path.Combine(root, day.Year.ToString("D4"), day.Month.ToString("D2"), day.Day.ToString("D2"));
-        if (!Directory.Exists(dir))
-        {
-            return null;
-        }
-
-        var file = Directory.GetFiles(dir, prefix + "*.md").Order(StringComparer.Ordinal).LastOrDefault();
-        return file is null ? null : Path.GetRelativePath(root, file).Replace('\\', '/');
-    }
-
-    private Task ShotAsync(string name, int settle = 900) => ShotAsync(name, window.RootElement, window.Content.XamlRoot, settle);
+    public Task ExitAsync() => _window.ExitAsync();
 
     /// <summary>Saves <paramref name="element"/> (a window's content) as a PNG after the UI settled.</summary>
     private async Task ShotAsync(string name, Microsoft.UI.Xaml.UIElement element, Microsoft.UI.Xaml.XamlRoot? root, int settle = 900)
@@ -166,9 +84,9 @@ internal sealed partial class ScreenshotRunner(MainWindow window, AppHost host, 
         var bytes = new byte[stream.Size];
         stream.Seek(0);
         await stream.ReadAsync(bytes.AsBuffer(), (uint)bytes.Length, InputStreamOptions.None);
-        var path = Path.Combine(outputDirectory, name);
+        var path = Path.Combine(_outputDirectory, name);
         await Task.Run(() => File.WriteAllBytes(path, bytes));
-        LogSaved(_logger, path);
+        _script.Saved(path);
     }
 
     private static Task NextFrameAsync()
@@ -183,10 +101,4 @@ internal sealed partial class ScreenshotRunner(MainWindow window, AppHost host, 
         CompositionTarget.Rendering += OnRendering;
         return tcs.Task;
     }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Screenshot saved: {Path}")]
-    private static partial void LogSaved(ILogger logger, string path);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Screenshots failed")]
-    private static partial void LogFailed(ILogger logger, Exception ex);
 }

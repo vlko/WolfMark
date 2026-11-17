@@ -27,12 +27,15 @@ internal sealed class SettingsWindow : Window
 {
     private readonly MainViewModel _vm;
     private readonly Action _applyAppearance;
+    private readonly Action<string?> _previewIcon;
     private bool _restartNeeded;
 
-    public SettingsWindow(MainViewModel vm, Action applyAppearance)
+    /// <param name="previewIcon">Shows an icon variant on the windows at once; Save keeps it, closing otherwise reverts.</param>
+    public SettingsWindow(MainViewModel vm, Action applyAppearance, Action<string?> previewIcon)
     {
         _vm = vm;
         _applyAppearance = applyAppearance;
+        _previewIcon = previewIcon;
         var host = vm.Host;
         var s = host.Settings.Current;
         var portableData = host.PortableDataDirectory;
@@ -185,6 +188,53 @@ internal sealed class SettingsWindow : Window
 
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
         var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], SettingsEdit.LanguageIndex(s.Language));
+        // App icon: thumbnails, a click previews it on the window and the taskbar; Save keeps it. Not on macOS – the
+        // Dock shows the icon of the app bundle, which a running app cannot change.
+        var chosenIcon = AppIconCatalog.Normalize(s.AppIcon);
+        var iconFrames = new List<(string Id, Border Frame)>();
+        var iconRow = new WrapPanel { Orientation = Orientation.Horizontal };
+        void MarkIcon()
+        {
+            foreach (var (id, frame) in iconFrames)
+            {
+                frame.BorderBrush = id == chosenIcon ? Palette.Accent : Palette.Transparent;
+            }
+        }
+
+        foreach (var (id, nameKey) in AppIconCatalog.All)
+        {
+            var name = Strings.Get(nameKey);
+            var button = new Button
+            {
+                Content = new Image { Width = 40, Height = 40, Source = MainWindow.IconImage(id) },
+                Padding = new Thickness(3),
+                Background = Palette.Transparent,
+                BorderThickness = new Thickness(0),
+            };
+            ToolTip.SetTip(button, name);
+            Avalonia.Automation.AutomationProperties.SetName(button, name);
+            var iconId = id;
+            button.Click += (_, _) =>
+            {
+                chosenIcon = iconId;
+                MarkIcon();
+                _previewIcon(iconId);
+            };
+            var frame = new Border { Child = button, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 6, 6) };
+            iconFrames.Add((id, frame));
+            iconRow.Children.Add(frame);
+        }
+
+        MarkIcon();
+        var iconSaved = false;
+        Closed += (_, _) =>
+        {
+            if (!iconSaved)
+            {
+                _previewIcon(s.AppIcon); // closed without saving: back to the icon in the settings
+            }
+        };
+
         var dateFormats = new ToggleSwitch { IsChecked = s.DateFormatsFromLanguage, Content = Strings.Get(R.Settings_DateFormatsFromLanguage) };
         var time24 = new ToggleSwitch { IsChecked = s.Use24HourTime, Content = Strings.Get(R.Settings_Use24HourTime) };
         var closeToTray = new ToggleSwitch { IsChecked = s.CloseToTray, Content = Strings.Get(R.Settings_CloseToTray) };
@@ -348,6 +398,8 @@ internal sealed class SettingsWindow : Window
             // What both apps have in common is checked and written by SettingsEdit (tested there).
             var edit = SettingsEdit.From(s);
             edit.Theme = (AppTheme)Math.Max(0, theme.SelectedIndex);
+            edit.AppIcon = AppIconCatalog.ToSetting(chosenIcon);
+            iconSaved = true;
             edit.Language = SettingsEdit.Languages[Math.Max(0, language.SelectedIndex)];
             edit.DateFormatsFromLanguage = dateFormats.IsChecked == true;
             edit.Use24HourTime = time24.IsChecked == true;
@@ -445,7 +497,8 @@ internal sealed class SettingsWindow : Window
                 portablePanel)),
             (Icons.Appearance, Strings.Get(R.Settings_Appearance), Ui.VStack(
                 10,
-                Field(Strings.Get(R.Settings_Theme), theme))),
+                Field(Strings.Get(R.Settings_Theme), theme),
+                OperatingSystem.IsMacOS() ? new Panel() : Field(Strings.Get(R.Settings_AppIcon), iconRow))),
             (Icons.Pencil, Strings.Get(R.Settings_Editor), Ui.VStack(
                 10,
                 lineNumbers,
@@ -461,7 +514,7 @@ internal sealed class SettingsWindow : Window
                 10,
                 ccEnabled,
                 Field(Strings.Get(R.Settings_ClaudePath), ccPath),
-                Field(Strings.Get(R.Settings_ClaudeExcluded), ccExcluded),
+                Ui.VStack(4, Typo.Body(Strings.Get(R.Settings_ClaudeExcluded), 13, Palette.InkSecondary), ccExcluded),
                 Ui.HStack(16, ccRedact, ccWatch),
                 Field(Strings.Get(R.Settings_ClaudeInterval), ccInterval),
                 ccSyncNow)),
@@ -660,6 +713,7 @@ internal sealed class SettingsWindow : Window
                 BorderBrush = Palette.Ink,
                 CornerRadius = new CornerRadius(4),
             };
+            Avalonia.Automation.AutomationProperties.SetName(swatch, c.ToHex());
             swatch.Click += async (_, _) =>
             {
                 flyout.Hide();
@@ -803,10 +857,6 @@ internal sealed class SettingsWindow : Window
         return layout;
     }
 
-    /// <summary>
-    /// This executable with <c>--quick-note</c>, quoted when the path has spaces; in demo mode with its folder, so
-    /// the command reaches the demo instance.
-    /// </summary>
     private static ComboBox Combo(string[] items, int selected) => new() { ItemsSource = items, SelectedIndex = selected, MinWidth = 220 };
 
     private static TextBlock Section(string title)

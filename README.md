@@ -70,7 +70,7 @@ notebook unless I ask.
 | **Markdown files anywhere** | WolfMark can open every `.md` file: notes switch the main window, other files open in their own window with *Save*, a status bar and *Copy to my notes* |
 | **Full view** | `F11` (macOS `Ctrl+Cmd+F`): only the day, the formatting buttons and the note |
 | **Portable mode** | Notes, settings and index in a `WolfMarkData` folder next to the app – carry it on a USB drive, nothing written to the computer |
-| **Desktop integration** | Light/dark theme, notification-area icon, single instance; start at sign-in (Windows, Linux); app icon choice on Windows |
+| **Desktop integration** | Light/dark theme, notification-area icon, single instance; start at sign-in (hidden in the notification area if you like); a choice of app icons |
 | **Robust storage** | Atomic writes, recycle bin instead of delete, OneDrive placeholders and conflict copies handled; a note changed elsewhere while you type is never overwritten unseen |
 
 ---
@@ -93,8 +93,8 @@ up to date, so it stays instant even with years of notes.
   `■ V1.0 RELEASE ———`).
 - **Tag rail.** Vertical tabs on the right edge select an active tag: the history is filtered, other days are dimmed
   and new notes get that tag.
-- **Keyboard first.** `Ctrl+Alt+←/→` moves by week. In the Windows app arrows move between days, `Enter` opens a
-  day and cells are announced by Narrator (the macOS/Linux app does not have this yet).
+- **Keyboard first.** Arrows move between days, `Enter` opens a day, `Ctrl+Alt+←/→` moves by week. Cells are
+  announced by screen readers.
 - Weeks start on Monday, month and day names follow the UI language (English or Slovak).
 
 ## Claude Code sync
@@ -262,7 +262,7 @@ it had before, without the changes made while portable. Details are in
 | `Ctrl+N` | New note (the file is created with the first character you type) |
 | `Ctrl+K` / `Ctrl+Shift+F` | Search (in the editor with text selected, `Ctrl+K` makes it a link) |
 | `Win+Shift+N` | Quick note from anywhere – Windows, off until switched on in Settings (the shortcut can be changed) |
-| `Ctrl+Shift+C` | Full calendar (Windows: arrows, `Enter`) |
+| `Ctrl+Shift+C` | Full calendar (arrows, `Enter`) |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next week |
 | `Ctrl+E` | Raw ↔ formatted mode |
 | `F11` (macOS `Ctrl+Cmd+F`) | Full view: only the day, the formatting buttons and the note (again or `Esc` to leave) |
@@ -299,8 +299,8 @@ view and Markdown files from anywhere – on an [Avalonia](https://avaloniaui.ne
 - **Portable:** unpack anywhere you can write (a USB drive, not `Program Files`) and switch on Settings → *General* →
   *Portable mode*; see [Portable mode](#your-data-plain-markdown-in-onedrive). Works for the Windows and Linux
   builds and for a macOS app run from outside Applications.
-- Windows only so far: spell check, app icon choice, a global quick-note shortcut of the app's own, keyboard
-  navigation in the calendar. Start at sign-in: Windows and Linux.
+- Windows only: spell check and a global quick-note shortcut of the app's own (elsewhere the system's shortcut
+  runs `--quick-note`). The app icon can be chosen on Windows and Linux (on macOS the Dock shows the bundle's icon).
 
 Releases are built by [`.github/workflows/release.yml`](.github/workflows/release.yml) when a version tag is pushed:
 
@@ -371,13 +371,15 @@ WolfMark.App.exe --demo %TEMP%\WolfMarkDemo                                  # e
 WolfMark.App.exe --demo %TEMP%\WolfMarkDemo --screenshots docs\screenshots   # capture and exit
 ```
 
+The macOS/Linux app takes the same switches (`WolfMark.Desktop --demo … --screenshots …`); it draws its windows into
+the images itself, so it also works without a screen (under Xvfb, as the smoke test does).
+
 ## Roadmap
 
 Next on the list: find and replace in a note, wiki links and backlinks (`[[…]]` is already written and highlighted,
 not yet followed), a daily view of all of a day's notes, restoring notes from the trash, templates per tag, export,
 semantic search with a local embedding model, a local MCP server so Claude can search your notebook, signed packages
-(MSIX/winget, notarised macOS app) and automatic updates. The macOS/Linux app still catches up with the Windows one
-in a few places (keyboard in the calendar, spell check).
+(MSIX/winget, notarised macOS app) and automatic updates.
 See [`BACKLOG.md`](BACKLOG.md).
 
 ## License

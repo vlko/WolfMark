@@ -2,6 +2,7 @@
 # Smoke test of the macOS/Linux app (Avalonia) on Linux: runs the real executable on isolated demo data, like
 # tools/smoke-windows.ps1 does for the Windows app.
 #
+#   screenshots M10-04 --screenshots renders the README images and exits (kept in <work dir>/screenshots)
 #   instance  M0-05  a second launch on the same data hands over to the first and exits; other data = own instance
 #   files     M8-08  a .md file as argument: outside the notes its own window (also handed over by a second launch,
 #                    never twice), inside the notes the main editor – xdg-mime is not touched
@@ -101,6 +102,28 @@ stop_all() {
 }
 
 has_log() { log_of "$1" | grep -q -- "$2"; }
+
+# --- screenshots (M10-04) --------------------------------------------------------------------------------------
+# Also proves the binary starts, shows and draws its window on demo data.
+demo="$work/demo-screenshots"
+shots="$work/screenshots"
+(cd "$work" && exec "$exe" --demo "$demo" --screenshots "$shots") >>"$work/stdout.txt" 2>&1 &
+shot_pid=$!
+pids+=("$shot_pid")
+if wait_exit "$shot_pid" 240; then
+    missing=""
+    for f in main-light.png raw-mode.png calendar-month.png search.png full-view.png main-dark.png; do
+        [[ -f "$shots/$f" ]] || missing="$missing $f"
+    done
+    # A blank (single-colour) window compresses to a few kB; a real one is far bigger.
+    small=$(find "$shots" -name '*.png' -size -20k -printf '%f ' 2>/dev/null)
+    p=$(problems "$demo")
+    ok=0; [[ -z "$missing" && -z "$small" && -z "$p" ]] && ok=1
+    report "screenshots" $ok "$(ls "$shots" 2>/dev/null | wc -l) images${missing:+, missing:$missing}${small:+, suspiciously small: $small}${p:+$'\n'$p}"
+else
+    report "screenshots" 0 "did not finish within 4 minutes$(printf '\n%s' "$(problems "$demo")")"
+fi
+stop_all
 
 # --- instance (M0-05) ------------------------------------------------------------------------------------------
 demo="$work/demo-instance"

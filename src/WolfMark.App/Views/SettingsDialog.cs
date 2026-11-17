@@ -414,7 +414,7 @@ internal static class SettingsDialog
         var newLanguage = SettingsEdit.Languages[Math.Max(0, language.SelectedIndex)];
         var edit = SettingsEdit.From(s);
         edit.Theme = (AppTheme)Math.Max(0, theme.SelectedIndex);
-        edit.AppIcon = chosenIcon == AppIcons.Default ? null : chosenIcon;
+        edit.AppIcon = AppIconCatalog.ToSetting(chosenIcon);
         edit.Language = newLanguage;
         edit.DateFormatsFromLanguage = dateFormats.IsOn;
         edit.Use24HourTime = time24.IsOn;

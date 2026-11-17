@@ -24,6 +24,7 @@ internal sealed class CalendarPanel : UserControl
 
     private readonly MainViewModel _vm;
     private readonly DayCell[] _bandCells = new DayCell[7];
+    private readonly Dictionary<DateOnly, DayCell> _monthCells = [];
     private readonly Grid _bandLabel = new() { Margin = new Thickness(0, 6, 0, 0), MinHeight = 18 };
     private readonly Control _band;
     private readonly Grid _month = new();
@@ -95,6 +96,19 @@ internal sealed class CalendarPanel : UserControl
         RenderBand();
     }
 
+    /// <summary>Keyboard focus on the selected day (after Ctrl+Shift+C): arrows move, Enter or Space opens the day.</summary>
+    public void FocusSelectedDay()
+    {
+        if (_vm.IsCalendarExpanded && _monthCells.TryGetValue(_vm.SelectedDay, out var cell))
+        {
+            cell.Focus(NavigationMethod.Directional);
+        }
+        else
+        {
+            _bandCells.FirstOrDefault(c => c.Date == _vm.SelectedDay)?.Focus(NavigationMethod.Directional);
+        }
+    }
+
     private void WatchDays()
     {
         foreach (var day in _vm.Week.Days)
@@ -114,7 +128,9 @@ internal sealed class CalendarPanel : UserControl
         _band.IsVisible = !expanded;
         _month.IsVisible = expanded;
         _expand.Content = Icons.Create(expanded ? Icons.Collapse : Icons.Expand, 14, Palette.InkTertiary);
-        ToolTip.SetTip(_expand, Strings.Get(expanded ? R.Calendar_Collapse : R.Calendar_Expand));
+        var tip = Strings.Get(expanded ? R.Calendar_Collapse : R.Calendar_Expand);
+        ToolTip.SetTip(_expand, tip);
+        Avalonia.Automation.AutomationProperties.SetName(_expand, tip);
         UpdateTitle();
         RenderMonth();
     }
@@ -133,6 +149,7 @@ internal sealed class CalendarPanel : UserControl
             var cell = new DayCell(_vm, height: 64, numberSize: 30, weekBand: true);
             var index = i;
             cell.Clicked = () => _ = _vm.SelectDayAsync(_vm.Week.Days[index].Date);
+            cell.KeyDown += (_, e) => OnBandKey(index, e);
             Grid.SetColumn(cell, i);
             cells.Children.Add(cell);
             _bandCells[i] = cell;
@@ -162,6 +179,78 @@ internal sealed class CalendarPanel : UserControl
         {
             var d = _vm.Week.Days[i];
             _bandCells[i].Update(d.Date, d.Day, d.IsToday, d.IsPast, d.IsSelected, inMonth: true, Dimmed(d.Day), d.AutomationName);
+        }
+    }
+
+    private void OnBandKey(int index, KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.None)
+        {
+            return; // Ctrl+Alt+←/→ moves by week (the window's shortcut)
+        }
+
+        switch (e.Key)
+        {
+            case Key.Left when index > 0:
+                _bandCells[index - 1].Focus(NavigationMethod.Directional);
+                e.Handled = true;
+                break;
+            case Key.Right when index < 6:
+                _bandCells[index + 1].Focus(NavigationMethod.Directional);
+                e.Handled = true;
+                break;
+            case Key.Enter or Key.Space when index < _vm.Week.Days.Count:
+                _ = _vm.SelectDayAsync(_vm.Week.Days[index].Date);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnMonthKey(DateOnly date, KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.None)
+        {
+            return;
+        }
+
+        if (e.Key is Key.Enter or Key.Space)
+        {
+            e.Handled = true;
+            _ = _vm.SelectDayAsync(date);
+            return;
+        }
+
+        DateOnly? target = e.Key switch
+        {
+            Key.Left => date.AddDays(-1),
+            Key.Right => date.AddDays(1),
+            Key.Up => date.AddDays(-7),
+            Key.Down => date.AddDays(7),
+            _ => null,
+        };
+        if (target is not { } day)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (_monthCells.TryGetValue(day, out var cell) && cell.IsHitTestVisible)
+        {
+            cell.Focus(NavigationMethod.Directional);
+        }
+        else
+        {
+            _ = MoveAndFocusAsync(day);
+        }
+    }
+
+    /// <summary>The day is in another month: show that month, then focus the day.</summary>
+    private async Task MoveAndFocusAsync(DateOnly day)
+    {
+        await _vm.Calendar.GoToAsync(day);
+        if (_monthCells.TryGetValue(day, out var cell))
+        {
+            cell.Focus(NavigationMethod.Directional);
         }
     }
 
@@ -209,6 +298,9 @@ internal sealed class CalendarPanel : UserControl
 
     private void RenderMonth()
     {
+        // The grid is rebuilt (a day was selected, the month changed): a day that had the keyboard focus gets it back.
+        DateOnly? focused = _monthCells.FirstOrDefault(c => c.Value.IsFocused) is { Value: not null } pair ? pair.Key : null;
+        _monthCells.Clear();
         _month.Children.Clear();
         _month.RowDefinitions.Clear();
         _month.ColumnDefinitions.Clear();
@@ -243,6 +335,12 @@ internal sealed class CalendarPanel : UserControl
                 cell.Update(d.Date, d.Day, d.IsToday, d.IsPast, d.Date == _vm.SelectedDay, d.InMonth, d.IsDimmed, d.AutomationName);
                 var date = d.Date;
                 cell.Clicked = () => _ = _vm.SelectDayAsync(date);
+                cell.KeyDown += (_, e) => OnMonthKey(date, e);
+                if (d.InMonth)
+                {
+                    _monthCells[date] = cell;
+                }
+
                 Place(cell, row, i + 1);
             }
 
@@ -256,6 +354,11 @@ internal sealed class CalendarPanel : UserControl
                 label.Margin = new Thickness(0, 0, 0, 5);
                 Place(label, row, column + 1, 7 - column);
             }
+        }
+
+        if (focused is { } back && _monthCells.TryGetValue(back, out var again))
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => again.Focus(NavigationMethod.Directional), Avalonia.Threading.DispatcherPriority.Loaded);
         }
 
         void AddRow(GridLength height)
@@ -331,6 +434,7 @@ internal sealed class CalendarPanel : UserControl
         private readonly Rectangle _frame = new() { StrokeThickness = 3, Stroke = Palette.TodayFrame, IsHitTestVisible = false };
         private readonly Rectangle _frameDash = new() { StrokeThickness = 3, Stroke = Palette.TodayFrameDash, StrokeDashArray = [2, 2], IsHitTestVisible = false };
         private readonly Border _selection = new() { BorderBrush = Palette.Ink, BorderThickness = new Thickness(0, 0, 0, 3), IsHitTestVisible = false };
+        private readonly Rectangle _focus = new() { StrokeThickness = 2, Stroke = Palette.Accent, IsHitTestVisible = false, IsVisible = false };
         private readonly TextBlock _number = new() { FontFamily = Typo.DayNumber, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom };
 
@@ -342,7 +446,11 @@ internal sealed class CalendarPanel : UserControl
             _number.Margin = new Thickness(0, 0, 0, height * 0.12);
             _dots.Margin = new Thickness(0, 0, 0, height * 0.12);
             var grid = new Grid();
-            grid.Children.AddRange([_fill, _hatch, _selection, _frame, _frameDash, _number, _dots]);
+            grid.Children.AddRange([_fill, _hatch, _selection, _frame, _frameDash, _focus, _number, _dots]);
+            // Reachable with Tab; the frame shows only for the keyboard (a click focuses too, but needs no mark).
+            Focusable = true;
+            GotFocus += (_, e) => _focus.IsVisible = e.NavigationMethod != NavigationMethod.Pointer;
+            LostFocus += (_, _) => _focus.IsVisible = false;
             Child = grid;
             Height = height;
             HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -362,10 +470,18 @@ internal sealed class CalendarPanel : UserControl
 
         public Action? Clicked { get; set; }
 
+        public DateOnly Date { get; private set; }
+
+        /// <summary>A day is a button for a screen reader: "17 November 2026, 3 notes, work" and it can be invoked.</summary>
+        protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer() => new Peer(this);
+
         public void Update(DateOnly date, CalendarDay day, bool today, bool past, bool selected, bool inMonth, bool dimmed, string tip)
         {
+            Date = date;
             Opacity = !inMonth ? 0 : dimmed ? 0.2 : 1;
             IsHitTestVisible = inMonth;
+            Focusable = inMonth;
+            Avalonia.Automation.AutomationProperties.SetName(this, tip);
             _number.Text = date.Day.ToString(CultureInfo.CurrentCulture);
             _fill.Background = DayFill(day.Tags);
             var hatched = _weekBand && past;
@@ -393,6 +509,18 @@ internal sealed class CalendarPanel : UserControl
             }
 
             ToolTip.SetTip(this, tip);
+        }
+
+        private sealed class Peer(DayCell owner) : Avalonia.Automation.Peers.ControlAutomationPeer(owner), Avalonia.Automation.Provider.IInvokeProvider
+        {
+            public void Invoke() => owner.Clicked?.Invoke();
+
+            protected override Avalonia.Automation.Peers.AutomationControlType GetAutomationControlTypeCore() =>
+                Avalonia.Automation.Peers.AutomationControlType.Button;
+
+            protected override bool IsContentElementCore() => true;
+
+            protected override bool IsControlElementCore() => true;
         }
 
         /// <summary>Tag colours as hard diagonal bands, widths by note count (up to four tags).</summary>

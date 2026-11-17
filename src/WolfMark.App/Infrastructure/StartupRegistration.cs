@@ -8,7 +8,7 @@ namespace WolfMark.App.Infrastructure;
 /// </summary>
 internal static class StartupRegistration
 {
-    public const string Argument = "--autostart";
+    public const string Argument = LaunchCommand.AutostartSwitch;
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ValueName = "WolfMark";
 

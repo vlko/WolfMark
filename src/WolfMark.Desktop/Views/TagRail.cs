@@ -97,6 +97,7 @@ internal sealed class TagRail : UserControl
             Margin = new Thickness(0, 0, isActive ? 8 : 2, 0),
         };
         ToolTip.SetTip(button, label);
+        Avalonia.Automation.AutomationProperties.SetName(button, label); // the text is drawn turned on a canvas – no name of its own
         button.Click += (_, _) => onClick();
         return button;
     }

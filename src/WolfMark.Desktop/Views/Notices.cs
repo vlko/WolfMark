@@ -84,6 +84,8 @@ internal sealed class Notices : StackPanel
         }
 
         var close = Ui.FlatButton("✕", Palette.Transparent);
+        ToolTip.SetTip(close, Strings.Get(R.Common_Close));
+        Avalonia.Automation.AutomationProperties.SetName(close, Strings.Get(R.Common_Close));
         close.Click += (_, _) =>
         {
             item.Root.IsVisible = false;

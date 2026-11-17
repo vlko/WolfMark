@@ -73,7 +73,7 @@ public sealed partial class App : Application
     {
         try
         {
-            var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory);
+            var host = await AppHost.CreateAsync(LaunchOptions.Current.DemoDirectory, freshDemo: LaunchOptions.Current.ScreenshotDirectory is not null);
             var logger = host.Loggers.CreateLogger<App>();
             _logger = logger;
             UiCulture.Apply(host.Settings.Current.Language, host.Settings.Current.DateFormatsFromLanguage, host.Settings.Current.Use24HourTime);
@@ -90,7 +90,12 @@ public sealed partial class App : Application
             var window = new MainWindow(vm);
             _window = window;
             desktop.MainWindow = window;
-            window.Show();
+            // Started by the system at sign-in with "close to the notification area" on: it waits there, as on
+            // Windows. The icon's menu shows it, and so does starting the app again.
+            if (!(LaunchCommand.LaunchedAtSignIn && host.Settings.Current.CloseToTray))
+            {
+                window.Show();
+            }
             if (Program.Instance is { } instance)
             {
                 instance.Activated += (_, request) => UiThread.Post(() =>
@@ -140,6 +145,10 @@ public sealed partial class App : Application
 
             _pendingLinks.Clear();
             SetDockMenu();
+            if (LaunchOptions.Current.ScreenshotDirectory is { } shots)
+            {
+                await new ScreenshotRunner(window, host, shots).RunAsync();
+            }
         }
         catch (Exception ex)
         {

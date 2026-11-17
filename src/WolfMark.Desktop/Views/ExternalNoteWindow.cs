@@ -232,6 +232,7 @@ internal sealed class ExternalNoteWindow : Window
         Ui.OnPaletteChangedUntilClosed(this, () => MainWindow.ApplyEditorTheme(Editor, _host));
         Editor.PreviewCacheDirectory = _host.Paths.PreviewCacheDirectory;
         Editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
+        Editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
         // Relative images and links resolve next to the file; nothing is pasted into a folder that is not ours.
         Editor.NotesRoot = _doc.DirectoryName;
         Editor.NoteDirectory = _doc.DirectoryName;

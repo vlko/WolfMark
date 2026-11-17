@@ -24,6 +24,7 @@ namespace WolfMark.Desktop.Views;
 internal sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
+    private readonly CalendarPanel _calendar;
     private readonly AppHost _host;
     private readonly MarkdownTextEditor _editor = new();
     private readonly SearchPalette _search;
@@ -57,7 +58,7 @@ internal sealed partial class MainWindow : Window
 
         var heading = DayHeading();
         heading.Margin = new Thickness(0, 0, 0, 14);
-        var calendar = new CalendarPanel(vm) { Margin = new Thickness(0, 0, 0, 12) };
+        var calendar = _calendar = new CalendarPanel(vm) { Margin = new Thickness(0, 0, 0, 12) };
         var noteBar = new NoteBar(vm, _editor) { Margin = new Thickness(0, 0, 0, 10) };
         var splitter = new GridSplitter
         {
@@ -83,6 +84,9 @@ internal sealed partial class MainWindow : Window
 
         var rail = new TagRail(vm) { Margin = new Thickness(0, 8, 0, 0) };
         var content = Ui.Columns((Ui.Star, main), (Ui.Auto, rail));
+        // With the month open in a low window the panes need more than there is: the history is cut at the bottom
+        // instead of being drawn over the notices and the status bar.
+        content.ClipToBounds = true;
         WireFullView(fullViewBar, editorPane, [calendar, splitter, history, rail]);
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto") };
         var notices = new Notices(vm);
@@ -99,7 +103,7 @@ internal sealed partial class MainWindow : Window
         Grid.SetRowSpan(_search, 4);
         root.Children.Add(_search);
         Content = root;
-        Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://WolfMark.Desktop/Assets/WolfMark-256.png")));
+        Icon = LoadIcon(_host.Settings.Current.AppIcon);
 
         WireEditor();
         WireOverlays();
@@ -115,6 +119,47 @@ internal sealed partial class MainWindow : Window
         _editor.FocusEditor();
         ready?.Invoke();
     });
+
+    internal MainViewModel ViewModel => _vm;
+
+    /// <summary>The image of an icon variant (Settings → Appearance); the built-in icon when it is missing.</summary>
+    internal static Bitmap? IconImage(string id)
+    {
+        var uri = new Uri($"avares://WolfMark.Desktop/Assets/Icons/{id}.png");
+        return AssetLoader.Exists(uri) ? new Bitmap(AssetLoader.Open(uri)) : null;
+    }
+
+    private static WindowIcon LoadIcon(string? id)
+    {
+        var uri = new Uri($"avares://WolfMark.Desktop/Assets/Icons/{AppIconCatalog.Normalize(id)}.png");
+        return new WindowIcon(AssetLoader.Open(AssetLoader.Exists(uri) ? uri : new Uri("avares://WolfMark.Desktop/Assets/WolfMark-256.png")));
+    }
+
+    /// <summary>The chosen icon on this window, its quick note and the tray – also as a preview from Settings.</summary>
+    internal void ApplyIcon(string? id)
+    {
+        Icon = LoadIcon(id);
+        if (_quickNote is not null)
+        {
+            _quickNote.Icon = Icon;
+        }
+
+        if (_tray is not null)
+        {
+            _tray.Icon = Icon;
+        }
+    }
+
+    internal void ScrollEditorToStart() => _editor.ScrollToStart();
+
+    internal ExternalNoteWindow? ExternalWindowOf(string fullPath) => _externalWindows.GetValueOrDefault(fullPath);
+
+    /// <summary>Ends the app (the tray's Exit, the screenshot run) – also when closing only hides to the tray.</summary>
+    internal void Exit()
+    {
+        _exitRequested = true;
+        Close();
+    }
 
     /// <summary>A file from outside the notes tree in its own window (or the window it already has).</summary>
     private void OpenExternal(string fullPath)
@@ -261,6 +306,7 @@ internal sealed partial class MainWindow : Window
         _editor.ShowLineNumbers = _host.Settings.Current.EditorLineNumbers;
         _editor.PreviewCacheDirectory = _host.Paths.PreviewCacheDirectory;
         _editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
+        _editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
         UpdateEditorTheme();
         Palette.Changed += (_, _) => UpdateEditorTheme();
 
@@ -552,7 +598,12 @@ internal sealed partial class MainWindow : Window
                     _vm.OpenSearch();
                     return Task.CompletedTask;
                 },
-                (Key.C, true, true, false) => _vm.ToggleCalendarAsync,
+                (Key.C, true, true, false) => async () =>
+                {
+                    await _vm.ToggleCalendarAsync();
+                    // Once the month (or the week band) is laid out: arrows and Enter work right away.
+                    Dispatcher.UIThread.Post(_calendar.FocusSelectedDay, DispatcherPriority.Background);
+                },
                 (Key.OemComma, true, false, false) => OpenSettingsAsync,
                 (Key.Left, true, false, true) => () => _vm.MoveCalendarAsync(-1),
                 (Key.Right, true, false, true) => () => _vm.MoveCalendarAsync(1),
@@ -596,7 +647,7 @@ internal sealed partial class MainWindow : Window
         _settingsOpen = true;
         try
         {
-            await new SettingsWindow(_vm, ApplyAppearance).ShowDialog(this);
+            await new SettingsWindow(_vm, ApplyAppearance, ApplyIcon).ShowDialog(this);
         }
         catch (Exception ex)
         {
@@ -614,7 +665,7 @@ internal sealed partial class MainWindow : Window
     private static partial void LogSettingsFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
 
     /// <summary>After the settings: theme, editor fonts, line numbers, tray.</summary>
-    private void ApplyAppearance()
+    internal void ApplyAppearance()
     {
         var s = _host.Settings.Current;
         if (Application.Current is { } app)
@@ -665,11 +716,7 @@ internal sealed partial class MainWindow : Window
                     BringToFront();
                     _ = OpenSettingsAsync();
                 }),
-                Item(Strings.Get(R.Tray_Exit), () =>
-                {
-                    _exitRequested = true;
-                    Close();
-                }),
+                Item(Strings.Get(R.Tray_Exit), Exit),
             ],
         };
         _tray.Clicked += (_, _) => BringToFront();

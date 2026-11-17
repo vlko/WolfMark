@@ -119,6 +119,7 @@ internal sealed class QuickNoteWindow : Window
         Palette.Changed += (_, _) => ApplyEditorTheme();
         _editor.PreviewCacheDirectory = _host.Paths.PreviewCacheDirectory;
         _editor.OpenImageTip = Strings.Get(R.Editor_OpenImage);
+        _editor.PlaceholderText = Strings.Get(R.Editor_Placeholder);
         _editor.Mode = _note.Mode;
         Ui.Bind(_note, nameof(NoteEditorViewModel.Mode), () => _editor.Mode = _note.Mode);
         _editor.ModeToggleRequested += (_, _) => _note.Mode = _note.Mode == EditorMode.Raw ? EditorMode.Formatted : EditorMode.Raw;

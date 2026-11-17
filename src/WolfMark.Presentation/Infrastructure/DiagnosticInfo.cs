@@ -26,7 +26,7 @@ internal static class DiagnosticInfo
         var inv = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
         sb.AppendLine(inv, $"WolfMark {Version}");
-        sb.AppendLine(inv, $"{RuntimeInformation.FrameworkDescription}, {(RuntimeFeature.IsDynamicCodeSupported ? "JIT" : "Native AOT")}, {RuntimeInformation.ProcessArchitecture}");
+        sb.AppendLine(inv, $"{RuntimeInformation.FrameworkDescription}, {(RuntimeFeature.IsDynamicCodeCompiled ? "JIT" : "Native AOT")}, {RuntimeInformation.ProcessArchitecture}");
         sb.AppendLine(inv, $"{RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         sb.AppendLine(inv, $"Display scale {displayScale * 100:0} %, UI language {CultureInfo.CurrentUICulture.Name}, formats {CultureInfo.CurrentCulture.Name}");
         sb.AppendLine(inv, $"Notes: {noteCount} in {host.Root}{(LaunchOptions.Current.IsDemo ? " (demo)" : string.Empty)}");

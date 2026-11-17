@@ -138,4 +138,24 @@ public sealed class SettingsEditTests
         Assert.Equal(2, SettingsEdit.LanguageIndex("en-US"));
         Assert.Equal(0, SettingsEdit.LanguageIndex("de-DE"));
     }
+
+    [Theory]
+    [InlineData(null, "riso-white")]
+    [InlineData("", "riso-white")]
+    [InlineData("wolf", "wolf")]
+    [InlineData("5-wolf", "wolf")] // ids used to carry a number
+    [InlineData("calendar-w", "calendar-w")] // a dash that is not a number prefix
+    [InlineData("no-longer-offered", "riso-white")]
+    public void A_saved_app_icon_maps_to_one_that_is_offered(string? saved, string expected)
+    {
+        Assert.Equal(expected, WolfMark.App.Infrastructure.AppIconCatalog.Normalize(saved));
+    }
+
+    [Fact]
+    public void The_default_app_icon_is_not_written_to_the_settings()
+    {
+        Assert.Null(WolfMark.App.Infrastructure.AppIconCatalog.ToSetting("riso-white"));
+        Assert.Equal("wolf", WolfMark.App.Infrastructure.AppIconCatalog.ToSetting("wolf"));
+        Assert.Contains(WolfMark.App.Infrastructure.AppIconCatalog.All, i => i.Id == WolfMark.App.Infrastructure.AppIconCatalog.Default);
+    }
 }

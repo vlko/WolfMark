@@ -84,9 +84,20 @@ public sealed class RelocationTests : IAsyncLifetime
     {
         var entry = LaunchCommand.AutostartEntry("/opt/my apps/WolfMark", null);
         Assert.StartsWith("[Desktop Entry]\nType=Application\n", entry);
-        Assert.Contains("\nExec=\"/opt/my apps/WolfMark\"\n", entry);
+        Assert.Contains("\nExec=\"/opt/my apps/WolfMark\" --autostart\n", entry);
 
-        Assert.Contains("\nExec=\"/opt/WolfMark\" --demo \"/tmp/my demo\"\n", LaunchCommand.AutostartEntry("/opt/WolfMark", "/tmp/my demo"));
+        Assert.Contains("\nExec=\"/opt/WolfMark\" --demo \"/tmp/my demo\" --autostart\n", LaunchCommand.AutostartEntry("/opt/WolfMark", "/tmp/my demo"));
+    }
+
+    [Fact]
+    public void Launch_agent_lists_the_arguments_one_by_one_and_escapes_them()
+    {
+        var plist = LaunchCommand.LaunchAgentPlist("app.wolfmark.1a2b", "/Applications/Tom & Jerry/WolfMark.app/Contents/MacOS/WolfMark", "/tmp/my demo");
+
+        Assert.Contains("<key>Label</key>\n  <string>app.wolfmark.1a2b</string>", plist);
+        Assert.Contains("    <string>/Applications/Tom &amp; Jerry/WolfMark.app/Contents/MacOS/WolfMark</string>\n    <string>--demo</string>\n    <string>/tmp/my demo</string>\n    <string>--autostart</string>", plist);
+        Assert.Contains("<key>RunAtLoad</key>\n  <true/>", plist);
+        Assert.DoesNotContain("--demo", LaunchCommand.LaunchAgentPlist("l", "/a", null));
     }
 
     [Theory]

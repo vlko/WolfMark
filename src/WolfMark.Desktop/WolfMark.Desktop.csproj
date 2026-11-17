@@ -20,6 +20,8 @@
     <!-- Barlow (SIL OFL 1.1) shared with the Windows app -->
     <AvaloniaResource Include="..\WolfMark.App\Assets\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\WolfMark.App\Assets\WolfMark-256.png" Link="Assets\WolfMark-256.png" />
+    <!-- Icon variants selectable in Settings (window/taskbar icon), shared with the Windows app -->
+    <AvaloniaResource Include="..\WolfMark.App\Assets\IconProposals\*.png" Exclude="..\WolfMark.App\Assets\IconProposals\sheet.png" Link="Assets\Icons\%(Filename)%(Extension)" />
     <Content Include="..\WolfMark.App\Assets\Fonts\OFL-Barlow.txt" Link="OFL-Barlow.txt" CopyToOutputDirectory="PreserveNewest" />
     <!-- Licences of what the download contains -->
     <Content Include="..\..\THIRD-PARTY-NOTICES.md;..\..\LICENSE" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

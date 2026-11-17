@@ -138,6 +138,7 @@ internal static class Ui
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             Focusable = false, // the editor keeps its selection
+            [Avalonia.Automation.AutomationProperties.NameProperty] = tooltip,
         };
         ToolTip.SetTip(button, tooltip);
         return button;

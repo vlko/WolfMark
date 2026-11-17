@@ -364,11 +364,19 @@ Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dá
   čip filtra v histórii a „Nedokončené“ podľa view modelu, hlásenie chyby pri otvorení Nastavení, návrat okna na
   obrazovku, štart po prihlásení na Linuxe (XDG autostart), skratky s ⌘ v textoch na macOS, názvy ikonových
   tlačidiel pre čítačky obrazovky. „OK“ v Nastaveniach App ide z reťazcov; CI stráži, že texty sú vygenerované z tabuľky.
-  **Otvorené:** klávesnica v kalendári, placeholder a popis pri ťahaní obrázka v editore, kopírovanie rozšírené
-  na Markdown, Ctrl+klik na úlohu v surovom režime, štart po prihlásení na macOS a skrytý štart do tray,
-  `--screenshots` a `--trace-editor`, výber ikony, farebné emotikony (Avalonia ich vypnúť nevie bez iného písma),
-  ďalšie `AutomationProperties`. Kontrola pravopisu ostáva v ADR 0005.
-  *Stav:* Linux smoke 27/27; okno Nastavení Desktopu smoke neotvára – **čaká na ručné overenie na Linuxe/macOS**.
+  Dokončené 2026-11-17: klávesnica v kalendári (šípky, Enter/Medzera, fokus po Ctrl+Shift+C, rámček fokusu), bunky
+  kalendára ako tlačidlá pre čítačky obrazovky, názvy pre riadky histórie a hľadania, záložky tagov, tlačidlá
+  formátovania a vzorky farieb; placeholder editora; kopírovanie a vystrihnutie rozšírené na okolitý Markdown;
+  Ctrl+klik na úlohu v surovom režime; štart po prihlásení aj na macOS (launch agent) a skrytý štart do oblasti
+  oznámení (`--autostart`); `--screenshots` (spoločný `ScreenshotScript`, kreslí okno do obrázka – funguje aj pod
+  Xvfb); výber ikony aplikácie (Linux; na macOS ukazuje Dock ikonu balíka). Opravené prekresľovanie stavového
+  riadka históriou pri rozbalenom mesiaci.
+  **Rozdiely platforiem, ktoré ostávajú:** kontrola pravopisu (ADR 0005), vypnutie farebných emotikonov a popis pri
+  ťahaní obrázka (Avalonia ich nemá), `--trace-editor` (meria Win2D editor).
+  *Stav:* testy 571, Linux smoke 28/28 vrátane novej kontroly `screenshots`; kalendár, filter, placeholder a všetky
+  stránky Nastavení overené na snímkach pod Xvfb, skrytý štart cez stav okna v X11. Neoverené: macOS (launch agent,
+  ⌘ v textoch), čítačka obrazovky naživo, kopírovanie do schránky. Windows smoke 30/30 so spoločným
+  snímkovacím skriptom (2026-11-17).
 - 🟨 **M11-14 – CI a release.** Hotové: `release.yml` pred vydaním spúšťa unit testy a smoke (Windows x64, Linux)
   nad binárkou, ktorá sa vydáva, zapisuje `SHA256SUMS.txt` a právo zápisu má len job vydania; CI ruší prekonané behy,
   na macOS spúšťa unit testy (zatiaľ len informatívne) a stráži vygenerované reťazce; `benchmarks/WolfMark.Benchmarks`

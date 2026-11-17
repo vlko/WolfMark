@@ -118,6 +118,8 @@ internal sealed class HistoryView : UserControl
         {
             _row = row;
             var note = row.Note;
+            // One sentence for a screen reader instead of every text block of the row.
+            Avalonia.Automation.AutomationProperties.SetName(this, $"{row.TimeText} {row.Title} {note.PrimaryTag}");
             var time = Typo.LeadTime(out var setTime, 24, Palette.InkSecondary);
             setTime(note.ModifiedAt);
             var created = Typo.Caps(row.CreatedText, 10.5, Palette.InkTertiary);
@@ -285,6 +287,7 @@ internal sealed class HistoryView : UserControl
             Background = Palette.Transparent;
             Opacity = row.IsMissing ? 0.5 : 1;
             ToolTip.SetTip(this, row.FullPath);
+            Avalonia.Automation.AutomationProperties.SetName(this, $"{row.ExternalText} {row.Title} {row.FullPath}");
             Click += async (_, _) => await vm.OpenFileAsync(row.FullPath);
 
             var open = new MenuItem { Header = Strings.Get(R.Menu_Open), IsEnabled = !row.IsMissing };

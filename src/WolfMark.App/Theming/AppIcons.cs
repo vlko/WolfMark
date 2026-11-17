@@ -8,55 +8,14 @@ namespace WolfMark.App.Theming;
 /// </summary>
 internal static class AppIcons
 {
-    public const string Default = "riso-white";
+    public const string Default = AppIconCatalog.Default;
 
-    /// <summary>In the order of the picker.</summary>
-    public static (string Id, string NameKey)[] All { get; } =
-    [
-        ("riso-white", R.Icon_RisoWhite),
-        ("riso-blue", R.Icon_RisoBlue),
-        ("tag-strokes", R.Icon_TagStrokes),
-        ("calendar-w", R.Icon_CalendarW),
-        ("pencil-w", R.Icon_PencilW),
-        ("wolf", R.Icon_Wolf),
-        ("wolf-pencil", R.Icon_WolfPencil),
-        ("week-band", R.Icon_WeekBand),
-        ("notebook-calendar", R.Icon_NotebookCalendar),
-        ("calendar-page", R.Icon_CalendarPage),
-        ("calendar-pencil", R.Icon_CalendarPencil),
-        ("wolf-ink", R.Icon_WolfInk),
-        ("wolf-check", R.Icon_WolfCheck),
-    ];
+    /// <summary>In the order of the picker (shared with the macOS/Linux app).</summary>
+    public static (string Id, string NameKey)[] All => AppIconCatalog.All;
 
     private static string Folder => Path.Combine(AppContext.BaseDirectory, "Assets", "IconProposals");
 
-    /// <summary>
-    /// Maps a saved id to a current one: ids used to carry a number prefix ("5-wolf"), and an icon that
-    /// is no longer offered falls back to the default.
-    /// </summary>
-    public static string Normalize(string? id)
-    {
-        if (string.IsNullOrEmpty(id))
-        {
-            return Default;
-        }
-
-        var dash = id.IndexOf('-');
-        if (dash > 0 && id.AsSpan(0, dash).IndexOfAnyExceptInRange('0', '9') < 0)
-        {
-            id = id[(dash + 1)..];
-        }
-
-        foreach (var (known, _) in All)
-        {
-            if (known == id)
-            {
-                return id;
-            }
-        }
-
-        return Default;
-    }
+    public static string Normalize(string? id) => AppIconCatalog.Normalize(id);
 
     public static string IcoPath(string? id)
     {

@@ -86,6 +86,7 @@ internal static class TagPicker
                     BorderBrush = Palette.Ink,
                     CornerRadius = new CornerRadius(4),
                 };
+                Avalonia.Automation.AutomationProperties.SetName(swatch, c.ToHex());
                 swatch.Click += (_, _) =>
                 {
                     newColor = c; // kept until Enter creates the tag

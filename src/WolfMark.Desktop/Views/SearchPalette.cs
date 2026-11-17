@@ -30,6 +30,7 @@ internal sealed class SearchPalette : UserControl
             Background = Brushes.Transparent,
             Padding = new Thickness(4, 6),
         };
+        Avalonia.Automation.AutomationProperties.SetName(_input, Strings.Get(R.Toolbar_Search));
         _input.TextChanged += (_, _) => search.Query = _input.Text ?? string.Empty;
         _input.AddHandler(KeyDownEvent, (_, e) =>
         {
@@ -120,6 +121,7 @@ internal sealed class SearchPalette : UserControl
         public ResultRow(MainViewModel vm, SearchResultViewModel item)
         {
             _item = item;
+            Avalonia.Automation.AutomationProperties.SetName(this, item.Hit.Note.Title);
             var note = item.Hit.Note;
             var title = new TextBlock { FontSize = 14.5, FontWeight = FontWeight.SemiBold, Foreground = Palette.Ink, TextTrimming = TextTrimming.CharacterEllipsis };
             var snippet = new TextBlock { FontSize = 12.5, Foreground = Palette.InkSecondary, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
