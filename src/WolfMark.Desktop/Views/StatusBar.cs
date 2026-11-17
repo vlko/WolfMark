@@ -46,14 +46,7 @@ internal sealed class StatusBar : Border
             conflicts.IsVisible = vm.ConflictCount > 0;
             conflictLabel.Text = Strings.Format(R.Conflicts_Count, vm.ConflictCount).ToUpper(CultureInfo.CurrentCulture);
         });
-        conflicts.Click += async (_, _) =>
-        {
-            var list = await host.History.GetConflictsAsync(host.ShutdownToken);
-            if (list.Count > 0)
-            {
-                await vm.OpenNoteAsync(list[0].RelativePath);
-            }
-        };
+        conflicts.Click += async (_, _) => await vm.OpenFirstConflictAsync();
 
         // Notes folder on the right – in its own case: unlike on Windows, paths here are case-sensitive.
         var folderText = Typo.Caps(host.Root, 11.5, Palette.InkTertiary);

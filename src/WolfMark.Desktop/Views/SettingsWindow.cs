@@ -37,7 +37,7 @@ internal sealed class SettingsWindow : Window
         var s = host.Settings.Current;
         var portableData = host.PortableDataDirectory;
         var isPortable = portableData is not null;
-        Title = isPortable ? $"{Strings.Get(R.Settings_Title)} · {Strings.Get(R.Settings_PortableTitle)}" : Strings.Get(R.Settings_Title);
+        Title = $"{Strings.Get(R.Settings_Title)} · {DiagnosticInfo.ShortVersion}{(isPortable ? " · " + Strings.Get(R.Settings_PortableTitle) : string.Empty)}";
         Width = 820;
         Height = 640;
         Background = Palette.WindowTint;
@@ -85,33 +85,26 @@ internal sealed class SettingsWindow : Window
             if (moveNotes)
             {
                 browse.IsEnabled = move.IsEnabled = switchTo.IsEnabled = cancelMove.IsEnabled = false;
-                await vm.Editor.FlushAsync();
-                try
+                var outcome = await vm.MoveNotesAsync(newRoot);
+                if (outcome.RestartNow)
                 {
-                    await host.MoveNotesAsync(newRoot, null);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    // Watcher and Claude Code sync are stopped: only a restart brings them back.
-                    moveText.Text = Strings.Format(R.Settings_MoveFailed, ex.Message);
-                    cancelMove.IsEnabled = true;
-                    _restartNeeded = true;
-                    restartRow.IsVisible = true;
+                    // The old folder is in the trash – nothing may be written there any more.
+                    Program.RestartRequested = true;
+                    Close();
+                    (Owner as Window)?.Close();
                     return;
                 }
 
-                // The old folder is in the trash – nothing may be written there any more.
-                s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
-                await host.SaveSettingsAsync();
-                Program.RestartRequested = true;
-                Close();
-                (Owner as Window)?.Close();
+                // Watcher and Claude Code sync are stopped: only a restart brings them back.
+                moveText.Text = outcome.Message ?? string.Empty;
+                cancelMove.IsEnabled = true;
+                _restartNeeded = true;
+                restartRow.IsVisible = true;
                 return;
             }
 
             movePanel.IsVisible = false;
-            s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
-            await host.SaveSettingsAsync();
+            await vm.SwitchNotesRootAsync(newRoot);
             rootText.Text = newRoot;
             _restartNeeded = true;
             restartRow.IsVisible = true;
@@ -170,73 +163,53 @@ internal sealed class SettingsWindow : Window
         async Task SwitchPortableAsync(bool moveNotes)
         {
             portableButton.IsEnabled = portableCopy.IsEnabled = portableMove.IsEnabled = portableCancel.IsEnabled = browse.IsEnabled = false;
-            await vm.Editor.FlushAsync();
             var progress = new Progress<int>(n => portableProgress.Text = Strings.Format(R.Settings_PortableProgress, n));
-            try
+            var outcome = await vm.SwitchPortableAsync(moveNotes, progress, RemoveSystemIntegration);
+            if (outcome.RestartNow)
             {
-                var result = isPortable
-                    ? await host.DisablePortableAsync(progress)
-                    : await host.EnablePortableAsync(moveNotes, progress);
-                if (!isPortable && DefaultHandler.IsSupported)
-                {
-                    await Task.Run(() =>
-                    {
-                        try
-                        {
-                            if (DefaultHandler.IsEnabled)
-                            {
-                                DefaultHandler.Set(false);
-                            }
-
-                            if (DefaultHandler.LinksEnabled)
-                            {
-                                DefaultHandler.SetLinks(false);
-                            }
-                        }
-                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                        {
-                            // best effort – the mode switch already happened
-                        }
-                    });
-                }
-
-                if (result.CleanupError is { } cleanup)
-                {
-                    portableProgress.Text = Strings.Format(R.Settings_PortableCleanupFailed, cleanup.Message);
-                    _restartNeeded = true;
-                    restartRow.IsVisible = true;
-                    return;
-                }
-
                 Program.RestartRequested = true;
                 Close();
                 (Owner as Window)?.Close();
+                return;
             }
-            catch (Exception ex)
-            {
-                // Watcher and Claude Code sync are stopped: only a restart brings them back.
-                portableProgress.Text = Strings.Format(R.Settings_PortableFailed, ex.Message);
-                portableCancel.IsEnabled = true;
-                _restartNeeded = true;
-                restartRow.IsVisible = true;
-            }
+
+            // Watcher and Claude Code sync are stopped: only a restart brings them back.
+            portableProgress.Text = outcome.Message ?? string.Empty;
+            portableCancel.IsEnabled = outcome.Failed;
+            _restartNeeded = true;
+            restartRow.IsVisible = true;
         }
 
         portableCopy.Click += async (_, _) => await SwitchPortableAsync(moveNotes: false);
         portableMove.Click += async (_, _) => await SwitchPortableAsync(moveNotes: true);
 
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
-        var languages = new[] { (string?)null, "sk-SK", "en-US" };
-        var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Math.Max(0, Array.IndexOf(languages, s.Language)));
+        var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], SettingsEdit.LanguageIndex(s.Language));
         var dateFormats = new ToggleSwitch { IsChecked = s.DateFormatsFromLanguage, Content = Strings.Get(R.Settings_DateFormatsFromLanguage) };
         var time24 = new ToggleSwitch { IsChecked = s.Use24HourTime, Content = Strings.Get(R.Settings_Use24HourTime) };
         var closeToTray = new ToggleSwitch { IsChecked = s.CloseToTray, Content = Strings.Get(R.Settings_CloseToTray) };
+
+        // Start at sign-in (Linux: an XDG autostart entry – the file is the truth). Not in a demo; portable mode
+        // writes nothing to this computer.
+        bool? autostartWas = null;
+        var autostart = new ToggleSwitch { Content = Strings.Get(R.Settings_StartAtLogin), IsEnabled = false, IsVisible = Autostart.IsSupported };
+        if (Autostart.IsSupported && !isPortable && !LaunchOptions.Current.IsDemo)
+        {
+            _ = Task.Run(() => Autostart.IsEnabled).ContinueWith(
+                t =>
+                {
+                    autostartWas = t.IsCompletedSuccessfully && t.Result;
+                    autostart.IsChecked = autostartWas;
+                    autostart.IsEnabled = true;
+                },
+                TaskScheduler.FromCurrentSynchronizationContext());
+        }
 
         // Quick note (M8-01): no global shortcut of the app's own here (Wayland has none, ADR 0012) – the command
         // for a shortcut of the system.
         var quickNoteHint = Typo.Body(Strings.Get(R.Settings_QuickNoteCommand), 12.5, Palette.InkTertiary);
         quickNoteHint.TextWrapping = TextWrapping.Wrap;
-        var quickNoteCommand = new TextBox { Text = QuickNoteCommand(), IsReadOnly = true, MinWidth = 320 };
+        var quickNoteCommand = new TextBox { Text = LaunchCommand.QuickNote(), IsReadOnly = true, MinWidth = 320 };
         var quickNoteCopy = Ui.FlatButton(Strings.Get(R.Settings_QuickNoteCopy));
         quickNoteCopy.Click += async (_, _) =>
         {
@@ -288,7 +261,8 @@ internal sealed class SettingsWindow : Window
 
         var lineNumbers = new ToggleSwitch { IsChecked = s.EditorLineNumbers, Content = Strings.Get(R.Settings_LineNumbers) };
         var monospace = new ToggleSwitch { IsChecked = s.EditorMonospace, Content = Strings.Get(R.Settings_Monospace) };
-        var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260 };
+        var font = new TextBox { Text = s.EditorFontFamily, MinWidth = 260, IsEnabled = !s.EditorMonospace };
+        monospace.IsCheckedChanged += (_, _) => font.IsEnabled = monospace.IsChecked != true;
         var monoFont = new ComboBox { MinWidth = 260, ItemsSource = new[] { s.EditorMonoFontFamily }, SelectedIndex = 0 };
         // Looking at every installed font takes a while (it loads each typeface): the window opens first and the
         // list fills in afterwards.
@@ -309,7 +283,7 @@ internal sealed class SettingsWindow : Window
         var fontSize = new NumericUpDown { Value = (decimal)s.EditorFontSize, Minimum = 10, Maximum = 28, Increment = 1, MinWidth = 140 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
         // Text width: the offered lengths, plus a value written into settings.json by hand.
-        var widths = LocalSettings.EditorMaxLineLengthChoices.Append(Math.Max(0, s.EditorMaxLineLength)).Distinct().Order().ToArray();
+        var widths = SettingsEdit.TextWidthChoices(s);
         var textWidth = Combo(
             [.. widths.Select(n => n == 0 ? Strings.Get(R.Settings_TextWidthFull) : Strings.Format(R.Settings_TextWidthChars, n))],
             Array.IndexOf(widths, Math.Max(0, s.EditorMaxLineLength)));
@@ -319,9 +293,43 @@ internal sealed class SettingsWindow : Window
         var cc = s.ClaudeCode;
         var ccEnabled = new ToggleSwitch { IsChecked = cc.Enabled, Content = Strings.Get(R.Settings_ClaudeEnabled) };
         var ccPath = new TextBox { Text = cc.ClaudeDirectory ?? string.Empty, PlaceholderText = host.ClaudeDirectory, MinWidth = 320 };
+        var ccExcluded = new TextBox
+        {
+            Text = string.Join(Environment.NewLine, cc.ExcludedProjects),
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            MinHeight = 70,
+            MinWidth = 320,
+        };
         var ccRedact = new CheckBox { IsChecked = cc.RedactSecrets, Content = Strings.Get(R.Settings_ClaudeRedact) };
+        var ccWatch = new CheckBox { IsChecked = cc.WatchInRealTime, Content = Strings.Get(R.Settings_ClaudeWatch) };
+        var ccInterval = new NumericUpDown { Value = cc.IntervalMinutes, Minimum = 1, Maximum = 1440, Increment = 1, MinWidth = 140, FormatString = "0" };
         var ccSyncNow = Ui.FlatButton(Strings.Get(R.Settings_ClaudeSyncNow));
+        ccSyncNow.IsEnabled = host.ClaudeSync is not null;
         ccSyncNow.Click += (_, _) => host.TriggerClaudeSync();
+
+        // Index and diagnostics, as in the Windows app: where the data is, and version + environment for bug reports.
+        var semantic = Typo.Body(Strings.Get(host.EmbeddingProvider is not null && host.Db.VectorsAvailable ? R.Settings_IndexSemanticOn : R.Settings_IndexSemanticOff), 12.5, Palette.InkSecondary);
+        semantic.TextWrapping = TextWrapping.Wrap;
+        var paths = new SelectableTextBlock { Text = $"{host.Paths.IndexDatabase}\n{host.Paths.LogsDirectory}", FontSize = 11.5, Foreground = Palette.InkTertiary, TextWrapping = TextWrapping.Wrap };
+        var diagnosticText = new SelectableTextBlock { FontSize = 11.5, Foreground = Palette.InkTertiary, TextWrapping = TextWrapping.Wrap };
+        var copyDiagnostics = Ui.FlatButton(Strings.Get(R.Settings_CopyDiagnostics));
+        copyDiagnostics.IsEnabled = false;
+        copyDiagnostics.Click += async (_, _) =>
+        {
+            if (Clipboard is { } clipboard && diagnosticText.Text is { Length: > 0 } text)
+            {
+                await clipboard.SetTextAsync(text);
+            }
+        };
+        Opened += async (_, _) =>
+        {
+            // Once shown: the display scale is known, and the index size is read off the UI thread.
+            var scale = RenderScaling;
+            var noteCount = vm.NoteCount;
+            diagnosticText.Text = await Task.Run(() => DiagnosticInfo.Build(host, noteCount, scale));
+            copyDiagnostics.IsEnabled = true;
+        };
         var rebuild = Ui.FlatButton(Strings.Get(R.Settings_IndexRebuild));
         rebuild.Click += async (_, _) =>
         {
@@ -337,28 +345,40 @@ internal sealed class SettingsWindow : Window
         cancel.Click += (_, _) => Close();
         save.Click += async (_, _) =>
         {
-            var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
-            _restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal)
-                              || s.DateFormatsFromLanguage != (dateFormats.IsChecked == true)
-                              || s.Use24HourTime != (time24.IsChecked == true)
-                              || cc.Enabled != (ccEnabled.IsChecked == true)
-                              || cc.RedactSecrets != (ccRedact.IsChecked == true)
-                              || !string.Equals(cc.ClaudeDirectory, string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim(), StringComparison.Ordinal);
-            s.Theme = (AppTheme)Math.Max(0, theme.SelectedIndex);
-            s.Language = newLanguage;
-            s.DateFormatsFromLanguage = dateFormats.IsChecked == true;
-            s.Use24HourTime = time24.IsChecked == true;
-            s.CloseToTray = closeToTray.IsChecked == true;
-            s.EditorLineNumbers = lineNumbers.IsChecked == true;
-            s.EditorMonospace = monospace.IsChecked == true;
-            s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
-            s.EditorMonoFontFamily = monoFont.SelectedItem as string ?? s.EditorMonoFontFamily;
-            s.EditorFontSize = (double)(fontSize.Value ?? (decimal)s.EditorFontSize);
-            s.EditorMaxLineLength = widths[Math.Max(0, textWidth.SelectedIndex)];
-            s.DefaultEditorMode = (EditorMode)Math.Max(0, mode.SelectedIndex);
-            cc.Enabled = ccEnabled.IsChecked == true;
-            cc.ClaudeDirectory = string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim();
-            cc.RedactSecrets = ccRedact.IsChecked == true;
+            // What both apps have in common is checked and written by SettingsEdit (tested there).
+            var edit = SettingsEdit.From(s);
+            edit.Theme = (AppTheme)Math.Max(0, theme.SelectedIndex);
+            edit.Language = SettingsEdit.Languages[Math.Max(0, language.SelectedIndex)];
+            edit.DateFormatsFromLanguage = dateFormats.IsChecked == true;
+            edit.Use24HourTime = time24.IsChecked == true;
+            edit.CloseToTray = closeToTray.IsChecked == true;
+            edit.EditorLineNumbers = lineNumbers.IsChecked == true;
+            edit.EditorMonospace = monospace.IsChecked == true;
+            edit.EditorFontFamily = font.Text;
+            edit.EditorMonoFontFamily = monoFont.SelectedItem as string;
+            edit.EditorFontSize = (double?)fontSize.Value;
+            edit.EditorMaxLineLength = widths[Math.Max(0, textWidth.SelectedIndex)];
+            edit.DefaultEditorMode = (EditorMode)Math.Max(0, mode.SelectedIndex);
+            edit.ClaudeEnabled = ccEnabled.IsChecked == true;
+            edit.ClaudeDirectory = ccPath.Text;
+            edit.ClaudeExcludedProjects = ccExcluded.Text ?? string.Empty;
+            edit.ClaudeRedactSecrets = ccRedact.IsChecked == true;
+            edit.ClaudeWatchInRealTime = ccWatch.IsChecked == true;
+            edit.ClaudeIntervalMinutes = (double?)ccInterval.Value;
+            _restartNeeded |= edit.ApplyTo(s);
+            if (autostartWas is { } startedBefore && (autostart.IsChecked == true) != startedBefore)
+            {
+                var on = autostart.IsChecked == true;
+                try
+                {
+                    await Task.Run(() => Autostart.Set(on));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _vm.ErrorNotice = Strings.Format(R.Settings_StartAtLoginFailed, ex.Message);
+                }
+            }
+
             if (associationWas is { } was && (fileAssociation.IsChecked == true) != was)
             {
                 var on = fileAssociation.IsChecked == true;
@@ -407,6 +427,7 @@ internal sealed class SettingsWindow : Window
                 Field(Strings.Get(R.Settings_Language), language),
                 dateFormats,
                 time24,
+                autostart,
                 closeToTray,
                 Section(Strings.Get(R.Settings_QuickNote)),
                 quickNoteHint,
@@ -440,11 +461,19 @@ internal sealed class SettingsWindow : Window
                 10,
                 ccEnabled,
                 Field(Strings.Get(R.Settings_ClaudePath), ccPath),
-                ccRedact,
+                Field(Strings.Get(R.Settings_ClaudeExcluded), ccExcluded),
+                Ui.HStack(16, ccRedact, ccWatch),
+                Field(Strings.Get(R.Settings_ClaudeInterval), ccInterval),
                 ccSyncNow)),
-            (Icons.Sync, Strings.Get(R.Settings_Index), Ui.VStack(
+            (Icons.Sync, Strings.Get(R.Settings_IndexDiagnostics), Ui.VStack(
                 10,
-                rebuild)),
+                Section(Strings.Get(R.Settings_Index)),
+                semantic,
+                Ui.HStack(8, rebuild),
+                paths,
+                Section(Strings.Get(R.Settings_Diagnostics)),
+                diagnosticText,
+                Ui.HStack(8, copyDiagnostics))),
         };
         var buttons = Ui.HStack(8, restartRow, cancel, save);
         buttons.HorizontalAlignment = HorizontalAlignment.Right;
@@ -457,6 +486,37 @@ internal sealed class SettingsWindow : Window
     }
 
     private Task SaveAsync() => _vm.Host.SaveSettingsAsync();
+
+    /// <summary>Portable mode leaves nothing registered on this computer: the .md handler and the link handler go.</summary>
+    private static void RemoveSystemIntegration()
+    {
+        try
+        {
+            if (Autostart.IsEnabled)
+            {
+                Autostart.Set(false);
+            }
+
+            if (!DefaultHandler.IsSupported)
+            {
+                return;
+            }
+
+            if (DefaultHandler.IsEnabled)
+            {
+                DefaultHandler.Set(false);
+            }
+
+            if (DefaultHandler.LinksEnabled)
+            {
+                DefaultHandler.SetLinks(false);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // best effort – the mode switch already happened
+        }
+    }
 
     /// <summary>
     /// Tags (M8-05), as src/WolfMark.App/Views/SettingsDialog.cs: the list of tags, a field to add one, and per tag a
@@ -747,18 +807,6 @@ internal sealed class SettingsWindow : Window
     /// This executable with <c>--quick-note</c>, quoted when the path has spaces; in demo mode with its folder, so
     /// the command reaches the demo instance.
     /// </summary>
-    private static string QuickNoteCommand()
-    {
-        static string Quote(string arg) => arg.Contains(' ', StringComparison.Ordinal) ? "\"" + arg + "\"" : arg;
-        var command = Quote(Environment.ProcessPath ?? "wolfmark");
-        if (LaunchOptions.Current.DemoDirectory is { } demo)
-        {
-            command += " --demo " + Quote(demo);
-        }
-
-        return command + " " + LaunchOptions.QuickNoteSwitch;
-    }
-
     private static ComboBox Combo(string[] items, int selected) => new() { ItemsSource = items, SelectedIndex = selected, MinWidth = 220 };
 
     private static TextBlock Section(string title)

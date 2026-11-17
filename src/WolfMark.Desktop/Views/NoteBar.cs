@@ -34,17 +34,16 @@ internal sealed class NoteBar : UserControl
         state.VerticalAlignment = VerticalAlignment.Center;
         Ui.Bind(note, nameof(NoteEditorViewModel.SaveState), () =>
         {
-            var (icon, text) = note.SaveState switch
+            var icon = note.SaveState switch
             {
-                SaveState.Saved => (Icons.Check, Strings.Get(R.Save_Saved)),
-                SaveState.Saving => ((string?)null, Strings.Get(R.Save_Saving)),
-                SaveState.Pending => (Icons.Pencil, Strings.Get(R.Save_Pending)),
-                SaveState.Error => (null, Strings.Get(R.Save_Error)),
-                SaveState.ReadOnly => (Icons.Lock, Strings.Get(R.Save_ReadOnly)),
-                _ => (Icons.Plus, Strings.Get(R.Save_New)),
+                SaveState.Saved => Icons.Check,
+                SaveState.Pending => Icons.Pencil,
+                SaveState.ReadOnly => Icons.Lock,
+                SaveState.Saving or SaveState.Error => null,
+                _ => Icons.Plus,
             };
             stateIcon.Content = icon is null ? null : Icons.Create(icon, 12, Palette.InkTertiary);
-            stateText.Text = text.ToUpper(CultureInfo.CurrentCulture);
+            stateText.Text = NoteTexts.SaveState(note.SaveState);
             stateText.Foreground = note.SaveState == SaveState.Error ? Brushes.IndianRed : Palette.InkTertiary;
         });
 

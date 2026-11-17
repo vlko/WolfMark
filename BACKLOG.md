@@ -351,12 +351,24 @@ Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dá
   mimo neho neoverený), `OnDrop` s ošetrením chyby. App: externé okno pri zatvorení ukončí kontrolu pravopisu
   (`MarkdownEditor.ReleaseSpelling`). `Debouncer` chyby loguje. Otvorené: `async void` lambda v `MainViewModel`.
   *Stav:* Implementované, len skompilované – čaká na overenie na Windows a Linuxe.
-- ⬜ **M11-12 – Spoločná logika do `WolfMark.Presentation`:** nastavenia a kontrola reštartu, prenosný režim, rýchla
-  poznámka, `OpenLinkAsync`, texty stavu uloženia, `SavePlacement`, `crash.txt` (~1 000 riadkov je v oboch aplikáciách).
-- ⬜ **M11-13 – Parita Desktopu:** nastavenia Claude Code (vylúčené projekty, sledovanie, interval), Index a diagnostika,
-  farebné emotikony, výber ikony, placeholder editora, kopírovanie rozšírené na Markdown, klávesnica v kalendári,
-  čip filtra a synchronizácia „Nedokončené“, štart po prihlásení, `--screenshots`, `AutomationProperties`,
-  ošetrenie chýb pri otvorení Nastavení a rýchlej poznámky. Kontrola pravopisu ostáva v ADR 0005.
+- 🟨 **M11-12 – Spoločná logika do `WolfMark.Presentation`.** Presunuté a otestované: uloženie nastavení a kontrola
+  reštartu (`SettingsEdit`), presun priečinka a prenosný režim (`MainViewModel.MoveNotesAsync`,
+  `SwitchPortableAsync`), rýchla poznámka vrátane umiestnenia okna (`QuickNoteViewModel`), nadpis dňa, stav uloženia
+  a časy poznámky (`NoteTexts`), zoom, návrat okna na obrazovku, otvorenie prvého konfliktu, `crash.txt`
+  (`CrashFile`), príkazové riadky s `--demo` (`LaunchCommand`), diagnostika (`DiagnosticInfo`).
+  **Otvorené:** akcie ponuky histórie a zatváranie externého okna (v oboch aplikáciách ostali kópie).
+  *Stav:* testy `SettingsEditTests`, `RelocationTests`, `QuickNoteTests`, `NoteTextsTests`; Linux smoke 27/27 vo WSL
+  a Windows smoke 30/30 (2026-11-17). **Čaká na preklikanie Nastavení** v oboch aplikáciách (smoke ich neotvára).
+- 🟨 **M11-13 – Parita Desktopu.** Doplnené: Claude Code (vylúčené projekty, sledovanie, interval, „Synchronizovať“
+  len keď sync beží), Index a diagnostika s kopírovaním, verzia v titulku Nastavení, pole písma vypnuté pri monospace,
+  čip filtra v histórii a „Nedokončené“ podľa view modelu, hlásenie chyby pri otvorení Nastavení, návrat okna na
+  obrazovku, štart po prihlásení na Linuxe (XDG autostart), skratky s ⌘ v textoch na macOS, názvy ikonových
+  tlačidiel pre čítačky obrazovky. „OK“ v Nastaveniach App ide z reťazcov; CI stráži, že texty sú vygenerované z tabuľky.
+  **Otvorené:** klávesnica v kalendári, placeholder a popis pri ťahaní obrázka v editore, kopírovanie rozšírené
+  na Markdown, Ctrl+klik na úlohu v surovom režime, štart po prihlásení na macOS a skrytý štart do tray,
+  `--screenshots` a `--trace-editor`, výber ikony, farebné emotikony (Avalonia ich vypnúť nevie bez iného písma),
+  ďalšie `AutomationProperties`. Kontrola pravopisu ostáva v ADR 0005.
+  *Stav:* Linux smoke 27/27; okno Nastavení Desktopu smoke neotvára – **čaká na ručné overenie na Linuxe/macOS**.
 - ⬜ **M11-14 – CI a release:** testy a smoke pred vydaním v `release.yml`, benchmark projekt (BenchmarkDotNet),
   `.editorconfig` a `.gitattributes`, verzia na jednom mieste, `THIRD-PARTY-NOTICES`, test parity kľúčov reťazcov.
 - ⬜ **M11-15 – Dokumentácia:** README (roadmap, tabuľka funkcií, sémantické hľadanie, ktoré ešte nebeží), SPEC

@@ -261,6 +261,9 @@
   <data name="Settings_Restart" xml:space="preserve">
     <value>Restart now</value>
   </data>
+  <data name="Common_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
   <data name="Settings_MoveFailed" xml:space="preserve">
     <value>The notes could not be moved, the original folder was kept: {0}</value>
   </data>
@@ -599,6 +602,12 @@
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Closing the window keeps WolfMark running in the notification area</value>
+  </data>
+  <data name="Settings_StartAtLogin" xml:space="preserve">
+    <value>Start when I sign in</value>
+  </data>
+  <data name="Settings_StartAtLoginFailed" xml:space="preserve">
+    <value>Start at sign-in could not be changed: {0}</value>
   </data>
   <data name="Settings_StartupFailed" xml:space="preserve">
     <value>Start with Windows could not be changed: {0}</value>

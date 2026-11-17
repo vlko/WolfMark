@@ -21,7 +21,7 @@ namespace WolfMark.Desktop.Views;
 /// Main window, laid out like the Windows one (src/WolfMark.App/Views/MainWindow.cs): day heading, week band,
 /// note bar, editor with its time gutter, history and status bar on one flat paper surface.
 /// </summary>
-internal sealed class MainWindow : Window
+internal sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
     private readonly AppHost _host;
@@ -33,7 +33,6 @@ internal sealed class MainWindow : Window
     private readonly RowDefinition _historyRow;
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly TextBlock _fullViewTimes = Typo.Caps(string.Empty, 12, Palette.InkTertiary);
-    private readonly DispatcherTimer _zoomSave = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly Dictionary<string, ExternalNoteWindow> _externalWindows = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private bool _closing;
 
@@ -215,11 +214,10 @@ internal sealed class MainWindow : Window
         text.Margin = new Thickness(0, 6, 0, 0);
         Ui.Bind(_vm, nameof(MainViewModel.SelectedDay), () =>
         {
-            var d = _vm.SelectedDay;
-            var c = CultureInfo.CurrentCulture;
-            setNumber(d.Day.ToString(c));
-            month.Text = (c.DateTimeFormat.GetMonthName(d.Month) + " " + d.Year).ToUpper(c);
-            weekday.Text = c.DateTimeFormat.GetDayName(d.DayOfWeek).ToUpper(c);
+            var heading = NoteTexts.DayHeading(_vm.SelectedDay);
+            setNumber(heading.Number);
+            month.Text = heading.Month;
+            weekday.Text = heading.Weekday;
         });
         var grid = Ui.Columns((Ui.Auto, number), (Ui.Star, text));
         grid.ColumnSpacing = 14;
@@ -250,19 +248,7 @@ internal sealed class MainWindow : Window
         {
             var editor = _vm.Editor;
             setCreated(editor.CreatedAt);
-            var c = CultureInfo.CurrentCulture;
-            var created = Strings.Format(R.FullView_Created, editor.CreatedAt.ToString("t", c));
-            if (editor.ModifiedAt is { } m)
-            {
-                var when = DateOnly.FromDateTime(m) == DateOnly.FromDateTime(editor.CreatedAt) ? m.ToString("t", c) : m.ToString("d", c) + " " + m.ToString("t", c);
-                modified.Text = Strings.Format(R.Editor_Modified, when).ToUpper(c);
-                _fullViewTimes.Text = (created + " · " + Strings.Format(R.Editor_Modified, when)).ToUpper(c);
-            }
-            else
-            {
-                modified.Text = string.Empty;
-                _fullViewTimes.Text = created.ToUpper(c);
-            }
+            (modified.Text, _fullViewTimes.Text) = NoteTexts.Times(editor.CreatedAt, editor.ModifiedAt);
         }
 
         Ui.Bind(_vm.Editor, [nameof(NoteEditorViewModel.CreatedAt), nameof(NoteEditorViewModel.ModifiedAt)], UpdateGutter);
@@ -342,17 +328,10 @@ internal sealed class MainWindow : Window
     /// <summary>Ctrl + / Ctrl − / Ctrl 0 in the editor: the font size setting, saved once the zooming stops.</summary>
     internal void ZoomEditor(int step)
     {
-        var s = _host.Settings.Current;
-        var size = step == 0 ? LocalSettings.EditorFontSizeDefault : LocalSettings.ZoomFontSize(s.EditorFontSize, step);
-        if (size == s.EditorFontSize)
+        if (_vm.ZoomEditor(step == 0 ? null : step))
         {
-            return;
+            UpdateEditorTheme();
         }
-
-        s.EditorFontSize = size;
-        UpdateEditorTheme();
-        _zoomSave.Stop();
-        _zoomSave.Start();
     }
 
     private void UpdateEditorTheme()
@@ -413,11 +392,6 @@ internal sealed class MainWindow : Window
         };
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
         _editor.FontZoomRequested += (_, step) => ZoomEditor(step);
-        _zoomSave.Tick += (_, _) =>
-        {
-            _zoomSave.Stop();
-            _ = _host.SaveSettingsAsync();
-        };
         _editor.EditorLostFocus += (_, _) => _ = editorVm.FlushAsync();
     }
 
@@ -488,7 +462,7 @@ internal sealed class MainWindow : Window
 
         var placeholder = Typo.Body(Strings.Get(R.Search_Placeholder), 14, Palette.InkTertiary);
         placeholder.VerticalAlignment = VerticalAlignment.Center;
-        var shortcut = Typo.Body("Ctrl+K", 12, Palette.InkTertiary);
+        var shortcut = Typo.Body(Strings.Keys("Ctrl+K"), 12, Palette.InkTertiary);
         shortcut.VerticalAlignment = VerticalAlignment.Center;
         var inside = Ui.Columns((Ui.Auto, Icons.Create(Icons.Search, 16, Palette.InkTertiary)), (Ui.Star, placeholder), (Ui.Auto, shortcut));
         inside.ColumnSpacing = 10;
@@ -624,11 +598,20 @@ internal sealed class MainWindow : Window
         {
             await new SettingsWindow(_vm, ApplyAppearance).ShowDialog(this);
         }
+        catch (Exception ex)
+        {
+            // Fire-and-forget callers (the shortcut, the tray): without this the window just silently does not appear.
+            LogSettingsFailed(_host.Loggers.CreateLogger(nameof(MainWindow)), ex);
+            _vm.ErrorNotice = Strings.Format(R.Error_Settings, ex.Message);
+        }
         finally
         {
             _settingsOpen = false;
         }
     }
+
+    [Microsoft.Extensions.Logging.LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Opening settings failed")]
+    private static partial void LogSettingsFailed(Microsoft.Extensions.Logging.ILogger logger, Exception ex);
 
     /// <summary>After the settings: theme, editor fonts, line numbers, tray.</summary>
     private void ApplyAppearance()
@@ -699,6 +682,17 @@ internal sealed class MainWindow : Window
             Width = w.Width;
             Height = w.Height;
             Position = new PixelPoint(w.X, w.Y);
+            // The monitor it was on may be gone or smaller now: back onto a screen, as the Windows app does.
+            if ((Screens.ScreenFromPoint(Position) ?? Screens.Primary) is { } screen)
+            {
+                var area = screen.WorkingArea;
+                var scale = screen.Scaling > 0 ? screen.Scaling : 1;
+                var fit = NoteTexts.FitWindow(w.X, w.Y, (int)(w.Width * scale), (int)(w.Height * scale), area.X, area.Y, area.Width, area.Height);
+                Width = fit.Width / scale;
+                Height = fit.Height / scale;
+                Position = new PixelPoint(fit.X, fit.Y);
+            }
+
             WindowStartupLocation = WindowStartupLocation.Manual;
             if (w.IsMaximized)
             {

@@ -363,7 +363,7 @@ public sealed partial class App : Application, IXamlMetadataProvider
     /// (a non-Exception object thrown from native code, or a XAML error with just a message).</param>
     private void LogFatal(Exception? ex, string source, string? detail = null)
     {
-        WriteCrashFile(ex, source, detail);
+        CrashFile.Write(ex, source, detail);
         if (_logger is null)
         {
             return;
@@ -376,30 +376,6 @@ public sealed partial class App : Application, IXamlMetadataProvider
         else
         {
             LogUnhandledWithoutException(_logger, source, detail ?? "no details");
-        }
-    }
-
-    /// <summary>
-    /// Synchronous copy of every unhandled exception in <c>logs\crash.txt</c>: the process may end right after
-    /// (AppDomain.UnhandledException), before the logger gets to write.
-    /// </summary>
-    private static void WriteCrashFile(Exception? ex, string source, string? detail)
-    {
-        try
-        {
-            var dir = LaunchOptions.Current.DemoDirectory is { } demo
-                ? Path.Combine(demo, "local", "logs")
-                : WolfMark.Storage.Settings.LocalPaths.Default.LogsDirectory;
-            Directory.CreateDirectory(dir);
-            var what = ex?.ToString() ?? "(no exception object)";
-            var extra = detail is null ? string.Empty : $" ({detail})";
-            File.AppendAllText(
-                Path.Combine(dir, "crash.txt"),
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{source}]{extra} {what}{Environment.NewLine}{Environment.NewLine}");
-        }
-        catch (Exception)
-        {
-            // nothing left to report to
         }
     }
 

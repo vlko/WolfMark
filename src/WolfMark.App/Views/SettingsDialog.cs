@@ -77,31 +77,24 @@ internal static class SettingsDialog
             if (move)
             {
                 browse.IsEnabled = moveButton.IsEnabled = switchButton.IsEnabled = cancelMove.IsEnabled = false;
-                await vm.Editor.FlushAsync();
-                try
+                var outcome = await vm.MoveNotesAsync(newRoot);
+                if (outcome.RestartNow)
                 {
-                    await host.MoveNotesAsync(newRoot, null);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    // Watcher and Claude Code sync are stopped: only a restart brings them back.
-                    moveText.Text = Strings.Format(R.Settings_MoveFailed, ex.Message);
-                    cancelMove.IsEnabled = true;
-                    restartNeeded = true;
-                    restartBar.IsOpen = true;
+                    // The old folder is in the Recycle Bin – nothing may be written there any more.
+                    AppInstance.Restart(string.Empty);
                     return;
                 }
 
-                // The old folder is in the Recycle Bin – nothing may be written there any more.
-                s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
-                await host.SaveSettingsAsync();
-                AppInstance.Restart(string.Empty);
+                // Watcher and Claude Code sync are stopped: only a restart brings them back.
+                moveText.Text = outcome.Message ?? string.Empty;
+                cancelMove.IsEnabled = true;
+                restartNeeded = true;
+                restartBar.IsOpen = true;
                 return;
             }
 
             movePanel.Visibility = Visibility.Collapsed;
-            s.RootDirectory = host.Settings.ToStoredRoot(newRoot);
-            await host.SaveSettingsAsync();
+            await vm.SwitchNotesRootAsync(newRoot);
             rootText.Text = newRoot;
             restartNeeded = true;
             restartBar.IsOpen = true;
@@ -158,36 +151,19 @@ internal static class SettingsDialog
         async Task SwitchPortableAsync(bool moveNotes)
         {
             portableButton.IsEnabled = portableCopy.IsEnabled = portableMove.IsEnabled = portableCancel.IsEnabled = browse.IsEnabled = false;
-            await vm.Editor.FlushAsync();
             var progress = new Progress<int>(n => portableProgress.Text = Strings.Format(R.Settings_PortableProgress, n));
-            try
+            var outcome = await vm.SwitchPortableAsync(moveNotes, progress, SystemIntegration.Remove);
+            if (outcome.RestartNow)
             {
-                var result = isPortable
-                    ? await host.DisablePortableAsync(progress)
-                    : await host.EnablePortableAsync(moveNotes, progress);
-                if (!isPortable)
-                {
-                    await Task.Run(SystemIntegration.Remove);
-                }
-
-                if (result.CleanupError is { } cleanup)
-                {
-                    portableProgress.Text = Strings.Format(R.Settings_PortableCleanupFailed, cleanup.Message);
-                    restartNeeded = true;
-                    restartBar.IsOpen = true;
-                    return;
-                }
-
                 AppInstance.Restart(string.Empty);
+                return;
             }
-            catch (Exception ex)
-            {
-                // Watcher and Claude Code sync are stopped: only a restart brings them back.
-                portableProgress.Text = Strings.Format(R.Settings_PortableFailed, ex.Message);
-                portableCancel.IsEnabled = true;
-                restartNeeded = true;
-                restartBar.IsOpen = true;
-            }
+
+            // Watcher and Claude Code sync are stopped: only a restart brings them back.
+            portableProgress.Text = outcome.Message ?? string.Empty;
+            portableCancel.IsEnabled = outcome.Failed;
+            restartNeeded = true;
+            restartBar.IsOpen = true;
         }
 
         portableCopy.Click += async (_, _) => await SwitchPortableAsync(moveNotes: false);
@@ -195,8 +171,7 @@ internal static class SettingsDialog
 
         // Appearance
         var theme = Combo([Strings.Get(R.Settings_ThemeSystem), Strings.Get(R.Settings_ThemeLight), Strings.Get(R.Settings_ThemeDark)], (int)s.Theme);
-        var languages = new[] { (string?)null, "sk-SK", "en-US" };
-        var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], Array.IndexOf(languages, s.Language) is var li and >= 0 ? li : 0);
+        var language = Combo([Strings.Get(R.Settings_LanguageSystem), "Slovenčina", "English"], SettingsEdit.LanguageIndex(s.Language));
         var dateFormats = new ToggleSwitch { IsOn = s.DateFormatsFromLanguage, Header = Strings.Get(R.Settings_DateFormatsFromLanguage) };
         var time24 = new ToggleSwitch { IsOn = s.Use24HourTime, Header = Strings.Get(R.Settings_Use24HourTime) };
 
@@ -253,7 +228,7 @@ internal static class SettingsDialog
         var fontSize = new NumberBox { Value = s.EditorFontSize, Minimum = LocalSettings.EditorFontSizeMin, Maximum = LocalSettings.EditorFontSizeMax, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact, SmallChange = 1 };
         var mode = Combo([Strings.Get(R.Mode_Raw), Strings.Get(R.Mode_Formatted)], (int)s.DefaultEditorMode);
         // Text width: the offered lengths, plus a value written into settings.json by hand.
-        var widths = LocalSettings.EditorMaxLineLengthChoices.Append(Math.Max(0, s.EditorMaxLineLength)).Distinct().Order().ToArray();
+        var widths = SettingsEdit.TextWidthChoices(s);
         var textWidth = Combo(
             [.. widths.Select(n => n == 0 ? Strings.Get(R.Settings_TextWidthFull) : Strings.Format(R.Settings_TextWidthChars, n))],
             Array.IndexOf(widths, Math.Max(0, s.EditorMaxLineLength)));
@@ -415,7 +390,7 @@ internal static class SettingsDialog
             XamlRoot = root,
             Title = $"{Strings.Get(R.Settings_Title)} · {DiagnosticInfo.ShortVersion}{(isPortable ? " · " + Strings.Get(R.Settings_PortableTitle) : string.Empty)}",
             Content = Categories(pages, restartBar),
-            PrimaryButtonText = "OK",
+            PrimaryButtonText = Strings.Get(R.Common_Ok),
             CloseButtonText = Strings.Get(R.Common_Cancel),
             DefaultButton = ContentDialogButton.Primary,
         };
@@ -435,24 +410,30 @@ internal static class SettingsDialog
             return;
         }
 
-        s.Theme = (AppTheme)theme.SelectedIndex;
-        s.AppIcon = chosenIcon == AppIcons.Default ? null : chosenIcon;
-        var newLanguage = languages[Math.Max(0, language.SelectedIndex)];
-        restartNeeded |= !string.Equals(newLanguage, s.Language, StringComparison.Ordinal)
-                         || s.DateFormatsFromLanguage != dateFormats.IsOn
-                         || s.Use24HourTime != time24.IsOn;
-        s.Language = newLanguage;
-        s.DateFormatsFromLanguage = dateFormats.IsOn;
-        s.Use24HourTime = time24.IsOn;
-        s.EditorFontFamily = string.IsNullOrWhiteSpace(font.Text) ? s.EditorFontFamily : font.Text.Trim();
-        s.EditorMonospace = monospace.IsOn;
-        s.EditorMonoFontFamily = monoFont.Selected;
-        s.EditorLineNumbers = lineNumbers.IsOn;
-        s.EditorColorEmoji = colorEmoji.IsOn;
-        s.EditorFontSize = double.IsNaN(fontSize.Value) ? s.EditorFontSize : fontSize.Value;
-        s.EditorMaxLineLength = widths[Math.Max(0, textWidth.SelectedIndex)];
-        s.DefaultEditorMode = (EditorMode)mode.SelectedIndex;
-        s.CloseToTray = closeToTray.IsOn;
+        // What both apps have in common is checked and written by SettingsEdit (tested there).
+        var newLanguage = SettingsEdit.Languages[Math.Max(0, language.SelectedIndex)];
+        var edit = SettingsEdit.From(s);
+        edit.Theme = (AppTheme)Math.Max(0, theme.SelectedIndex);
+        edit.AppIcon = chosenIcon == AppIcons.Default ? null : chosenIcon;
+        edit.Language = newLanguage;
+        edit.DateFormatsFromLanguage = dateFormats.IsOn;
+        edit.Use24HourTime = time24.IsOn;
+        edit.CloseToTray = closeToTray.IsOn;
+        edit.EditorFontFamily = font.Text;
+        edit.EditorMonospace = monospace.IsOn;
+        edit.EditorMonoFontFamily = monoFont.Selected;
+        edit.EditorLineNumbers = lineNumbers.IsOn;
+        edit.EditorColorEmoji = colorEmoji.IsOn;
+        edit.EditorFontSize = fontSize.Value;
+        edit.EditorMaxLineLength = widths[Math.Max(0, textWidth.SelectedIndex)];
+        edit.DefaultEditorMode = (EditorMode)Math.Max(0, mode.SelectedIndex);
+        edit.ClaudeEnabled = ccEnabled.IsOn;
+        edit.ClaudeDirectory = ccPath.Text;
+        edit.ClaudeExcludedProjects = ccExcluded.Text;
+        edit.ClaudeRedactSecrets = ccRedact.IsChecked == true;
+        edit.ClaudeWatchInRealTime = ccWatch.IsChecked == true;
+        edit.ClaudeIntervalMinutes = ccInterval.Value;
+        restartNeeded |= edit.ApplyTo(s);
         s.QuickNote.HotkeyEnabled = quickNote.Enabled.IsOn;
         s.QuickNote.Hotkey = quickNote.Chord().ToString();
         if (!LaunchOptions.Current.IsDemo && !isPortable && (startWithWindows.IsOn != startupWas || startupWas))
@@ -498,21 +479,6 @@ internal static class SettingsDialog
                 vm.ErrorNotice = Strings.Format(R.Settings_LinkProtocolFailed, ex.Message);
             }
         }
-
-        var excluded = ccExcluded.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        var ccDir = string.IsNullOrWhiteSpace(ccPath.Text) ? null : ccPath.Text.Trim();
-        restartNeeded |= cc.Enabled != ccEnabled.IsOn
-                         || cc.RedactSecrets != (ccRedact.IsChecked == true)
-                         || cc.WatchInRealTime != (ccWatch.IsChecked == true)
-                         || cc.IntervalMinutes != (int)ccInterval.Value
-                         || !string.Equals(cc.ClaudeDirectory, ccDir, StringComparison.Ordinal)
-                         || !cc.ExcludedProjects.SequenceEqual(excluded);
-        cc.Enabled = ccEnabled.IsOn;
-        cc.ClaudeDirectory = ccDir;
-        cc.ExcludedProjects = excluded;
-        cc.RedactSecrets = ccRedact.IsChecked == true;
-        cc.WatchInRealTime = ccWatch.IsChecked == true;
-        cc.IntervalMinutes = double.IsNaN(ccInterval.Value) ? cc.IntervalMinutes : (int)ccInterval.Value;
 
         if (newLanguage is not null)
         {

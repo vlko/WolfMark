@@ -20,6 +20,11 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: UI strings are generated from the table
+        # Both apps get their texts from tools/gen-strings.py; a hand edit of one output makes them differ.
+        run: |
+          python3 tools/gen-strings.py src/WolfMark.App/Strings
+          git diff --exit-code -- src/WolfMark.App/Strings src/WolfMark.Presentation/Infrastructure src/WolfMark.Desktop/Infrastructure
       - name: Build
         run: dotnet build WolfMark.CrossPlatform.slnf -c Release
       - name: Test

@@ -104,6 +104,8 @@ internal static class Ui
             VerticalContentAlignment = VerticalAlignment.Center,
         };
         ToolTip.SetTip(button, tooltip);
+        // An icon has no text of its own: without a name a screen reader announces just "button".
+        Avalonia.Automation.AutomationProperties.SetName(button, tooltip);
         button.Click += (_, _) => onClick();
         return button;
     }

@@ -6,13 +6,15 @@ using System.Text;
 
 namespace WolfMark.App.Infrastructure;
 
-/// <summary>Version and environment for Settings → Diagnostics and bug reports (copied as plain text).</summary>
+/// <summary>Version and environment for Settings → Diagnostics and bug reports (copied as plain text); both apps.</summary>
 internal static class DiagnosticInfo
 {
-    /// <summary>"0.2.3+abc1234" – the commit is added by the SDK when built from git.</summary>
-    public static string Version { get; } =
-        typeof(DiagnosticInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? typeof(DiagnosticInfo).Assembly.GetName().Version?.ToString() ?? "?";
+    /// <summary>"0.2.3+abc1234" – the commit is added by the SDK when built from git. The version is the app's (the exe).</summary>
+    public static string Version { get; } = VersionOf(Assembly.GetEntryAssembly() ?? typeof(DiagnosticInfo).Assembly);
+
+    private static string VersionOf(Assembly assembly) =>
+        assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? assembly.GetName().Version?.ToString() ?? "?";
 
     /// <summary>Short form for the UI: the commit hash cut to 7 characters.</summary>
     public static string ShortVersion => Version.IndexOf('+') is var plus and > 0 && Version.Length > plus + 8

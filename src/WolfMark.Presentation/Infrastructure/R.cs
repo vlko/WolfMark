@@ -86,6 +86,7 @@ internal static class R
     public const string Settings_Switch = nameof(Settings_Switch);
     public const string Settings_RestartRequired = nameof(Settings_RestartRequired);
     public const string Settings_Restart = nameof(Settings_Restart);
+    public const string Common_Ok = nameof(Common_Ok);
     public const string Settings_MoveFailed = nameof(Settings_MoveFailed);
     public const string Settings_Appearance = nameof(Settings_Appearance);
     public const string Settings_Theme = nameof(Settings_Theme);
@@ -199,6 +200,8 @@ internal static class R
     public const string Settings_System = nameof(Settings_System);
     public const string Settings_StartWithWindows = nameof(Settings_StartWithWindows);
     public const string Settings_CloseToTray = nameof(Settings_CloseToTray);
+    public const string Settings_StartAtLogin = nameof(Settings_StartAtLogin);
+    public const string Settings_StartAtLoginFailed = nameof(Settings_StartAtLoginFailed);
     public const string Settings_StartupFailed = nameof(Settings_StartupFailed);
     public const string Tray_Show = nameof(Tray_Show);
     public const string Tray_Settings = nameof(Tray_Settings);

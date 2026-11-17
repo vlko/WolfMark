@@ -22,8 +22,20 @@ internal static partial class Strings
         {
         }
 
-        return string.IsNullOrEmpty(value) ? Fallback.GetValueOrDefault(key, key) : value;
+        return Keys(string.IsNullOrEmpty(value) ? Fallback.GetValueOrDefault(key, key) : value);
     }
+
+    /// <summary>
+    /// Shortcuts in a text the way this system writes them: the texts say "Ctrl+K", and on macOS – where the app
+    /// takes ⌘ for Ctrl – that reads "⌘K".
+    /// </summary>
+    public static string Keys(string text) => OperatingSystem.IsMacOS() ? MacKeys(text) : text;
+
+    internal static string MacKeys(string text) => text.Contains("Ctrl+", StringComparison.Ordinal)
+        ? text.Replace("Ctrl+Shift+", "⇧⌘", StringComparison.Ordinal)
+            .Replace("Ctrl+Alt+", "⌥⌘", StringComparison.Ordinal)
+            .Replace("Ctrl+", "⌘", StringComparison.Ordinal)
+        : text;
 
     public static string Format(string key, params object[] args) =>
         string.Format(CultureInfo.CurrentCulture, Get(key), args);

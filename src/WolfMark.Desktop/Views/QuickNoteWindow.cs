@@ -22,6 +22,7 @@ internal sealed class QuickNoteWindow : Window
     private readonly MainWindow _owner;
     private readonly MainViewModel _vm;
     private readonly AppHost _host;
+    private readonly QuickNoteViewModel _quick;
     private readonly NoteEditorViewModel _note;
     private readonly MarkdownTextEditor _editor = new();
     private bool _closing;
@@ -31,11 +32,12 @@ internal sealed class QuickNoteWindow : Window
         _owner = owner;
         _vm = vm;
         _host = vm.Host;
-        _note = new NoteEditorViewModel(_host);
+        _quick = new QuickNoteViewModel(vm);
+        _note = _quick.Note;
         Title = Strings.Get(R.QuickNote_Title) + " – " + Strings.Get(R.AppTitle);
         Icon = owner.Icon;
-        Width = 640;
-        Height = 380;
+        Width = QuickNoteViewModel.Width;
+        Height = QuickNoteViewModel.Height;
         CanMinimize = false;
         CanMaximize = false;
         ShowInTaskbar = false;
@@ -80,14 +82,12 @@ internal sealed class QuickNoteWindow : Window
     /// </summary>
     public async Task ShowNewAsync()
     {
-        if (IsVisible && _note.Text.Length > 0)
+        if (!await _quick.StartAsync(IsVisible))
         {
             Activate();
             return;
         }
 
-        _note.Mode = _host.Settings.Current.DefaultEditorMode;
-        await _note.NewAsync(null);
         if (!IsVisible)
         {
             Place();
@@ -164,16 +164,7 @@ internal sealed class QuickNoteWindow : Window
     private async Task OpenInMainAsync()
     {
         await HideAsync();
-        if (_note.IsPersisted && _note.Path is { } path)
-        {
-            await _vm.OpenNoteAsync(path.RelativePath);
-        }
-        else
-        {
-            await _vm.NewNoteAsync();
-        }
-
-        _vm.IsFullView = true;
+        await _quick.OpenInMainAsync();
         _owner.BringToFront();
     }
 
@@ -188,10 +179,8 @@ internal sealed class QuickNoteWindow : Window
         }
 
         var area = screen.WorkingArea;
-        var scale = screen.Scaling;
-        var width = (int)Math.Min(Width * scale, area.Width);
-        var height = (int)Math.Min(Height * scale, area.Height);
+        var (x, y, _, _) = QuickNoteViewModel.Place(area.X, area.Y, area.Width, area.Height, screen.Scaling);
         WindowStartupLocation = WindowStartupLocation.Manual;
-        Position = new PixelPoint(area.X + ((area.Width - width) / 2), area.Y + Math.Max(0, (area.Height - height) / 3));
+        Position = new PixelPoint(x, y);
     }
 }

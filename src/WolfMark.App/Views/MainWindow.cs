@@ -53,7 +53,6 @@ internal sealed partial class MainWindow : Window
 
     internal void ScrollEditorToStart() => _editor.ScrollToStart();
     private bool _settingsOpen;
-    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _zoomSave;
     private TrayIcon? _tray;
     private GlobalHotkey? _hotkey;
     private QuickNoteWindow? _quickNote;
@@ -536,25 +535,10 @@ internal sealed partial class MainWindow : Window
     /// <summary>Ctrl + / Ctrl − / Ctrl 0 (null steps) in the editor: the font size setting, saved once the zooming stops.</summary>
     internal void ZoomEditor(int? steps)
     {
-        var s = _host.Settings.Current;
-        var size = steps is { } n ? LocalSettings.ZoomFontSize(s.EditorFontSize, n) : LocalSettings.EditorFontSizeDefault;
-        if (size == s.EditorFontSize)
+        if (_vm.ZoomEditor(steps))
         {
-            return;
+            UpdateEditorTheme();
         }
-
-        s.EditorFontSize = size;
-        UpdateEditorTheme();
-        if (_zoomSave is null)
-        {
-            _zoomSave = DispatcherQueue.CreateTimer();
-            _zoomSave.Interval = TimeSpan.FromSeconds(1);
-            _zoomSave.IsRepeating = false;
-            _zoomSave.Tick += (_, _) => _ = _host.SaveSettingsAsync();
-        }
-
-        _zoomSave.Stop();
-        _zoomSave.Start();
     }
 
     // ---------------------------------------------------------------- wiring
@@ -647,22 +631,8 @@ internal sealed partial class MainWindow : Window
     private void UpdateGutter()
     {
         var editor = _vm.Editor;
-        var c = System.Globalization.CultureInfo.CurrentCulture;
         _setCreated(editor.CreatedAt);
-        var created = Strings.Format(R.FullView_Created, editor.CreatedAt.ToString("t", c));
-        if (editor.ModifiedAt is { } modified)
-        {
-            var when = DateOnly.FromDateTime(modified) == DateOnly.FromDateTime(editor.CreatedAt)
-                ? modified.ToString("t", c)
-                : modified.ToString("d", c) + " " + modified.ToString("t", c);
-            _modified.Text = Strings.Format(R.Editor_Modified, when).ToUpper(c);
-            _fullViewTimes.Text = (created + " · " + Strings.Format(R.Editor_Modified, when)).ToUpper(c);
-        }
-        else
-        {
-            _modified.Text = string.Empty;
-            _fullViewTimes.Text = created.ToUpper(c);
-        }
+        (_modified.Text, _fullViewTimes.Text) = NoteTexts.Times(editor.CreatedAt, editor.ModifiedAt);
     }
 
     /// <summary>Under the day heading in full view: the note's times (the gutter is hidden) and the way back.</summary>
@@ -908,9 +878,8 @@ internal sealed partial class MainWindow : Window
         {
             var area = DisplayArea.GetFromRect(new RectInt32(w.X, w.Y, w.Width, w.Height), DisplayAreaFallback.Primary);
             var work = area.WorkArea;
-            var x = Math.Clamp(w.X, work.X, Math.Max(work.X, work.X + work.Width - w.Width));
-            var y = Math.Clamp(w.Y, work.Y, Math.Max(work.Y, work.Y + work.Height - w.Height));
-            AppWindow.MoveAndResize(new RectInt32(x, y, Math.Min(w.Width, work.Width), Math.Min(w.Height, work.Height)));
+            var (x, y, width, height) = NoteTexts.FitWindow(w.X, w.Y, w.Width, w.Height, work.X, work.Y, work.Width, work.Height);
+            AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
             if (w.IsMaximized && AppWindow.Presenter is OverlappedPresenter p)
             {
                 p.Maximize();

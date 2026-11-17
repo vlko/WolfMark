@@ -261,6 +261,9 @@
   <data name="Settings_Restart" xml:space="preserve">
     <value>Reštartovať</value>
   </data>
+  <data name="Common_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
   <data name="Settings_MoveFailed" xml:space="preserve">
     <value>Poznámky sa nepodarilo presunúť, pôvodný priečinok ostal: {0}</value>
   </data>
@@ -599,6 +602,12 @@
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Zatvorenie okna nechá WolfMark bežať v oblasti oznámení</value>
+  </data>
+  <data name="Settings_StartAtLogin" xml:space="preserve">
+    <value>Spustiť po prihlásení</value>
+  </data>
+  <data name="Settings_StartAtLoginFailed" xml:space="preserve">
+    <value>Spúšťanie po prihlásení sa nepodarilo zmeniť: {0}</value>
   </data>
   <data name="Settings_StartupFailed" xml:space="preserve">
     <value>Spúšťanie pri štarte Windows sa nepodarilo zmeniť: {0}</value>

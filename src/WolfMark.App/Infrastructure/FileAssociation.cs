@@ -27,9 +27,7 @@ internal static class FileAssociation
     private static string RegisteredName => "WolfMark." + Id;
 
     /// <summary>The command Explorer runs: this exe with the file (and the demo data, so a demo build opens in its demo).</summary>
-    private static string Command => LaunchOptions.Current.DemoDirectory is { } demo
-        ? $"\"{Exe}\" --demo \"{demo}\" \"%1\""
-        : $"\"{Exe}\" \"%1\"";
+    private static string Command => LaunchCommand.Quoted("%1");
 
     /// <summary>Registered, and for this exe (a moved app has to register again).</summary>
     public static bool IsEnabled

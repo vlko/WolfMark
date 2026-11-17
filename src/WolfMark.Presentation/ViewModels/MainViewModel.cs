@@ -249,6 +249,99 @@ internal sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>The conflict count in the status bar: opens the first OneDrive conflict copy.</summary>
+    public async Task OpenFirstConflictAsync()
+    {
+        var list = await _host.History.GetConflictsAsync(_host.ShutdownToken);
+        if (list.Count > 0)
+        {
+            await OpenNoteAsync(list[0].RelativePath);
+        }
+    }
+
+    /// <summary>The outcome of moving the data (notes folder, portable mode) for the Settings window.</summary>
+    /// <param name="RestartNow">Done: nothing may write into the old place any more, the app restarts at once.</param>
+    /// <param name="Message">What to show instead: a failure, or what could not be cleaned up afterwards.</param>
+    /// <param name="Failed">Nothing was switched (watcher and sync are stopped all the same – a restart brings them back).</param>
+    internal sealed record RelocationOutcome(bool RestartNow, string? Message, bool Failed);
+
+    /// <summary>Settings → notes folder → "Move notes": copy, verify, old folder to the recycle bin, new root saved.</summary>
+    public async Task<RelocationOutcome> MoveNotesAsync(string newRoot)
+    {
+        await Editor.FlushAsync();
+        try
+        {
+            await _host.MoveNotesAsync(newRoot, null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogRelocationFailed(ex, newRoot);
+            return new RelocationOutcome(false, Strings.Format(R.Settings_MoveFailed, ex.Message), Failed: true);
+        }
+
+        await SwitchNotesRootAsync(newRoot);
+        return new RelocationOutcome(true, null, Failed: false);
+    }
+
+    /// <summary>Settings → notes folder → "Just switch": the other folder from the next start on.</summary>
+    public async Task SwitchNotesRootAsync(string newRoot)
+    {
+        _host.Settings.Current.RootDirectory = _host.Settings.ToStoredRoot(newRoot);
+        await _host.SaveSettingsAsync();
+    }
+
+    /// <summary>
+    /// Settings → portable mode (ADR 0009): into the folder next to the app, or back to the user profile when the
+    /// app runs portable.
+    /// </summary>
+    /// <param name="removeSystemIntegration">
+    /// After switching portable mode on: takes back what the app registered on this computer (start at sign-in, file
+    /// association, links) – portable mode leaves nothing there. Best effort, off the UI thread.
+    /// </param>
+    public async Task<RelocationOutcome> SwitchPortableAsync(bool moveNotes, IProgress<int>? progress, Action? removeSystemIntegration)
+    {
+        var enable = _host.PortableDataDirectory is null;
+        await Editor.FlushAsync();
+        try
+        {
+            var result = enable
+                ? await _host.EnablePortableAsync(moveNotes, progress)
+                : await _host.DisablePortableAsync(progress);
+            if (enable && removeSystemIntegration is not null)
+            {
+                await Task.Run(removeSystemIntegration);
+            }
+
+            return result.CleanupError is { } cleanup
+                ? new RelocationOutcome(false, Strings.Format(R.Settings_PortableCleanupFailed, cleanup.Message), Failed: false)
+                : new RelocationOutcome(true, null, Failed: false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogRelocationFailed(ex, enable ? "portable" : "standard");
+            return new RelocationOutcome(false, Strings.Format(R.Settings_PortableFailed, ex.Message), Failed: true);
+        }
+    }
+
+    /// <summary>
+    /// Ctrl + / Ctrl − / Ctrl 0 (null = back to the default) in any editor: the font size setting, saved once the
+    /// zooming stops.
+    /// </summary>
+    /// <returns>True when the size changed – the view applies it to its editors.</returns>
+    public bool ZoomEditor(int? steps)
+    {
+        var s = _host.Settings.Current;
+        var size = steps is { } n ? LocalSettings.ZoomFontSize(s.EditorFontSize, n) : LocalSettings.EditorFontSizeDefault;
+        if (size == s.EditorFontSize)
+        {
+            return false;
+        }
+
+        s.EditorFontSize = size;
+        _externalSave.Schedule(_ => _host.SaveSettingsAsync());
+        return true;
+    }
+
     private bool IsOpenInEditor(string relativePath) =>
         string.Equals(Editor.Path?.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase);
 
@@ -588,6 +681,9 @@ internal sealed partial class MainViewModel : ObservableObject
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tag {Old} renamed to {New} in {Count} notes")]
     private partial void LogTagRenamed(string old, string @new, int count);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Moving the data to {Target} failed")]
+    private partial void LogRelocationFailed(Exception ex, string target);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Renaming tag {Old} to {New} failed; {NotRolledBack} notes could not be renamed back")]
     private partial void LogTagRenameFailed(Exception ex, string old, string @new, int notRolledBack);

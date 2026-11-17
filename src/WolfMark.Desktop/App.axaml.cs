@@ -236,21 +236,7 @@ public sealed partial class App : Application
 
     private void LogFatal(Exception? ex, string source)
     {
-        try
-        {
-            var dir = LaunchOptions.Current.DemoDirectory is { } demo
-                ? Path.Combine(demo, "local", "logs")
-                : WolfMark.Storage.Settings.LocalPaths.Default.LogsDirectory;
-            Directory.CreateDirectory(dir);
-            File.AppendAllText(
-                Path.Combine(dir, "crash.txt"),
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{source}] {ex?.ToString() ?? "(no exception object)"}{Environment.NewLine}{Environment.NewLine}");
-        }
-        catch (Exception)
-        {
-            // nothing left to report to
-        }
-
+        CrashFile.Write(ex, source);
         if (_logger is not null && ex is not null)
         {
             LogUnhandled(_logger, source, ex);

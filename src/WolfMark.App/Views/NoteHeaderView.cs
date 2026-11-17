@@ -57,11 +57,10 @@ internal sealed partial class NoteHeaderView
 
         number.Bind(_vm, nameof(MainViewModel.SelectedDay), () =>
         {
-            var d = _vm.SelectedDay;
-            var c = CultureInfo.CurrentCulture;
-            setNumber(d.Day.ToString(c));
-            month.Text = (c.DateTimeFormat.GetMonthName(d.Month) + " " + d.Year).ToUpper(c);
-            weekday.Text = c.DateTimeFormat.GetDayName(d.DayOfWeek).ToUpper(c);
+            var heading = NoteTexts.DayHeading(_vm.SelectedDay);
+            setNumber(heading.Number);
+            month.Text = heading.Month;
+            weekday.Text = heading.Weekday;
         });
 
         var grid = Ui.Ui.Columns((Ui.Ui.Auto, number), (Ui.Ui.Star, dateText));
@@ -85,16 +84,16 @@ internal sealed partial class NoteHeaderView
         var stateText = Typo.Caps(string.Empty, 12.5, Palette.InkTertiary);
         stateText.Bind(editor, nameof(NoteEditorViewModel.SaveState), () =>
         {
-            (stateIcon.Glyph, stateText.Text) = editor.SaveState switch
+            stateIcon.Glyph = editor.SaveState switch
             {
-                SaveState.Saved => ("\uE73E", Strings.Get(R.Save_Saved)),
-                SaveState.Saving => (Glyphs.Sync, Strings.Get(R.Save_Saving)),
-                SaveState.Pending => (Glyphs.Edit, Strings.Get(R.Save_Pending)),
-                SaveState.Error => (Glyphs.Warning, Strings.Get(R.Save_Error)),
-                SaveState.ReadOnly => (Glyphs.Lock, Strings.Get(R.Save_ReadOnly)),
-                _ => (Glyphs.Add, Strings.Get(R.Save_New)),
+                SaveState.Saved => "\uE73E",
+                SaveState.Saving => Glyphs.Sync,
+                SaveState.Pending => Glyphs.Edit,
+                SaveState.Error => Glyphs.Warning,
+                SaveState.ReadOnly => Glyphs.Lock,
+                _ => Glyphs.Add,
             };
-            stateText.Text = stateText.Text.ToUpper(CultureInfo.CurrentCulture);
+            stateText.Text = NoteTexts.SaveState(editor.SaveState);
             stateIcon.Foreground = editor.SaveState == SaveState.Error ? new SolidColorBrush(Microsoft.UI.Colors.IndianRed) : Palette.InkTertiary;
         });
 

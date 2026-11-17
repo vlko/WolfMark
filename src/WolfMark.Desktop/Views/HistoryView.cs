@@ -34,7 +34,31 @@ internal sealed class HistoryView : UserControl
                 await vm.History.ToggleOpenTasksAsync();
             }
         };
-        var title = Ui.Columns((Ui.Star, Ui.SectionHeader(Strings.Get(R.History_Title))), (Ui.Auto, openTasks));
+        // The filter can also change elsewhere (the chip below, a tag in the rail): the box follows the view model.
+        Ui.Bind(vm.History, nameof(HistoryViewModel.OpenTasksOnly), () => openTasks.IsChecked = vm.History.OpenTasksOnly);
+
+        // What the history is filtered by; a click clears it (as in the Windows app).
+        var filterText = Typo.Caps(string.Empty, 12.5, Palette.Ink);
+        var filterChip = Ui.FlatButton(Ui.HStack(6, filterText, Icons.Create(Icons.Close, 9, Palette.Ink)));
+        filterChip.Padding = new Thickness(10, 2, 8, 2);
+        filterChip.VerticalAlignment = VerticalAlignment.Center;
+        ToolTip.SetTip(filterChip, Strings.Get(R.History_ClearFilter));
+        Avalonia.Automation.AutomationProperties.SetName(filterChip, Strings.Get(R.History_ClearFilter));
+        filterChip.Click += async (_, _) =>
+        {
+            if (vm.ActiveTag is not null)
+            {
+                await vm.SetActiveTagAsync(null);
+            }
+
+            await vm.History.ClearFiltersAsync();
+        };
+        Ui.Bind(vm.History, [nameof(HistoryViewModel.TagFilter), nameof(HistoryViewModel.DayFilter), nameof(HistoryViewModel.OpenTasksOnly)], () =>
+        {
+            filterChip.IsVisible = vm.History.HasFilter;
+            filterText.Text = vm.History.FilterLabel.ToUpper(System.Globalization.CultureInfo.CurrentCulture);
+        });
+        var title = Ui.Columns((Ui.Star, Ui.SectionHeader(Strings.Get(R.History_Title))), (Ui.Auto, filterChip), (Ui.Auto, openTasks));
         title.Margin = new Thickness(0, 8, 0, 2);
 
         var list = new ItemsControl

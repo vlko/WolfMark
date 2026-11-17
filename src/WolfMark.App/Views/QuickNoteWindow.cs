@@ -23,11 +23,11 @@ namespace WolfMark.App.Views;
 /// </summary>
 internal sealed partial class QuickNoteWindow : Window
 {
-    private const int WidthDip = 640, HeightDip = 380;
 
     private readonly MainWindow _owner;
     private readonly MainViewModel _vm;
     private readonly AppHost _host;
+    private readonly QuickNoteViewModel _quick;
     private readonly NoteEditorViewModel _note;
     private readonly MarkdownEditor _editor = new();
     private readonly Grid _root = new();
@@ -38,7 +38,8 @@ internal sealed partial class QuickNoteWindow : Window
         _owner = owner;
         _vm = vm;
         _host = vm.Host;
-        _note = new NoteEditorViewModel(_host);
+        _quick = new QuickNoteViewModel(vm);
+        _note = _quick.Note;
         Title = Strings.Get(R.QuickNote_Title) + " – " + Strings.Get(R.AppTitle);
 
         ExtendsContentIntoTitleBar = true;
@@ -83,14 +84,12 @@ internal sealed partial class QuickNoteWindow : Window
     /// </summary>
     public async Task ShowNewAsync()
     {
-        if (AppWindow.IsVisible && _note.Text.Length > 0)
+        if (!await _quick.StartAsync(AppWindow.IsVisible))
         {
             BringToFront();
             return;
         }
 
-        _note.Mode = _host.Settings.Current.DefaultEditorMode;
-        await _note.NewAsync(null);
         if (!AppWindow.IsVisible)
         {
             Place();
@@ -254,16 +253,7 @@ internal sealed partial class QuickNoteWindow : Window
     private async Task OpenInMainAsync()
     {
         await HideAsync();
-        if (_note.IsPersisted && _note.Path is { } path)
-        {
-            await _vm.OpenNoteAsync(path.RelativePath);
-        }
-        else
-        {
-            await _vm.NewNoteAsync();
-        }
-
-        _vm.IsFullView = true;
+        await _quick.OpenInMainAsync();
         _owner.BringToFront();
     }
 
@@ -279,10 +269,7 @@ internal sealed partial class QuickNoteWindow : Window
             ? dpi / 96.0
             : 1;
 
-        var width = Math.Min((int)(WidthDip * scale), area.Width);
-        var height = Math.Min((int)(HeightDip * scale), area.Height);
-        var x = area.X + ((area.Width - width) / 2);
-        var y = area.Y + Math.Max(0, (area.Height - height) / 3);
+        var (x, y, width, height) = QuickNoteViewModel.Place(area.X, area.Y, area.Width, area.Height, scale);
         AppWindow.MoveAndResize(new RectInt32(x, y, width, height));
     }
 }
