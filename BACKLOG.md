@@ -463,5 +463,9 @@ funguje zdieľanie samo cez OneDrive, priama cesta a prehliadač prichádzajú p
   Markdown, obrázky. Len na čítanie. *Stav:* kópia overená testami (zmeny, premenovanie, zmazaný priečinok, stránkovanie,
   expirovaný delta odkaz); UI len skompilované. **Otvorené:** vzhľad a správanie na zariadení, delta nad podpriečinkom
   na skutočnom OneDrive.
-- 🟨 **M12-08 – CI a vydanie APK.** Job `android` v `ci.yml` (testy, debug build, lint), Dependabot pre Gradle.
-  **Otvorené:** prvý beh na GitHube, podpísaný APK v `release.yml` (kľúč a registrácia autora).
+- 🟨 **M12-08 – CI a vydanie APK.** Job `android` v `ci.yml` (testy, debug build, lint, APK ako artefakt), Dependabot
+  pre Gradle. Vlastný podpisový kľúč (`wolfmark.keystore`…) podpisuje debug aj release build; odtlačok pre Microsoft
+  Entra sa číta z kľúča (`printSignatureHash`), verzia z tagu. `release.yml` má job `android`, ktorý s kľúčom
+  v secretoch pridá do vydania `WolfMark-<verzia>-android.apk`, bez neho vydanie prejde bez APK.
+  *Stav:* job `android` prešiel na GitHube (2026-11-17, bez kľúča); so skúšobným kľúčom lokálne overený podpis oboch
+  APK, odtlačok, verzia a adresa návratu z prihlásenia. **Otvorené:** kľúč a secrety autora, `release.yml` až pri tagu.
