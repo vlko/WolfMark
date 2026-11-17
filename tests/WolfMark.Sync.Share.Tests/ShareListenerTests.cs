@@ -28,19 +28,34 @@ public sealed class ShareListenerTests : IAsyncLifetime
         _f.Dispose();
     }
 
-    /// <summary>Sends raw bytes and returns everything the listener answers before it closes the connection.</summary>
+    /// <summary>
+    /// Sends raw bytes and returns everything the listener answers before it closes the connection. A listener that
+    /// hangs up without a word may do so before our end of the conversation arrives; the caller then sees a reset
+    /// instead of a clean end (always on Windows, now and then elsewhere) – either way it got no answer.
+    /// </summary>
     private async Task<byte[]> ExchangeAsync(byte[] request)
     {
         using var client = new TcpClient();
         await client.ConnectAsync(IPAddress.Loopback, _listener.Port);
         var stream = client.GetStream();
-        await stream.WriteAsync(request);
-        client.Client.Shutdown(SocketShutdown.Send);
         using var answer = new MemoryStream();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        await stream.CopyToAsync(answer, timeout.Token);
+        try
+        {
+            await stream.WriteAsync(request);
+            client.Client.Shutdown(SocketShutdown.Send);
+            await stream.CopyToAsync(answer, timeout.Token);
+        }
+        catch (Exception ex) when (ex is IOException or SocketException && IsReset(ex))
+        {
+        }
+
         return answer.ToArray();
     }
+
+    private static bool IsReset(Exception ex) =>
+        (ex as SocketException ?? ex.InnerException as SocketException)?.SocketErrorCode
+            is SocketError.ConnectionReset or SocketError.ConnectionAborted or SocketError.Shutdown;
 
     private static ShareResponse Open(byte[] frame, byte[] key)
     {

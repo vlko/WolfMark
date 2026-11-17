@@ -12,6 +12,7 @@ public sealed partial class ShareListener : IAsyncDisposable
 {
     private const int MaxConnections = 4;
     private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan PeerCloseTimeout = TimeSpan.FromSeconds(2);
 
     private readonly ShareReceiver _receiver;
     private readonly byte[] _key;
@@ -92,6 +93,15 @@ public sealed partial class ShareListener : IAsyncDisposable
                 {
                     await stream.WriteAsync(response, timeout.Token).ConfigureAwait(false);
                     await stream.FlushAsync(timeout.Token).ConfigureAwait(false);
+                    // End our side and let the phone hang up first: closing at once could reset the connection
+                    // and take the answer it has not read yet with it.
+                    client.Client.Shutdown(SocketShutdown.Send);
+                    using var goodbye = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    goodbye.CancelAfter(PeerCloseTimeout);
+                    var rest = new byte[256];
+                    while (await stream.ReadAsync(rest, goodbye.Token).ConfigureAwait(false) > 0)
+                    {
+                    }
                 }
             }
         }
