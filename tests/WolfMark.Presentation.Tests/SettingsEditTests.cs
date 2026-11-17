@@ -158,4 +158,78 @@ public sealed class SettingsEditTests
         Assert.Equal("wolf", WolfMark.App.Infrastructure.AppIconCatalog.ToSetting("wolf"));
         Assert.Contains(WolfMark.App.Infrastructure.AppIconCatalog.All, i => i.Id == WolfMark.App.Infrastructure.AppIconCatalog.Default);
     }
+
+    [Fact]
+    public void Switching_sharing_on_makes_a_key_and_an_id_once_and_needs_a_restart()
+    {
+        var s = new LocalSettings();
+        Assert.False(s.Share.Enabled); // nothing listens unless asked to
+        var edit = SettingsEdit.From(s);
+        edit.ShareEnabled = true;
+
+        Assert.True(edit.ApplyTo(s));
+
+        Assert.True(s.Share.Enabled);
+        Assert.Equal(ShareSettings.DefaultPort, s.Share.Port);
+        Assert.Equal(32, s.Share.KeyBytes()!.Length);
+        Assert.Equal(32, s.Share.DeviceId!.Length);
+        var (key, id) = (s.Share.Key, s.Share.DeviceId);
+
+        // Saving again, and switching off and on, keeps both: the phone stays paired.
+        Assert.False(SettingsEdit.From(s).ApplyTo(s));
+        var off = SettingsEdit.From(s);
+        off.ShareEnabled = false;
+        Assert.True(off.ApplyTo(s));
+        var on = SettingsEdit.From(s);
+        on.ShareEnabled = true;
+        Assert.True(on.ApplyTo(s));
+        Assert.Equal((key, id), (s.Share.Key, s.Share.DeviceId));
+    }
+
+    [Fact]
+    public void A_new_key_or_port_is_taken_only_while_sharing_is_on()
+    {
+        var s = new LocalSettings();
+        var edit = SettingsEdit.From(s);
+        edit.ShareNewKey = true;
+        edit.SharePort = 5000;
+        Assert.False(edit.ApplyTo(s)); // off: the port is remembered, nothing to restart for
+        Assert.Null(s.Share.Key);
+        Assert.Equal(5000, s.Share.Port);
+
+        edit = SettingsEdit.From(s);
+        edit.ShareEnabled = true;
+        Assert.True(edit.ApplyTo(s));
+        var key = s.Share.Key;
+
+        edit = SettingsEdit.From(s);
+        edit.ShareNewKey = true;
+        Assert.True(edit.ApplyTo(s));
+        Assert.NotEqual(key, s.Share.Key);
+        Assert.Equal(32, s.Share.KeyBytes()!.Length);
+
+        edit = SettingsEdit.From(s);
+        edit.SharePort = 80; // below the unprivileged range
+        Assert.True(edit.ApplyTo(s));
+        Assert.Equal(1024, s.Share.Port);
+        edit = SettingsEdit.From(s);
+        edit.SharePort = double.NaN;
+        Assert.False(edit.ApplyTo(s));
+        Assert.Equal(1024, s.Share.Port);
+    }
+
+    [Fact]
+    public void A_damaged_key_in_the_settings_file_is_replaced()
+    {
+        var s = new LocalSettings();
+        s.Share.Enabled = true;
+        s.Share.DeviceId = "abc";
+        s.Share.Key = "not-a-key";
+        Assert.Null(s.Share.KeyBytes());
+
+        Assert.True(SettingsEdit.From(s).ApplyTo(s));
+
+        Assert.Equal(32, s.Share.KeyBytes()!.Length);
+        Assert.Equal("abc", s.Share.DeviceId);
+    }
 }

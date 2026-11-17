@@ -380,6 +380,13 @@ WolfMark.App.exe --demo %TEMP%\WolfMarkDemo --screenshots docs\screenshots   # c
 The macOS/Linux app takes the same switches (`WolfMark.Desktop --demo … --screenshots …`); it draws its windows into
 the images itself, so it also works without a screen (under Xvfb, as the smoke test does).
 
+## Android: share to your notes
+
+The [`android/`](android/README.md) folder holds a small Android app: share a link, a text or a picture from any app
+and it becomes a note with the tag `Share` – sent straight to WolfMark on your computer when both are on the same
+network (*Settings → Sharing from the phone*, off by default), through OneDrive otherwise. It also shows your notes,
+read-only. It is not in the releases yet: build it yourself, with your own Microsoft app registration.
+
 ## Roadmap
 
 Next on the list: a daily view of all of a day's notes, templates per tag, export,

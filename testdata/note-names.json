@@ -1,0 +1,25 @@
+{
+  "comment": "Note file names (SPEC §3.3), checked by WolfMark.Core.Tests and by the Android app (android/core). Change both implementations together.",
+  "valid": [
+    { "file": "0927.md", "tag": null, "hour": 9, "minute": 27, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": null },
+    { "file": "praca_1403.md", "tag": "praca", "hour": 14, "minute": 3, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": null },
+    { "file": "praca_140312.md", "tag": "praca", "hour": 14, "minute": 3, "second": 12, "hasSeconds": true, "suffix": 0, "conflict": null },
+    { "file": "praca_140312-2.md", "tag": "praca", "hour": 14, "minute": 3, "second": 12, "hasSeconds": true, "suffix": 2, "conflict": null },
+    { "file": "praca_1403-3.md", "tag": "praca", "hour": 14, "minute": 3, "second": 0, "hasSeconds": false, "suffix": 3, "conflict": null },
+    { "file": "Share_1655.md", "tag": "Share", "hour": 16, "minute": 55, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": null },
+    { "file": "pracovné-veci_0000.md", "tag": "pracovné-veci", "hour": 0, "minute": 0, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": null },
+    { "file": "praca_1403-NAZOVPC.md", "tag": "praca", "hour": 14, "minute": 3, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": "NAZOVPC" },
+    { "file": "praca_1403-2-NAZOVPC.md", "tag": "praca", "hour": 14, "minute": 3, "second": 0, "hasSeconds": false, "suffix": 2, "conflict": "NAZOVPC" },
+    { "file": "2359-MYPC-2.md", "tag": null, "hour": 23, "minute": 59, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": "MYPC-2" },
+    { "file": "Praca_1403.MD", "tag": "Praca", "hour": 14, "minute": 3, "second": 0, "hasSeconds": false, "suffix": 0, "conflict": null }
+  ],
+  "invalid": [
+    "", "notes.md", "praca_1403.txt", "praca_2403.md", "praca_1460.md", "praca_140360.md", "praca_14031.md",
+    "praca_1403-1.md", "praca_1403-02.md", "praca_1403-.md", "praca_1403-2-.md", "pra ca_1403.md", "pr:aca_1403.md",
+    "_1403.md", "a_b_1403.md", ".md", "praca_1403x.md"
+  ],
+  "collisions": [
+    { "tag": "Share", "hour": 14, "minute": 3, "second": 27, "candidates": ["Share_1403.md", "Share_140327.md", "Share_140327-2.md", "Share_140327-3.md"] },
+    { "tag": null, "hour": 9, "minute": 5, "second": 0, "candidates": ["0905.md", "090500.md", "090500-2.md"] }
+  ]
+}

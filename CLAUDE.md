@@ -32,6 +32,7 @@ dotnet build src/WolfMark.App -c Release -r win-x64 -p:Platform=x64        # naj
 dotnet publish src/WolfMark.App -c Release -r win-x64 -p:Platform=x64      # AOT build
 dotnet publish src/WolfMark.App -c Release -r win-arm64 -p:Platform=ARM64
 python3 tools/gen-strings.py src/WolfMark.App/Strings      # po zmene UI textov (sk/en .resw + R.cs)
+cd android; ./gradlew :core:test :app:assembleDebug :app:lintDebug          # Android aplikácia (JDK 21, Android SDK)
 ```
 Na Linuxe/WSL: testy cez `WolfMark.CrossPlatform.slnf`; `dotnet build WolfMark.sln -p:Platform=x64`
 typovo skontroluje aj WinUI projekty (PRI/manifest kroky sú mimo Windows vypnuté), spustiť sa nedajú.
@@ -45,6 +46,12 @@ typovo skontroluje aj WinUI projekty (PRI/manifest kroky sú mimo Windows vypnut
   `NoteTexts`, `LaunchCommand`…) s unit testami; v UI projektoch ostáva len skladanie prvkov a väzby.
 - Po zmene overiť: testy, `dotnet build WolfMark.sln`, `tools/smoke-linux.sh` nad buildom Desktopu; Windows smoke
   (`tools/smoke-windows.ps1`) beží na Windows a v CI.
+
+## Android (`android/`, ADR 0017)
+- Kotlin + Compose; logika bez Androidu patrí do modulu `core` (čistá JVM, unit testy), v `app` ostáva UI, MSAL a WorkManager.
+- Pravidlá názvov súborov a protokol zdieľania existujú dvakrát (C# a Kotlin). Držia ich pri sebe `testdata/*.json`:
+  zmena pravidla = zmena oboch implementácií aj vektorov v tej istej zmene.
+- Aplikácia poznámky len číta a pridáva nové (`Share_HHmm.md`, obrázky do `assets`); nikdy neprepisuje ani nemaže.
 
 ## Pri neistote
 - Ak sa API Windows App SDK / .NET 11 líši od tvojich predpokladov, over v dokumentácii (odkazy v `SPEC.md` §10) – špecifikácia vznikla počas RC verzií .NET 11 (GA 11.0.100 je od 10. 11. 2026).

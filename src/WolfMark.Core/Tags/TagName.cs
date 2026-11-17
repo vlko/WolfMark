@@ -14,6 +14,9 @@ public static class TagName
     /// <summary>Reserved tag used by the Claude Code import.</summary>
     public const string ClaudeCode = "ClaudeCode";
 
+    /// <summary>The tag of notes shared from the phone (M12); an ordinary tag otherwise.</summary>
+    public const string Share = "Share";
+
     public static StringComparer Comparer { get; } = StringComparer.OrdinalIgnoreCase;
 
     public static bool IsValid(string? tag) => tag is not null && IsValid(tag.AsSpan());

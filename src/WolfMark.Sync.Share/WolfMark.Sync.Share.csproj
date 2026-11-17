@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Receives notes shared from the phone over the local network (M12, ADR 0017). BCL only: sockets and AES-GCM. -->
+  <PropertyGroup>
+    <TargetFramework>$(WolfMarkCoreTargetFramework)</TargetFramework>
+    <RootNamespace>WolfMark.Sync.Share</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WolfMark.Core\WolfMark.Core.csproj" />
+    <ProjectReference Include="..\WolfMark.Storage\WolfMark.Storage.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfMark.Sync.Share.Tests" />
+  </ItemGroup>
+</Project>

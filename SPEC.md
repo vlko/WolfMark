@@ -57,6 +57,7 @@ WolfMark.sln
 │  ├─ WolfMark.Storage/       # directory engine, file watcher, atomické zápisy
 │  ├─ WolfMark.Index/         # SQLite, FTS5, sqlite-vec, embeddingy, kalendárové agregácie
 │  ├─ WolfMark.Sync.ClaudeCode/ # import promptov z Claude Code
+│  ├─ WolfMark.Sync.Share/    # príjem zdieľaní z telefónu cez lokálnu sieť (ADR 0017)
 │  ├─ WolfMark.Presentation/  # view modely, AppHost (composition root) a logika spoločná pre obe aplikácie
 │  ├─ WolfMark.Editor/        # vlastný markdown editor control (WinUI, Win2D)
 │  ├─ WolfMark.App/           # WinUI 3 aplikácia pre Windows – len views
@@ -66,6 +67,7 @@ WolfMark.sln
    ├─ WolfMark.Storage.Tests/
    ├─ WolfMark.Index.Tests/
    ├─ WolfMark.Sync.ClaudeCode.Tests/
+   ├─ WolfMark.Sync.Share.Tests/
    └─ WolfMark.Presentation.Tests/
 ```
 
@@ -93,7 +95,8 @@ WolfMark.sln
 │           └─ 1403-01.png
 └─ .wolfmark/
    ├─ tags.json                     # farby a poradie tagov (synchronizuje sa s poznámkami!)
-   └─ trash/                        # kôš tam, kde systém žiadny nemá (sieťový/vymeniteľný disk, prenosný režim, macOS, Linux)
+   ├─ trash/                        # kôš tam, kde systém žiadny nemá (sieťový/vymeniteľný disk, prenosný režim, macOS, Linux)
+   └─ share/                        # <id-počítača>.json: adresa a kľúč pre zdieľanie z telefónu (§4.8), len keď je zapnuté
 ```
 
 Zdieľané nastavenia (`settings.shared.json`) sa nerealizovali – medzi počítačmi cestuje len `tags.json`.
@@ -264,6 +267,16 @@ Pravidlá importu:
 - **Súkromie:** prompty môžu obsahovať citlivé údaje (tokeny, heslá, interné cesty). Pred zápisom do OneDrive aplikovať voliteľný filter (regex na API kľúče, `sk-…`, `ghp_…`, connection stringy) a umožniť vylúčiť konkrétne projekty.
 - Alternatíva/rozšírenie: Claude Code **hook `UserPromptSubmit`**, ktorý zapíše prompt priamo (malý CLI `wolfmark-cli capture`) – real-time bez parsovania transkriptov.
 
+### 4.8 Zdieľanie z telefónu (`WolfMark.Sync.Share`, `android/`)
+
+Android aplikácia (Kotlin, Compose) je cieľom systémového „Zdieľať“ a prehliadačom poznámok z OneDrive. Rozhodnutia a zamietnuté alternatívy: ADR 0017.
+
+- **Čo sa zdieľa:** odkaz, odkaz s označeným textom, celý text ľubovoľnej dĺžky, obrázky. Vznikne bežná poznámka `YYYY/MM/DD/Share_HHmm.md` (deň a čas podľa telefónu), obrázky v `assets` dňa. Aplikácia obsah stránky z odkazu sama nesťahuje.
+- **Doručenie:** na Wi-Fi najprv priamo bežiacemu WolfMarku (šifrovaný rámec nad TCP), inak cez Microsoft Graph rovno do priečinka poznámok; bez siete fronta v telefóne. Tú istú poznámku nevytvorí dvakrát (UUID zdieľania).
+- **Desktop:** príjem sa zapína v Nastaveniach (predvolene vypnutý). Zapnutý počúva na porte a v `.wolfmark/share/<id>.json` oznamuje telefónu svoje adresy, port a kľúč. Poznámku vytvára `DirectoryEngine.CreateAsync`, takže index a okno sa obnovia bežnými udalosťami.
+- **Prehliadač v telefóne:** len na čítanie – dni, poznámky, filter podľa tagu, vykreslený Markdown; lokálna kópia pre prácu bez siete.
+- **Spoločné vektory** `testdata/*.json` držia názvy súborov a protokol rovnaké v C# aj v Kotline.
+
 ---
 
 ## 5. Vizuálny dizajn
@@ -356,7 +369,7 @@ Rozdelené podľa priority; zaradené do backlogu ako samostatné míľniky aleb
 - **Distribúcia:** nezabalená (unpackaged) aplikácia s `WindowsAppSDKSelfContained=true` pre jednoduché spúšťanie, neskôr MSIX + `winget` manifest. Overiť dopad MSIX na prístup k OneDrive a `~/.claude` (MSIX s `runFullTrust` je OK).
 - **Lokalizácia:** slovenčina a angličtina (`.resw`), formát dátumu podľa systému.
 - **Telemetria:** žiadna. Logy lokálne; neošetrené výnimky sa zapisujú do `logs/crash.txt` (plné crash dumpy sa nerobia).
-- **Bezpečnosť:** žiadne sieťové volania okrem voliteľných (stiahnutie embedding modelu, budúce LLM). Model sťahovať z overeného zdroja, overiť hash.
+- **Bezpečnosť:** žiadne sieťové volania okrem voliteľných (stiahnutie embedding modelu, budúce LLM) a žiadne počúvanie v sieti okrem príjmu zdieľaní z telefónu, ktorý je predvolene vypnutý (§4.8). Model sťahovať z overeného zdroja, overiť hash.
 - **Robustnosť:** index sa musí vedieť zotaviť z poškodenia (detekcia `PRAGMA integrity_check` pri štarte → rebuild).
 
 ---

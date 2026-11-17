@@ -60,6 +60,14 @@ internal sealed class SettingsEdit
     /// <summary>Null or NaN keeps the current interval.</summary>
     public double? ClaudeIntervalMinutes { get; set; }
 
+    public bool ShareEnabled { get; set; }
+
+    /// <summary>Null or NaN keeps the current port.</summary>
+    public double? SharePort { get; set; }
+
+    /// <summary>Replace the key: phones that have the old one read the new one from the notes folder.</summary>
+    public bool ShareNewKey { get; set; }
+
     public static SettingsEdit From(LocalSettings s) => new()
     {
         Theme = s.Theme,
@@ -82,6 +90,8 @@ internal sealed class SettingsEdit
         ClaudeRedactSecrets = s.ClaudeCode.RedactSecrets,
         ClaudeWatchInRealTime = s.ClaudeCode.WatchInRealTime,
         ClaudeIntervalMinutes = s.ClaudeCode.IntervalMinutes,
+        ShareEnabled = s.Share.Enabled,
+        SharePort = s.Share.Port,
     };
 
     /// <summary>Index of <paramref name="language"/> in <see cref="Languages"/>; an unknown one counts as the system's.</summary>
@@ -92,7 +102,7 @@ internal sealed class SettingsEdit
         [.. LocalSettings.EditorMaxLineLengthChoices.Append(Math.Max(0, s.EditorMaxLineLength)).Distinct().Order()];
 
     /// <summary>Writes the edit into <paramref name="s"/>.</summary>
-    /// <returns>True when a change only applies after a restart (language, formats, Claude Code sync).</returns>
+    /// <returns>True when a change only applies after a restart (language, formats, Claude Code sync, sharing).</returns>
     public bool ApplyTo(LocalSettings s)
     {
         var cc = s.ClaudeCode;
@@ -104,6 +114,11 @@ internal sealed class SettingsEdit
             ? Math.Clamp((int)minutes, 1, 1440)
             : cc.IntervalMinutes;
 
+        var share = s.Share;
+        var port = SharePort is { } p && !double.IsNaN(p) ? Math.Clamp((int)p, 1024, 65535) : share.Port;
+        // The key and the id are made when receiving is first switched on, and only then.
+        var newKey = ShareEnabled && (ShareNewKey || share.KeyBytes() is null);
+
         var restart = !string.Equals(Language, s.Language, StringComparison.Ordinal)
                       || s.DateFormatsFromLanguage != DateFormatsFromLanguage
                       || s.Use24HourTime != Use24HourTime
@@ -112,7 +127,9 @@ internal sealed class SettingsEdit
                       || cc.WatchInRealTime != ClaudeWatchInRealTime
                       || cc.IntervalMinutes != interval
                       || !string.Equals(cc.ClaudeDirectory, directory, StringComparison.Ordinal)
-                      || !cc.ExcludedProjects.SequenceEqual(excluded);
+                      || !cc.ExcludedProjects.SequenceEqual(excluded)
+                      || share.Enabled != ShareEnabled
+                      || (ShareEnabled && (share.Port != port || newKey));
 
         s.Theme = Theme;
         s.Language = Language;
@@ -136,6 +153,18 @@ internal sealed class SettingsEdit
         cc.RedactSecrets = ClaudeRedactSecrets;
         cc.WatchInRealTime = ClaudeWatchInRealTime;
         cc.IntervalMinutes = interval;
+        share.Enabled = ShareEnabled;
+        share.Port = port;
+        if (newKey)
+        {
+            share.Key = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        }
+
+        if (ShareEnabled && string.IsNullOrEmpty(share.DeviceId))
+        {
+            share.DeviceId = Guid.NewGuid().ToString("N");
+        }
+
         return restart;
     }
 }

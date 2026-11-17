@@ -5,8 +5,11 @@
 # Run by bash / python also from a Windows checkout (WSL, CI): always LF.
 *.sh text eol=lf
 *.py text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
 
 *.png binary
+*.jar binary
 *.ico binary
 *.icns binary
 *.ttf binary

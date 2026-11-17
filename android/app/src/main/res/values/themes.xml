@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.WolfMark" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- The share target shows nothing but a toast: the app it was shared from stays visible underneath. -->
+    <style name="Theme.WolfMark.Share" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <color name="ic_launcher_background">#1F2A37</color>
+</resources>

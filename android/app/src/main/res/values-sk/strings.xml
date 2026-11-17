@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="share_saved">Uložené do WolfMarku</string>
+    <string name="share_saved_sign_in">Uložené. Na odoslanie sa prihláste do WolfMarku.</string>
+    <string name="share_nothing">Nebolo zdieľané nič, čo WolfMark vie uložiť</string>
+    <string name="sign_in_title">Vaše poznámky sú v OneDrive</string>
+    <string name="sign_in_text">Prihláste sa účtom Microsoft, v ktorom máte poznámky z WolfMarku. Aplikácia poznámky číta a pridáva to, čo zdieľate – žiadnu poznámku nemení ani nemaže.</string>
+    <string name="sign_in">Prihlásiť sa do OneDrive</string>
+    <string name="sign_in_failed">Prihlásenie zlyhalo: %1$s</string>
+    <string name="not_configured">Tento build nemá registráciu aplikácie v Microsofte (wolfmark.msalClientId). Pozri android/README.md.</string>
+    <string name="sign_out">Odhlásiť sa</string>
+    <string name="refresh">Obnoviť</string>
+    <string name="back">Späť</string>
+    <string name="choose_folder">Priečinok poznámok</string>
+    <string name="folder_title">Kde máte poznámky?</string>
+    <string name="folder_text">Vyberte priečinok, v ktorom WolfMark na počítači drží poznámky.</string>
+    <string name="folder_root">OneDrive</string>
+    <string name="folder_use">Použiť tento priečinok</string>
+    <string name="folder_up">Vyššie</string>
+    <string name="folder_empty">Žiadne priečinky</string>
+    <string name="all_tags">Všetky</string>
+    <string name="no_tag">Bez tagu</string>
+    <string name="no_notes">Zatiaľ žiadne poznámky. Načítajte ich tlačidlom Obnoviť.</string>
+    <string name="syncing">Načítavam poznámky… %1$d</string>
+    <string name="sync_failed">Poznámky sa nepodarilo načítať: %1$s</string>
+    <plurals name="pending_shares">
+        <item quantity="one">%1$d zdieľanie čaká na odoslanie</item>
+        <item quantity="few">%1$d zdieľania čakajú na odoslanie</item>
+        <item quantity="many">%1$d zdieľania čaká na odoslanie</item>
+        <item quantity="other">%1$d zdieľaní čaká na odoslanie</item>
+    </plurals>
+    <string name="send_now">Odoslať teraz</string>
+    <string name="conflict_copy">Konfliktná kópia</string>
+    <string name="note_missing">Táto poznámka ešte nie je v telefóne.</string>
+    <string name="delivery_channel">Odosielanie zdieľaní</string>
+    <string name="delivery_notification">Odosielam do WolfMarku…</string>
+    <string name="today">Dnes</string>
+    <string name="yesterday">Včera</string>
+</resources>

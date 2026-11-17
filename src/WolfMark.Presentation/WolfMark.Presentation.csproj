@@ -12,6 +12,7 @@
     <ProjectReference Include="..\WolfMark.Storage\WolfMark.Storage.csproj" />
     <ProjectReference Include="..\WolfMark.Index\WolfMark.Index.csproj" />
     <ProjectReference Include="..\WolfMark.Sync.ClaudeCode\WolfMark.Sync.ClaudeCode.csproj" />
+    <ProjectReference Include="..\WolfMark.Sync.Share\WolfMark.Sync.Share.csproj" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>

@@ -107,6 +107,9 @@ public sealed class LocalSettings
     public List<ExternalFileEntry> ExternalFiles { get; set; } = [];
 
     public ClaudeCodeSyncSettings ClaudeCode { get; set; } = new();
+
+    /// <summary>Receiving notes shared from the phone over the local network (M12); off by default.</summary>
+    public ShareSettings Share { get; set; } = new();
 }
 
 public sealed class WindowPlacement
@@ -141,6 +144,37 @@ public sealed class QuickNoteSettings
 
     [System.Text.Json.Serialization.JsonIgnore]
     public KeyChord Chord => KeyChord.TryParse(Hotkey, out var chord) ? chord : KeyChord.QuickNoteDefault;
+}
+
+/// <summary>
+/// Sharing from the phone (ADR 0017). While <see cref="Enabled"/>, the app listens on <see cref="Port"/> and
+/// announces this computer to the phone in <c>.wolfmark/share/&lt;DeviceId&gt;.json</c> in the notes folder.
+/// </summary>
+public sealed class ShareSettings
+{
+    public const int DefaultPort = 47821;
+
+    public bool Enabled { get; set; }
+
+    public int Port { get; set; } = DefaultPort;
+
+    /// <summary>Names this computer's file for the phone; made when receiving is first switched on.</summary>
+    public string? DeviceId { get; set; }
+
+    /// <summary>The 32-byte key the phone encrypts with, base64; made when receiving is first switched on.</summary>
+    public string? Key { get; set; }
+
+    /// <summary>The key's bytes, or null when there is none or it is not a 32-byte base64 value.</summary>
+    public byte[]? KeyBytes()
+    {
+        if (string.IsNullOrEmpty(Key))
+        {
+            return null;
+        }
+
+        var bytes = new byte[32];
+        return Convert.TryFromBase64String(Key, bytes, out var written) && written == bytes.Length ? bytes : null;
+    }
 }
 
 public sealed class ClaudeCodeSyncSettings

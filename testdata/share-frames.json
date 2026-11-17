@@ -1,0 +1,53 @@
+{
+  "comment": "Share protocol (ADR 0017), produced with an independent AES-GCM implementation (Python cryptography). Checked by WolfMark.Sync.Share.Tests and by the Android app (android/core).",
+  "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "requests": [
+    {
+      "name": "link",
+      "id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+      "sentUnixMs": 1794924207123,
+      "createdLocal": "2026-11-17T14:03:27",
+      "createdWallMs": 1794924207000,
+      "markdown": "# Example\nhttps://example.com/x\n",
+      "attachments": [],
+      "nonceHex": "000102030405060708090a0b",
+      "plaintextHex": "010f8fad5bd9cb469fa16570867728950e000001a1e9d1dc13000001a1e9d1db980000002023204578616d706c650a68747470733a2f2f6578616d706c652e636f6d2f780a00",
+      "frameHex": "574d53310100000062000102030405060708090a0b460d59b69e3c095d12e0f2fb379e50f88dd6873551928ea02b67e584bc80d1699910aefc8fe232dd0cc5129de4e222509a2d10fe60f98cbf47f647697486db8d9f51e902d9d1f1918d55530e8a952a873a3827f2dc6d"
+    },
+    {
+      "name": "text with diacritics and an image",
+      "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "sentUnixMs": 1794924300000,
+      "createdLocal": "2026-11-17T23:59:00",
+      "createdWallMs": 1794959940000,
+      "markdown": "# Žltá ruža 🌹\n\n![](wolfmark-attachment:0)\n",
+      "attachments": [
+        {
+          "extension": "png",
+          "dataHex": "89504e470d0a1a0a00"
+        }
+      ],
+      "nonceHex": "a0a1a2a3a4a5a6a7a8a9aaab",
+      "plaintextHex": "016ba7b8109dad11d180b400c04fd430c8000001a1e9d346e0000001a1ebf319a0000000302320c5bd6c74c3a1207275c5be6120f09f8cb90a0a215b5d28776f6c666d61726b2d6174746163686d656e743a30290a0103706e670000000989504e470d0a1a0a00",
+      "frameHex": "574d53310100000083a0a1a2a3a4a5a6a7a8a9aaabe773db955556afaeb3e533d3c73514eeb8ac5911335e912a7c0e2687de408618727647ff9f0173f8e2f0700ba85af18c82a52768924f96c74b542a05f958f2dfd8dae80e42cec98180969e7be7a3a9d4b9319b8dcfc09a0a80123e9ab193c4c4c1c326a119a48f90077321f79190392f75de0758fb8388"
+    }
+  ],
+  "responses": [
+    {
+      "name": "created",
+      "status": 0,
+      "notePath": "2026/11/17/Share_1403.md",
+      "nonceHex": "101112131415161718191a1b",
+      "plaintextHex": "01000018323032362f31312f31372f53686172655f313430332e6d64",
+      "frameHex": "574d53310200000038101112131415161718191a1b7cfe980e7bf90885e54439323e4e4600bf313c6b44f36381d4d78f031caf1bf5bae07ac44a00e4ac302aff48"
+    },
+    {
+      "name": "refused",
+      "status": 2,
+      "notePath": "",
+      "nonceHex": "202122232425262728292a2b",
+      "plaintextHex": "01020000",
+      "frameHex": "574d53310200000020202122232425262728292a2bd338a670d3ee1f6a984670a62cacd744a6a804fd"
+    }
+  ]
+}

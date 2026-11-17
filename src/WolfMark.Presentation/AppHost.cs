@@ -11,6 +11,7 @@ using WolfMark.Storage.Tags;
 using WolfMark.Storage.Trash;
 using WolfMark.Storage.Watching;
 using WolfMark.Sync.ClaudeCode;
+using WolfMark.Sync.Share;
 
 namespace WolfMark.App;
 
@@ -28,6 +29,7 @@ internal sealed partial class AppHost : IAsyncDisposable
     private Exception? _startupError;
     private NoteWatcher? _watcher;
     private ClaudeCodeSyncScheduler? _claudeScheduler;
+    private ShareService? _share;
 
     private AppHost(LocalPaths paths, LocalSettingsStore settings, FileLoggerProvider fileLogger, ILoggerFactory loggers, bool isDemo)
     {
@@ -283,6 +285,7 @@ internal sealed partial class AppHost : IAsyncDisposable
             }
 
             StartClaudeSync(token);
+            StartShare(token);
 
             if (EmbeddingProvider is { } provider)
             {
@@ -329,6 +332,29 @@ internal sealed partial class AppHost : IAsyncDisposable
             ClaudeSyncFailed?.Invoke(this, ex);
         };
         _ = Background.Run("claude-sync", _claudeScheduler.RunAsync, ct);
+    }
+
+    /// <summary>
+    /// Receiving shares from the phone over the local network (M12, ADR 0017) – only when switched on in Settings.
+    /// Switched off, this computer's announcement to the phone is taken back.
+    /// </summary>
+    private void StartShare(CancellationToken ct)
+    {
+        var s = Settings.Current.Share;
+        if (s.Enabled && s.KeyBytes() is { } key && !string.IsNullOrEmpty(s.DeviceId))
+        {
+            _share = new ShareService(Engine, new ShareOptions(s.DeviceId, Environment.MachineName, s.Port, key), Time, Loggers);
+            _ = Background.Run("share", _share.RunAsync, ct);
+        }
+        else if (!string.IsNullOrEmpty(s.DeviceId))
+        {
+            var id = s.DeviceId;
+            _ = Background.Run("share-off", _ =>
+            {
+                ShareDeviceFile.Remove(Root, id);
+                return Task.CompletedTask;
+            }, ct);
+        }
     }
 
     public string ClaudeDirectory => string.IsNullOrWhiteSpace(Settings.Current.ClaudeCode.ClaudeDirectory)
@@ -416,11 +442,17 @@ internal sealed partial class AppHost : IAsyncDisposable
         });
 
     /// <summary>
-    /// No new files while the data is copied: the watcher and the Claude Code import stop – a running import is
-    /// awaited, it must not write a note into the folder after it was copied.
+    /// No new files while the data is copied: the watcher, the Claude Code import and receiving shares stop – a
+    /// running import or share is awaited, it must not write a note into the folder after it was copied.
     /// </summary>
     private async Task StopForRelocationAsync()
     {
+        if (_share is { } share)
+        {
+            _share = null;
+            await share.DisposeAsync().ConfigureAwait(false);
+        }
+
         if (_claudeScheduler is { } scheduler)
         {
             _claudeScheduler = null;
@@ -464,6 +496,11 @@ internal sealed partial class AppHost : IAsyncDisposable
         if (_claudeScheduler is not null)
         {
             await _claudeScheduler.DisposeAsync().ConfigureAwait(false);
+        }
+
+        if (_share is not null)
+        {
+            await _share.DisposeAsync().ConfigureAwait(false);
         }
 
         Hub.Complete();

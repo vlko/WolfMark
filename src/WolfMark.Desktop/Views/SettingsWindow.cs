@@ -358,6 +358,13 @@ internal sealed class SettingsWindow : Window
         ccSyncNow.IsEnabled = host.ClaudeSync is not null;
         ccSyncNow.Click += (_, _) => host.TriggerClaudeSync();
 
+        // Sharing from the phone (M12)
+        var shareEnabled = new ToggleSwitch { IsChecked = s.Share.Enabled, Content = Strings.Get(R.Settings_ShareEnabled) };
+        var sharePort = new NumericUpDown { Value = s.Share.Port, Minimum = 1024, Maximum = 65535, Increment = 1, MinWidth = 140, FormatString = "0" };
+        var shareNewKey = new CheckBox { Content = Strings.Get(R.Settings_ShareNewKey) };
+        var shareHint = Typo.Body(Strings.Get(R.Settings_ShareHint), 12.5, Palette.InkSecondary);
+        shareHint.TextWrapping = TextWrapping.Wrap;
+
         // Index and diagnostics, as in the Windows app: where the data is, and version + environment for bug reports.
         var semantic = Typo.Body(Strings.Get(host.EmbeddingProvider is not null && host.Db.VectorsAvailable ? R.Settings_IndexSemanticOn : R.Settings_IndexSemanticOff), 12.5, Palette.InkSecondary);
         semantic.TextWrapping = TextWrapping.Wrap;
@@ -417,6 +424,9 @@ internal sealed class SettingsWindow : Window
             edit.ClaudeRedactSecrets = ccRedact.IsChecked == true;
             edit.ClaudeWatchInRealTime = ccWatch.IsChecked == true;
             edit.ClaudeIntervalMinutes = (double?)ccInterval.Value;
+            edit.ShareEnabled = shareEnabled.IsChecked == true;
+            edit.SharePort = (double?)sharePort.Value;
+            edit.ShareNewKey = shareNewKey.IsChecked == true;
             _restartNeeded |= edit.ApplyTo(s);
             if (autostartWas is { } startedBefore && (autostart.IsChecked == true) != startedBefore)
             {
@@ -519,6 +529,12 @@ internal sealed class SettingsWindow : Window
                 Ui.HStack(16, ccRedact, ccWatch),
                 Field(Strings.Get(R.Settings_ClaudeInterval), ccInterval),
                 ccSyncNow)),
+            (Icons.Share, Strings.Get(R.Settings_Share), Ui.VStack(
+                10,
+                shareEnabled,
+                shareHint,
+                Field(Strings.Get(R.Settings_SharePort), sharePort),
+                shareNewKey)),
             (Icons.Sync, Strings.Get(R.Settings_IndexDiagnostics), Ui.VStack(
                 10,
                 Section(Strings.Get(R.Settings_Index)),

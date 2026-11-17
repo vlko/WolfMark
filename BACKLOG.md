@@ -425,3 +425,43 @@ Z review 2026-11-17 (čítanie kódu, tri prieskumy). Poradie: najprv strata dá
 
 Návrhy funkcií z review (mimo existujúcich M9): hľadanie a nahradenie v poznámke (Ctrl+F/H), obnova z koša v UI,
 záloha/verzie poznámok (SPEC §7), osnova dlhej poznámky, pripnuté poznámky.
+
+## M12 – Android a zdieľanie 🟡
+
+Zdieľanie z telefónu do poznámok s tagom `Share` a prehliadač poznámok (SPEC §4.8, ADR 0017). Poradie: po M12-04
+funguje zdieľanie samo cez OneDrive, priama cesta a prehliadač prichádzajú potom.
+
+- 🟨 **M12-01 – Protokol zdieľania.** Rámec `ShareFrame` (AES-256-GCM nad TCP), správa `ShareMessage` s prílohami,
+  odpoveď `ShareResponse`; spoločné vektory `testdata/share-frames.json` a `testdata/note-names.json`.
+  *AK:* vektory z nezávislej implementácie sedia na bajt; zlý kľúč, zmenený bajt, zlá hlavička a poškodená správa sú
+  odmietnuté. *Stav:* hotové v C# (`ShareProtocolTests`, `SharedNoteNameVectorsTests`); Kotlin strana v M12-03.
+- 🟨 **M12-02 – Príjem na počítači.** `ShareReceiver` (poznámka `Share_HHmm.md`, obrázky do `assets`, duplicity,
+  hodiny), `ShareListener`, `ShareService` so súborom `.wolfmark/share/<id>.json`; nastavenie v oboch aplikáciách,
+  predvolene vypnuté. *AK:* rámec poslaný cez loopback vytvorí poznámku, opakovanie ju nezdvojí, bez kľúča žiadna
+  odpoveď; vypnutie zmaže oznámenie. *Stav:* testy 697, Linux smoke 28/28 (bežný build, 2026-11-17). **Otvorené:**
+  AOT publish (vo WSL chýba linker – ukáže CI), stránka Nastavení a výzva brány firewall na Windows, smoke kontrola
+  s bežiacou aplikáciou.
+- 🟨 **M12-03 – Android: kostra, prihlásenie, priečinok poznámok.** Projekt `android/` (moduly `core`, `app`), port
+  názvov súborov a protokolu s testami proti spoločným vektorom, MSAL (osobný účet), výber priečinka v OneDrive.
+  *AK:* `./gradlew test` zelený; po prihlásení aplikácia vypíše priečinok poznámok. *Stav:* `:core:test` 35 testov (z toho `LiveDesktopTest` beží len proti zadanému desktopu),
+  `assembleDebug` a `lintDebug` (varovania = chyby) prechádzajú (WSL, 2026-11-17). **Otvorené:** registrácia aplikácie
+  v Microsoft Entra (autor) a prvé prihlásenie na zariadení – MSAL je overený len kompiláciou.
+- 🟨 **M12-04 – Zdieľanie textu a odkazov cez OneDrive, fronta.** `ShareActivity` (`ACTION_SEND`, `text/*`),
+  `ShareComposer`, nahratie cez Graph s kolíznymi názvami (`ShareDelivery`), `ShareQueue` + `DeliveryWorker`.
+  *AK:* odkaz zdieľaný z prehliadača sa objaví vo WolfMarku ako `Share_HHmm.md`; zdieľanie v lietadlovom režime sa
+  doručí po pripojení, raz. *Stav:* logika overená testami proti falošnému OneDrive (kolízie, pokračovanie po
+  výpadku, chýbajúce priečinky). **Otvorené:** skutočný Graph (`conflictBehavior=fail` pri nahratí podľa cesty,
+  vytváranie priečinkov) a správanie na zariadení.
+- 🟨 **M12-05 – Obrázky.** `image/*` a `ACTION_SEND_MULTIPLE`, nahratie do `assets` dňa, odkazy v poznámke; HEIC/AVIF
+  sa ukladá ako JPEG. *Stav:* ako M12-04.
+- 🟨 **M12-06 – Priama cesta v telefóne.** Čítanie `.wolfmark/share/*.json`, pokus o počítač na Wi-Fi alebo VPN,
+  prechod na OneDrive. *AK:* pri bežiacom počítači je poznámka v okne do pár sekúnd; pri vypnutom príde cez OneDrive,
+  raz. *Stav:* `ShareClient` overený proti falošnému počítaču, spoločným vektorom a cez loopback proti skutočnému
+  `ShareService` (`LiveDesktopTest`: poznámka s obrázkom vznikla, opakovanie ju nezdvojilo, cudzí kľúč bez odpovede). **Otvorené:** telefón proti
+  skutočnému desktopu (brána firewall, sieť).
+- 🟨 **M12-07 – Prehliadač poznámok.** Graph delta, lokálna kópia (`NoteMirror`), dni a poznámky, filter podľa tagu,
+  Markdown, obrázky. Len na čítanie. *Stav:* kópia overená testami (zmeny, premenovanie, zmazaný priečinok, stránkovanie,
+  expirovaný delta odkaz); UI len skompilované. **Otvorené:** vzhľad a správanie na zariadení, delta nad podpriečinkom
+  na skutočnom OneDrive.
+- 🟨 **M12-08 – CI a vydanie APK.** Job `android` v `ci.yml` (testy, debug build, lint), Dependabot pre Gradle.
+  **Otvorené:** prvý beh na GitHube, podpísaný APK v `release.yml` (kľúč a registrácia autora).

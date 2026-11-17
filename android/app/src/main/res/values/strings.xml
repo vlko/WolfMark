@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">WolfMark</string>
+    <string name="share_label" translatable="false">WolfMark</string>
+    <string name="share_saved">Saved to WolfMark</string>
+    <string name="share_saved_sign_in">Saved. Sign in to WolfMark to send it.</string>
+    <string name="share_nothing">Nothing WolfMark can store was shared</string>
+    <string name="sign_in_title">Your notes live in OneDrive</string>
+    <string name="sign_in_text">Sign in with the Microsoft account that holds your WolfMark notes. The app reads the notes and adds what you share – it never changes or deletes a note.</string>
+    <string name="sign_in">Sign in to OneDrive</string>
+    <string name="sign_in_failed">Sign-in failed: %1$s</string>
+    <string name="not_configured">This build has no Microsoft app registration (wolfmark.msalClientId). See android/README.md.</string>
+    <string name="sign_out">Sign out</string>
+    <string name="refresh">Refresh</string>
+    <string name="back">Back</string>
+    <string name="choose_folder">Notes folder</string>
+    <string name="folder_title">Where are your notes?</string>
+    <string name="folder_text">Choose the folder WolfMark on your computer keeps the notes in.</string>
+    <string name="folder_root">OneDrive</string>
+    <string name="folder_use">Use this folder</string>
+    <string name="folder_up">Up</string>
+    <string name="folder_empty">No folders here</string>
+    <string name="all_tags">All</string>
+    <string name="no_tag">No tag</string>
+    <string name="no_notes">No notes yet. Pull the latest with Refresh.</string>
+    <string name="syncing">Loading notes… %1$d</string>
+    <string name="sync_failed">Could not load the notes: %1$s</string>
+    <plurals name="pending_shares">
+        <item quantity="one">%1$d share is waiting to be sent</item>
+        <item quantity="other">%1$d shares are waiting to be sent</item>
+    </plurals>
+    <string name="send_now">Send now</string>
+    <string name="conflict_copy">Conflict copy</string>
+    <string name="note_missing">This note is not on the phone yet.</string>
+    <string name="delivery_channel">Sending shares</string>
+    <string name="delivery_notification">Sending to WolfMark…</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+</resources>

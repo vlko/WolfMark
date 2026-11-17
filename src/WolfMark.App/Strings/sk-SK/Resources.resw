@@ -462,6 +462,21 @@
   <data name="Settings_ClaudeSyncNow" xml:space="preserve">
     <value>Synchronizovať teraz</value>
   </data>
+  <data name="Settings_Share" xml:space="preserve">
+    <value>Zdieľanie z telefónu</value>
+  </data>
+  <data name="Settings_ShareEnabled" xml:space="preserve">
+    <value>Prijímať zdieľania cez lokálnu sieť</value>
+  </data>
+  <data name="Settings_ShareHint" xml:space="preserve">
+    <value>Aplikácia pre Android pošle zdieľaný obsah priamo tomuto počítaču, keď sú oba v tej istej sieti, inak cez OneDrive. Telefón nájde tento počítač podľa súboru v priečinku poznámok (.wolfmark/share), poznámky preto musia byť v OneDrive. Windows sa môže opýtať, či WolfMarku povoliť prístup cez bránu firewall – povoľte súkromné siete.</value>
+  </data>
+  <data name="Settings_SharePort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Settings_ShareNewKey" xml:space="preserve">
+    <value>Pri uložení vytvoriť nový kľúč (telefón si ho prevezme cez OneDrive)</value>
+  </data>
   <data name="Settings_Index" xml:space="preserve">
     <value>Index</value>
   </data>

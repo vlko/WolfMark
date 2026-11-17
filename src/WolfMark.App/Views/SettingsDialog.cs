@@ -254,6 +254,13 @@ internal static class SettingsDialog
         ccSyncNow.IsEnabled = host.ClaudeSync is not null;
         ccSyncNow.Click += (_, _) => host.TriggerClaudeSync();
 
+        // Sharing from the phone (M12)
+        var shareEnabled = new ToggleSwitch { IsOn = s.Share.Enabled, Header = Strings.Get(R.Settings_ShareEnabled) };
+        var sharePort = new NumberBox { Header = Strings.Get(R.Settings_SharePort), Value = s.Share.Port, Minimum = 1024, Maximum = 65535, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact };
+        var shareNewKey = new CheckBox { Content = Strings.Get(R.Settings_ShareNewKey) };
+        var shareHint = Typo.Body(Strings.Get(R.Settings_ShareHint), 12.5, Palette.InkSecondary);
+        shareHint.TextWrapping = TextWrapping.Wrap;
+
         // Index
         var semantic = Typo.Body(Strings.Get(host.EmbeddingProvider is not null && host.Db.VectorsAvailable ? R.Settings_IndexSemanticOn : R.Settings_IndexSemanticOff), 12.5, Palette.InkSecondary);
         var rebuild = Ui.Ui.TextButton(Strings.Get(R.Settings_IndexRebuild));
@@ -374,6 +381,12 @@ internal static class SettingsDialog
                 ccExcluded,
                 Ui.Ui.HStack(16, ccRedact, ccWatch),
                 Ui.Ui.HStack(12, ccInterval, ccSyncNow))),
+            (Glyphs.Share, Strings.Get(R.Settings_Share), Ui.Ui.VStack(
+                10,
+                shareEnabled,
+                shareHint,
+                sharePort,
+                shareNewKey)),
             (Glyphs.Sync, Strings.Get(R.Settings_IndexDiagnostics), Ui.Ui.VStack(
                 10,
                 Section(Strings.Get(R.Settings_Index)),
@@ -434,6 +447,9 @@ internal static class SettingsDialog
         edit.ClaudeRedactSecrets = ccRedact.IsChecked == true;
         edit.ClaudeWatchInRealTime = ccWatch.IsChecked == true;
         edit.ClaudeIntervalMinutes = ccInterval.Value;
+        edit.ShareEnabled = shareEnabled.IsOn;
+        edit.SharePort = sharePort.Value;
+        edit.ShareNewKey = shareNewKey.IsChecked == true;
         restartNeeded |= edit.ApplyTo(s);
         s.QuickNote.HotkeyEnabled = quickNote.Enabled.IsOn;
         s.QuickNote.Hotkey = quickNote.Chord().ToString();
