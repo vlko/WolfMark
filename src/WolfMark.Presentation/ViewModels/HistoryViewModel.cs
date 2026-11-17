@@ -12,10 +12,13 @@ namespace WolfMark.App.ViewModels;
 /// History list (M5-01/M5-02): ordered by the last edit, keyset paging, tag/day filters, headers per
 /// day of the last edit. External files (opened from outside the notes tree) are merged in by the time they were
 /// last opened or saved; they have no tag and no tasks, so the tag and open-tasks filters leave them out.
+/// "Open tasks" (M9-01) turns the list into the tasks to do: the notes that have some, by the day they were written,
+/// each followed by its open tasks (<see cref="HistoryTaskViewModel"/>); the tag and day filters narrow it too.
 /// </summary>
 internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 {
     private const int PageSize = 60;
+    private const int TaskNoteLimit = 300;
 
     private HistoryCursor? _next;
     private DateOnly? _lastDay;
@@ -26,7 +29,10 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
     private int _externalIndex;
     private readonly Dictionary<string, ExternalPreview> _previews = new(StringComparer.Ordinal);
 
-    /// <summary><see cref="HistoryHeaderViewModel"/>, <see cref="HistoryRowViewModel"/> and <see cref="HistoryExternalRowViewModel"/> items.</summary>
+    /// <summary>
+    /// <see cref="HistoryHeaderViewModel"/>, <see cref="HistoryRowViewModel"/>, <see cref="HistoryTaskViewModel"/> and
+    /// <see cref="HistoryExternalRowViewModel"/> items.
+    /// </summary>
     public ObservableCollection<object> Items { get; } = [];
 
     [ObservableProperty]
@@ -40,6 +46,19 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
 
     [ObservableProperty]
     public partial bool IsEmpty { get; private set; }
+
+    /// <summary>Open tasks in all notes, whatever the filters – shown next to "Open tasks".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OpenTasksLabel))]
+    public partial int OpenTaskCount { get; private set; }
+
+    /// <summary>"Open tasks", with their number when there are some.</summary>
+    public string OpenTasksLabel => OpenTaskCount > 0
+        ? Strings.Get(R.History_OpenTasks) + " · " + OpenTaskCount.ToString(CultureInfo.CurrentCulture)
+        : Strings.Get(R.History_OpenTasks);
+
+    /// <summary>What an empty list says: no notes, or nothing left to do.</summary>
+    public string EmptyText => Strings.Get(OpenTasksOnly ? R.History_NoOpenTasks : R.History_Empty);
 
     [ObservableProperty]
     public partial bool IsLoading { get; private set; }
@@ -118,17 +137,19 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
     {
         OnPropertyChanged(nameof(HasFilter));
         OnPropertyChanged(nameof(FilterLabel));
+        OnPropertyChanged(nameof(EmptyText));
         var generation = ++_generation;
         var externals = await LoadExternalsAsync();
         await host.DatabaseReady;
         IsLoading = true;
         try
         {
-            IReadOnlyList<NoteSummary> items;
+            IReadOnlyList<NoteSummary> items = [];
+            IReadOnlyList<NoteOpenTasks>? tasks = null;
             HistoryCursor? next = null;
             if (OpenTasksOnly)
             {
-                items = await host.History.GetWithOpenTasksAsync(500, host.ShutdownToken);
+                tasks = await host.History.GetOpenTasksAsync(TagFilter, DayFilter, TaskNoteLimit, host.ShutdownToken);
             }
             else
             {
@@ -137,16 +158,18 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
                 next = page.Next;
             }
 
+            var openTasks = await host.History.CountOpenTasksAsync(host.ShutdownToken);
             if (generation != _generation)
             {
                 return;
             }
 
+            OpenTaskCount = openTasks;
             _lastDay = null;
             _next = next;
             _externals = externals;
             _externalIndex = 0;
-            Replace([.. Entries(items, lastPage: next is null)]);
+            Replace(tasks is null ? [.. Entries(items, lastPage: next is null)] : [.. TaskEntries(tasks)]);
             IsEmpty = Items.Count == 0;
             _loaded = true;
         }
@@ -223,6 +246,32 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
             foreach (var entry in Entry(external, external.TouchedAt))
             {
                 yield return entry;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The tasks to do: each note under the day it was written (not the day of its last edit – ticking a task off
+    /// must not move the note), followed by its open tasks.
+    /// </summary>
+    private IEnumerable<object> TaskEntries(IReadOnlyList<NoteOpenTasks> notes)
+    {
+        DateOnly? lastDay = null;
+        foreach (var (note, tasks) in notes)
+        {
+            if (DayFilter is null && note.Day != lastDay)
+            {
+                yield return new HistoryHeaderViewModel(HeaderLabel(note.Day));
+                lastDay = note.Day;
+            }
+
+            yield return new HistoryRowViewModel(note)
+            {
+                IsCurrent = string.Equals(note.RelativePath, _currentPath, StringComparison.OrdinalIgnoreCase),
+            };
+            foreach (var task in tasks)
+            {
+                yield return new HistoryTaskViewModel(note, task.Line, task.Text);
             }
         }
     }
@@ -323,6 +372,7 @@ internal sealed partial class HistoryViewModel(AppHost host) : ObservableObject
                 (HistoryHeaderViewModel a, HistoryHeaderViewModel b) => a.Label == b.Label,
                 (HistoryRowViewModel a, HistoryRowViewModel b) => a.Note.RelativePath == b.Note.RelativePath,
                 (HistoryExternalRowViewModel a, HistoryExternalRowViewModel b) => a.FullPath == b.FullPath,
+                (HistoryTaskViewModel a, HistoryTaskViewModel b) => a.SameAs(b),
                 _ => false,
             };
         }
@@ -405,6 +455,29 @@ internal sealed partial class HistoryRowViewModel(NoteSummary note) : Observable
 
     [ObservableProperty]
     public partial bool IsCurrent { get; set; }
+}
+
+/// <summary>
+/// An open task under its note in the "Open tasks" list (M9-01): its line in the file and its text. Ticking it off
+/// is <see cref="MainViewModel.CompleteTaskAsync"/>; a Claude Code note is a read-only import, its tasks only show.
+/// </summary>
+internal sealed partial class HistoryTaskViewModel(NoteSummary note, int line, string text) : ObservableObject
+{
+    public NoteSummary Note { get; } = note;
+
+    /// <summary>Line of the task in the file, 0-based.</summary>
+    public int Line { get; } = line;
+
+    public string Text { get; } = text;
+
+    public bool CanComplete => !Note.IsClaudeCode;
+
+    /// <summary>Ticked off here; the row leaves the list with the next reload.</summary>
+    [ObservableProperty]
+    public partial bool IsDone { get; set; }
+
+    internal bool SameAs(HistoryTaskViewModel other) =>
+        Note.RelativePath == other.Note.RelativePath && Line == other.Line && Text == other.Text;
 }
 
 /// <summary>An external file in the history: when it was last opened or saved, "external" instead of the creation.</summary>

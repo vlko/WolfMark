@@ -133,6 +133,11 @@ internal static class DayFormatting
             text += ", " + (t.Tag.Length == 0 ? Strings.Get(R.Untagged) : t.Tag);
         }
 
+        if (day.OpenTasks > 0)
+        {
+            text += ", " + Strings.OpenTasks(day.OpenTasks);
+        }
+
         return text;
     }
 }

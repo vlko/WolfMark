@@ -51,4 +51,22 @@ public sealed class CalendarMathTests
         Assert.Equal("Mon", names[0]);
         Assert.Equal("Sun", names[6]);
     }
+
+    /// <summary>M9-01: the task count in the corner of a day cell is drawn over the band that is there.</summary>
+    [Fact]
+    public void The_band_at_a_share_of_the_cell_follows_the_note_counts()
+    {
+        var date = new DateOnly(2026, 11, 17);
+        var day = new CalendarDay(date, 10, [new TagCount("praca", 6), new TagCount(string.Empty, 3), new TagCount("rodina", 1)], 2, 0);
+
+        Assert.Equal("praca", day.TagAtShare(0.5));
+        Assert.Equal(string.Empty, day.TagAtShare(0.85));
+        Assert.Equal("rodina", day.TagAtShare(0.95));
+        Assert.Equal("rodina", day.TagAtShare(1));
+        Assert.Null(CalendarDay.Empty(date).TagAtShare(0.9));
+
+        // A fifth tag has no band of its own: the cell ends in the fourth one's colour.
+        var many = new CalendarDay(date, 5, [.. "abcde".Select(c => new TagCount(c.ToString(), 1))], 0, 0);
+        Assert.Equal("d", many.TagAtShare(0.9));
+    }
 }

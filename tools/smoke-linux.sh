@@ -112,7 +112,7 @@ shot_pid=$!
 pids+=("$shot_pid")
 if wait_exit "$shot_pid" 240; then
     missing=""
-    for f in main-light.png raw-mode.png calendar-month.png search.png full-view.png main-dark.png; do
+    for f in main-light.png raw-mode.png calendar-month.png open-tasks.png search.png full-view.png main-dark.png; do
         [[ -f "$shots/$f" ]] || missing="$missing $f"
     done
     # A blank (single-colour) window compresses to a few kB; a real one is far bigger.

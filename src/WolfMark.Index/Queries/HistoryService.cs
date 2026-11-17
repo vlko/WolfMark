@@ -12,6 +12,12 @@ public sealed record HistoryQuery(string? Tag = null, DateOnly? Day = null, Hist
 
 public sealed record HistoryPage(IReadOnlyList<NoteSummary> Items, HistoryCursor? Next);
 
+/// <summary>An open task of a note: its line in the file (0-based) and its text without Markdown.</summary>
+public sealed record OpenTask(int Line, string Text);
+
+/// <summary>A note and its open tasks, in the order they appear in it.</summary>
+public sealed record NoteOpenTasks(NoteSummary Note, IReadOnlyList<OpenTask> Tasks);
+
 /// <summary>History list and single-note lookups (M5-01, M5-02).</summary>
 public sealed class HistoryService(IndexDatabase db)
 {
@@ -150,14 +156,62 @@ public sealed class HistoryService(IndexDatabase db)
             },
             ct);
 
-    /// <summary>Notes with open tasks across days ("Outstanding", M9-01).</summary>
-    public Task<IReadOnlyList<NoteSummary>> GetWithOpenTasksAsync(int limit, CancellationToken ct) =>
-        db.ReadAsync<IReadOnlyList<NoteSummary>>(
+    /// <summary>
+    /// Notes with open tasks and those tasks, across days ("Open tasks", M9-01): the newest note first – by its
+    /// creation, not the last edit, so that ticking a task off does not reorder the list. Narrowed by the tag and
+    /// the day like the history.
+    /// </summary>
+    public Task<IReadOnlyList<NoteOpenTasks>> GetOpenTasksAsync(string? tag, DateOnly? day, int limit, CancellationToken ct) =>
+        db.ReadAsync<IReadOnlyList<NoteOpenTasks>>(
             c =>
             {
-                using var cmd = c.Command($"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE n.open_tasks > 0 ORDER BY n.file_mtime DESC, n.id DESC LIMIT $l;")
-                    .With("$l", limit);
-                return NoteSummaryReader.ReadAll(cmd);
+                var where = "n.open_tasks > 0";
+                using var cmd = c.CreateCommand();
+                if (tag is not null)
+                {
+                    where += " AND EXISTS (SELECT 1 FROM note_tags t WHERE t.note_id = n.id AND t.tag_key = $tag)";
+                    cmd.With("$tag", TagName.ToKey(tag));
+                }
+
+                if (day is { } d)
+                {
+                    where += " AND n.day = $day";
+                    cmd.With("$day", SqliteExtensions.FormatDay(d));
+                }
+
+                cmd.CommandText = $"SELECT {NoteSummaryReader.Columns} FROM notes n WHERE {where} ORDER BY n.created_at DESC, n.id DESC LIMIT $l;";
+                cmd.With("$l", limit);
+                var notes = NoteSummaryReader.ReadAll(cmd);
+
+                var result = new List<NoteOpenTasks>(notes.Count);
+                using var tasks = c.Command("SELECT line, text FROM note_tasks WHERE note_id = $id ORDER BY line;");
+                var id = tasks.CreateParameter();
+                id.ParameterName = "$id";
+                tasks.Parameters.Add(id);
+                foreach (var note in notes)
+                {
+                    id.Value = note.Id;
+                    var list = new List<OpenTask>();
+                    using var r = tasks.ExecuteReader();
+                    while (r.Read())
+                    {
+                        list.Add(new OpenTask(r.GetInt32(0), r.GetString(1)));
+                    }
+
+                    result.Add(new NoteOpenTasks(note, list));
+                }
+
+                return result;
+            },
+            ct);
+
+    /// <summary>Open tasks in all notes – the number next to "Open tasks".</summary>
+    public Task<int> CountOpenTasksAsync(CancellationToken ct) =>
+        db.ReadAsync(
+            c =>
+            {
+                using var cmd = c.Command("SELECT COALESCE(SUM(open_tasks), 0) FROM notes;");
+                return Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
             },
             ct);
 

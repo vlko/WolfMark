@@ -157,6 +157,8 @@ internal static class Glyphs
     public const string Delete = "";
     public const string Folder = "";
     public const string Link = "";
+    /// <summary>An empty box (the two below are ticked: outlined and filled).</summary>
+    public const string CheckboxEmpty = "\uE739";
     public const string Checkbox = "";
     public const string CheckboxComposite = "";
     public const string Code = "";

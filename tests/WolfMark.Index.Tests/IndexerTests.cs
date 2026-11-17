@@ -330,4 +330,29 @@ public sealed class IndexerTests
             await Task.Delay(20, Ct);
         }
     }
+
+    /// <summary>M9-01: "Open tasks" lists the tasks themselves, the newest note first, narrowed by tag and day.</summary>
+    [Fact]
+    public async Task Open_tasks_are_listed_per_note_and_follow_the_file()
+    {
+        await using var f = await IndexFixture.CreateAsync();
+        f.Write("2026/10/15/praca_1403.md", "# Staršia\n- [ ] prvá\n- [x] hotová\n- [ ] druhá");
+        f.Write("2026/10/16/rodina_0900.md", "# Novšia\n- [ ] kúpiť chlieb");
+        f.Write("2026/10/16/praca_1000.md", "# Bez úloh");
+        await f.Indexer.FullScanAsync(null, Ct);
+
+        var all = await f.History.GetOpenTasksAsync(null, null, 100, Ct);
+        Assert.Equal(["2026/10/16/rodina_0900.md", "2026/10/15/praca_1403.md"], all.Select(n => n.Note.RelativePath));
+        Assert.Equal([new OpenTask(1, "prvá"), new OpenTask(3, "druhá")], all[1].Tasks);
+        Assert.Equal(3, await f.History.CountOpenTasksAsync(Ct));
+
+        Assert.Equal("2026/10/15/praca_1403.md", Assert.Single(await f.History.GetOpenTasksAsync("praca", null, 100, Ct)).Note.RelativePath);
+        Assert.Equal("2026/10/16/rodina_0900.md", Assert.Single(await f.History.GetOpenTasksAsync(null, new DateOnly(2026, 10, 16), 100, Ct)).Note.RelativePath);
+
+        f.Write("2026/10/15/praca_1403.md", "# Staršia\n- [x] prvá\n- [x] hotová\n- [x] druhá", DateTime.UtcNow.AddMinutes(1));
+        await f.Indexer.FullScanAsync(null, Ct);
+
+        Assert.Single(await f.History.GetOpenTasksAsync(null, null, 100, Ct));
+        Assert.Equal(1, await f.History.CountOpenTasksAsync(Ct));
+    }
 }

@@ -7,7 +7,7 @@ namespace WolfMark.Index.Database;
 /// </summary>
 internal static class Schema
 {
-    public const int Version = 3; // 3: note_links (wiki links, M9-04)
+    public const int Version = 4; // 3: note_links (wiki links, M9-04); 4: note_tasks (open tasks, M9-01)
 
     public const string Create = """
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
@@ -55,6 +55,14 @@ internal static class Schema
           PRIMARY KEY (note_id, target)
         ) WITHOUT ROWID;
         CREATE INDEX ix_note_links_target ON note_links(target);
+
+        -- Open tasks of a note (- [ ]) with their line in the file: the "Open tasks" list (M9-01).
+        CREATE TABLE note_tasks (
+          note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+          line INTEGER NOT NULL,
+          text TEXT NOT NULL,
+          PRIMARY KEY (note_id, line)
+        ) WITHOUT ROWID;
 
         CREATE VIRTUAL TABLE notes_fts USING fts5(title, body, tags, tokenize = 'unicode61 remove_diacritics 2');
 

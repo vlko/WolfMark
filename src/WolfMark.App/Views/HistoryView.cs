@@ -31,6 +31,7 @@ internal sealed partial class HistoryView : UserControl
         var rowFactory = new ElementFactory<HistoryRowViewModel, HistoryRowView>(() => new HistoryRowView(this));
         var externalFactory = new ElementFactory<HistoryExternalRowViewModel, HistoryRowView>(() => new HistoryRowView(this));
         var headerFactory = new ElementFactory<HistoryHeaderViewModel, HistoryHeaderView>(() => new HistoryHeaderView());
+        var taskFactory = new ElementFactory<HistoryTaskViewModel, HistoryTaskView>(() => new HistoryTaskView(vm));
         var repeater = new ItemsRepeater
         {
             ItemsSource = history.Items,
@@ -38,6 +39,7 @@ internal sealed partial class HistoryView : UserControl
             {
                 HistoryHeaderViewModel => headerFactory,
                 HistoryExternalRowViewModel => externalFactory,
+                HistoryTaskViewModel => taskFactory,
                 _ => rowFactory,
             }),
             Layout = new StackLayout { Spacing = 0 },
@@ -82,9 +84,11 @@ internal sealed partial class HistoryView : UserControl
             filterText.Text = history.FilterLabel.ToUpper(System.Globalization.CultureInfo.CurrentCulture);
         });
 
+        var openTasksLabel = Typo.Body(history.OpenTasksLabel, 12, Palette.InkSecondary);
+        openTasksLabel.Bind(history, nameof(HistoryViewModel.OpenTasksLabel), () => openTasksLabel.Text = history.OpenTasksLabel);
         var openTasks = new Button
         {
-            Content = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Checkbox, 12), Typo.Body(Strings.Get(R.History_OpenTasks), 12, Palette.InkSecondary)),
+            Content = Ui.Ui.HStack(6, Typo.Icon(Glyphs.Checkbox, 12), openTasksLabel),
             Padding = new Thickness(8, 2, 8, 2),
             CornerRadius = Radius.Control,
         };
@@ -104,7 +108,11 @@ internal sealed partial class HistoryView : UserControl
         var empty = Typo.Body(Strings.Get(R.History_Empty), 13, Palette.InkTertiary);
         empty.HorizontalAlignment = HorizontalAlignment.Center;
         empty.Margin = new Thickness(0, 24, 0, 0);
-        empty.Bind(history, nameof(HistoryViewModel.IsEmpty), () => empty.Visibility = history.IsEmpty ? Visibility.Visible : Visibility.Collapsed);
+        empty.Bind(history, [nameof(HistoryViewModel.IsEmpty), nameof(HistoryViewModel.EmptyText)], () =>
+        {
+            empty.Visibility = history.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+            empty.Text = history.EmptyText;
+        });
 
         var body = new Grid();
         body.Children.Add(_scroller);
@@ -240,6 +248,88 @@ internal sealed partial class HistoryHeaderView : UserControl, IItemView<History
     }
 
     public void Bind(HistoryHeaderViewModel item) => _label.Text = item.Label.ToUpper(System.Globalization.CultureInfo.CurrentCulture);
+}
+
+/// <summary>
+/// An open task under its note in "Open tasks" (M9-01): the box ticks it off (not in a read-only Claude Code note),
+/// the text opens the note at the task.
+/// </summary>
+internal sealed partial class HistoryTaskView : UserControl, IItemView<HistoryTaskViewModel>
+{
+    private readonly MainViewModel _vm;
+    private readonly FontIcon _glyph = Typo.Icon(Glyphs.CheckboxEmpty, 14, Palette.InkSecondary);
+    private readonly TextBlock _text = Typo.Body(string.Empty, 13.5);
+    private readonly Button _box;
+    private readonly Button _open;
+    private HistoryTaskViewModel? _item;
+
+    public HistoryTaskView(MainViewModel vm)
+    {
+        _vm = vm;
+        _box = new Button { Content = _glyph, Padding = new Thickness(4), CornerRadius = Radius.Control, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+        _box.StyleButton(Palette.Transparent, Palette.InkSecondary);
+        ToolTipService.SetToolTip(_box, Strings.Get(R.Task_Complete));
+        _box.Click += async (_, _) =>
+        {
+            if (_item is { } item)
+            {
+                await _vm.CompleteTaskAsync(item);
+            }
+        };
+
+        _text.TextTrimming = TextTrimming.CharacterEllipsis;
+        _text.TextWrapping = TextWrapping.NoWrap;
+        _open = new Button
+        {
+            Content = _text,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(6, 3, 10, 3),
+            CornerRadius = Radius.None,
+        };
+        _open.StyleButton(Palette.Transparent, Palette.Ink);
+        _open.Click += async (_, _) =>
+        {
+            if (_item is { } item)
+            {
+                await _vm.OpenNoteAsync(item.Note.RelativePath, item.Line);
+            }
+        };
+
+        var grid = Ui.Ui.Columns(
+            (Ui.Ui.Px(Metrics.TimeGutter), null),
+            (Ui.Ui.Px(1), Ui.Ui.DottedLine()),
+            (Ui.Ui.Auto, _box),
+            (Ui.Ui.Star, _open));
+        grid.ColumnSpacing = 0;
+        Content = grid;
+    }
+
+    public void Bind(HistoryTaskViewModel item)
+    {
+        if (_item is not null)
+        {
+            _item.PropertyChanged -= OnItemChanged;
+        }
+
+        _item = item;
+        item.PropertyChanged += OnItemChanged;
+        _text.Text = item.Text;
+        _box.IsEnabled = item.CanComplete;
+        AutomationProperties.SetName(_box, Strings.Get(R.Task_Complete) + ": " + item.Text);
+        UpdateDone();
+    }
+
+    private void OnItemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => UpdateDone();
+
+    /// <summary>A ticked task is struck through until the list reloads without it; a failed tick comes back.</summary>
+    private void UpdateDone()
+    {
+        var done = _item?.IsDone == true;
+        _glyph.Glyph = done ? Glyphs.Checkbox : Glyphs.CheckboxEmpty;
+        _text.Opacity = done ? 0.5 : 1;
+        _text.TextDecorations = done ? Windows.UI.Text.TextDecorations.Strikethrough : Windows.UI.Text.TextDecorations.None;
+    }
 }
 
 /// <summary>A note row, or an external file row (no tag: the file name instead, "external" instead of the creation).</summary>

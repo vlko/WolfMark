@@ -221,7 +221,7 @@ function Test-Screenshots {
         return
     }
 
-    $expected = 'main-light.png', 'raw-mode.png', 'calendar-month.png', 'search.png', 'full-view.png'
+    $expected = 'main-light.png', 'raw-mode.png', 'calendar-month.png', 'open-tasks.png', 'search.png', 'full-view.png'
     $files = @(Get-ChildItem $shots -Filter '*.png' -ErrorAction SilentlyContinue)
     $absent = $expected | Where-Object { $files.Name -notcontains $_ }
     # A blank (single-colour) 1440×960 PNG compresses to a few kB; a real window is far bigger.

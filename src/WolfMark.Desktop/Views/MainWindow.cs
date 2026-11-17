@@ -465,6 +465,16 @@ internal sealed partial class MainWindow : Window
                 : _host.Engine.GetDayDirectory(editorVm.Day);
             _editor.Load(request.Text, request.CaretToEnd, editorVm.IsReadOnly);
             _editor.FocusEditor();
+            if (request.CaretOffset is { } offset)
+            {
+                _editor.Select(offset, 0);
+            }
+        };
+        // A task ticked off in the list: an edit like typing, the selection left where it is.
+        editorVm.EditRequested += (_, edit) =>
+        {
+            var (start, length) = _editor.SelectedRange;
+            _editor.ApplyEdit(edit with { SelectionStart = start, SelectionLength = length });
         };
         _editor.TextEdited += (_, text) => editorVm.OnTextEdited(text);
         _editor.NoteLinkRequested += (_, link) => _ = _vm.OpenWikiLinkAsync(link);

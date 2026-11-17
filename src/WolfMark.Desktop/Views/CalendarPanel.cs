@@ -438,6 +438,11 @@ internal sealed class CalendarPanel : UserControl
         private readonly TextBlock _number = new() { FontFamily = Typo.DayNumber, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom };
 
+        // Open tasks of the day: a small box and their number in the corner (M9-01).
+        private readonly Rectangle _taskBox = new() { Width = 6, Height = 6, StrokeThickness = 1, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _taskCount = new() { FontFamily = Typo.CondensedBold, VerticalAlignment = VerticalAlignment.Center };
+        private readonly StackPanel _tasks = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 3, 5, 0), IsHitTestVisible = false };
+
         public DayCell(MainViewModel vm, double height, double numberSize, bool weekBand)
         {
             _vm = vm;
@@ -446,7 +451,9 @@ internal sealed class CalendarPanel : UserControl
             _number.Margin = new Thickness(0, 0, 0, height * 0.12);
             _dots.Margin = new Thickness(0, 0, 0, height * 0.12);
             var grid = new Grid();
-            grid.Children.AddRange([_fill, _hatch, _selection, _frame, _frameDash, _focus, _number, _dots]);
+            _taskCount.FontSize = weekBand ? 11 : 10;
+            _tasks.Children.AddRange([_taskBox, _taskCount]);
+            grid.Children.AddRange([_fill, _hatch, _selection, _frame, _frameDash, _focus, _number, _dots, _tasks]);
             // Reachable with Tab; the frame shows only for the keyboard (a click focuses too, but needs no mark).
             Focusable = true;
             GotFocus += (_, e) => _focus.IsVisible = e.NavigationMethod != NavigationMethod.Pointer;
@@ -507,6 +514,19 @@ internal sealed class CalendarPanel : UserControl
             {
                 _dots.Children.Add(new Rectangle { Width = 4, Height = 4, Fill = ink, Opacity = hatched ? 1 : 0.8 });
             }
+
+            _tasks.IsVisible = day.OpenTasks > 0;
+            _taskCount.Text = day.OpenTasks.ToString(CultureInfo.CurrentCulture);
+            // The bands run diagonally across a wide cell: its top right corner is about 0.9 of the way. The count there
+            // takes its contrast from that band, the number from the first one.
+            var cornerInk = ink;
+            if (day.Tags.Count > 1 && day.TagAtShare(0.9) is { } cornerTag)
+            {
+                var corner = _vm.Host.Tags.GetColor(cornerTag.Length == 0 ? null : cornerTag);
+                cornerInk = new SolidColorBrush(hatched ? Palette.PastInk(corner) : _weekBand ? Palette.ForegroundOnTint(corner) : Palette.ForegroundOn(corner));
+            }
+
+            _taskCount.Foreground = _taskBox.Stroke = cornerInk;
 
             ToolTip.SetTip(this, tip);
         }

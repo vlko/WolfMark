@@ -604,7 +604,18 @@ internal sealed partial class MainWindow : Window
             // which was then replaced while the spell checker ran – a WinUIEdit crash.
             _editor.Load(request.Text, request.CaretToEnd, editorVm.IsReadOnly);
             _editor.FocusEditor();
+            if (request.CaretOffset is { } offset)
+            {
+                _editor.Select(offset, 0);
+            }
+
             _editor.ScrollToCaret();
+        };
+        // A task ticked off in the list: an edit like typing, the selection left where it is.
+        editorVm.EditRequested += (_, edit) =>
+        {
+            var (start, length) = _editor.SelectedRange;
+            _editor.ApplyEdit(edit with { SelectionStart = start, SelectionLength = length });
         };
         editorVm.PropertyChanged += (_, e) =>
         {

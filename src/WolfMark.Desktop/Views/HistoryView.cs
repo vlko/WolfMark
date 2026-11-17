@@ -26,7 +26,9 @@ internal sealed class HistoryView : UserControl
     {
         _vm = vm;
         // HISTORY ———— [☐ Open tasks]
-        var openTasks = new CheckBox { Content = Typo.Body(Strings.Get(R.History_OpenTasks), 13.5, Palette.InkSecondary), Margin = new Thickness(16, 0, 12, 0) };
+        var openTasksLabel = Typo.Body(vm.History.OpenTasksLabel, 13.5, Palette.InkSecondary);
+        var openTasks = new CheckBox { Content = openTasksLabel, Margin = new Thickness(16, 0, 12, 0) };
+        Ui.Bind(vm.History, nameof(HistoryViewModel.OpenTasksLabel), () => openTasksLabel.Text = vm.History.OpenTasksLabel);
         openTasks.IsCheckedChanged += async (_, _) =>
         {
             if ((openTasks.IsChecked == true) != vm.History.OpenTasksOnly)
@@ -69,6 +71,7 @@ internal sealed class HistoryView : UserControl
             {
                 HistoryHeaderViewModel header => Header(header),
                 HistoryRowViewModel row => new HistoryRow(vm, row),
+                HistoryTaskViewModel task => new TaskRow(vm, task),
                 HistoryExternalRowViewModel external => new ExternalRow(vm, external),
                 _ => null,
             }, supportsRecycling: false),
@@ -84,8 +87,11 @@ internal sealed class HistoryView : UserControl
 
         var empty = Typo.Body(Strings.Get(R.History_Empty), 13, Palette.InkTertiary);
         empty.Margin = new Thickness(Metrics.TimeGutter + 13, 8, 0, 0);
-        void UpdateEmpty() => empty.IsVisible = vm.History.IsEmpty;
-        Ui.Bind(vm.History, nameof(HistoryViewModel.IsEmpty), UpdateEmpty);
+        Ui.Bind(vm.History, [nameof(HistoryViewModel.IsEmpty), nameof(HistoryViewModel.EmptyText)], () =>
+        {
+            empty.IsVisible = vm.History.IsEmpty;
+            empty.Text = vm.History.EmptyText;
+        });
         vm.History.Items.CollectionChanged += (_, e) =>
         {
             if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -229,6 +235,59 @@ internal sealed class HistoryView : UserControl
                 item.Click += async (_, _) => await vm.ChangeNoteTagAsync(note.RelativePath, tag);
                 return item;
             }
+        }
+    }
+
+    /// <summary>
+    /// An open task under its note in "Open tasks" (M9-01): the box ticks it off (not in a read-only Claude Code
+    /// note), the text opens the note at the task.
+    /// </summary>
+    private sealed class TaskRow : Grid
+    {
+        public TaskRow(MainViewModel vm, HistoryTaskViewModel task)
+        {
+            var box = new CheckBox
+            {
+                IsEnabled = task.CanComplete,
+                MinWidth = 0,
+                MinHeight = 0,
+                Padding = new Thickness(0),
+                Margin = new Thickness(12, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(box, Strings.Get(R.Task_Complete));
+            Avalonia.Automation.AutomationProperties.SetName(box, Strings.Get(R.Task_Complete) + ": " + task.Text);
+            box.Click += async (_, _) => await vm.CompleteTaskAsync(task);
+
+            var text = Typo.Body(task.Text, 13.5);
+            text.TextTrimming = TextTrimming.CharacterEllipsis;
+            var open = new Button
+            {
+                Content = text,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Background = Palette.Transparent,
+                Foreground = Palette.Ink,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
+                Padding = new Thickness(8, 3, 10, 3),
+            };
+            open.Click += async (_, _) => await vm.OpenNoteAsync(task.Note.RelativePath, task.Line);
+
+            // A failed tick comes back unticked; a ticked one is struck through until the list reloads without it.
+            Ui.Bind(task, nameof(HistoryTaskViewModel.IsDone), () =>
+            {
+                box.IsChecked = task.IsDone;
+                text.Opacity = task.IsDone ? 0.5 : 1;
+                text.TextDecorations = task.IsDone ? TextDecorations.Strikethrough : null;
+            });
+
+            ColumnDefinitions = new ColumnDefinitions($"{Metrics.TimeGutter},1,Auto,*");
+            var line = new DottedLine();
+            SetColumn(line, 1);
+            SetColumn(box, 2);
+            SetColumn(open, 3);
+            Children.AddRange([line, box, open]);
         }
     }
 

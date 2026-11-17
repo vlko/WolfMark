@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Logging;
 using WolfMark.App.Infrastructure;
 using WolfMark.Core.Events;
+using WolfMark.Core.Markdown;
 using WolfMark.Core.Notes;
 using WolfMark.Core.Settings;
 using WolfMark.Core.Tags;
@@ -51,6 +52,12 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     /// <summary>Raised after the note got a (new) path – history highlights it.</summary>
     public event EventHandler? PathChanged;
 
+    /// <summary>
+    /// An edit of the open text asked for from outside the editor (a task ticked off in the list): the view applies
+    /// it in the editor control, so it is one undo step and the caret stays where it was.
+    /// </summary>
+    public event EventHandler<TextEdit>? EditRequested;
+
     [ObservableProperty]
     public partial NotePath? Path { get; private set; }
 
@@ -95,7 +102,8 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
 
     public DateOnly Day => Path?.Date ?? DateOnly.FromDateTime(CreatedAt);
 
-    public async Task OpenAsync(NotePath path, bool caretToEnd = true)
+    /// <param name="line">Line to put the caret on (0-based) instead of the start or the end – a task from the list.</param>
+    public async Task OpenAsync(NotePath path, bool caretToEnd = true, int? line = null)
     {
         await FlushAsync(leaving: true);
         string text;
@@ -129,7 +137,7 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         ExternalChangePending = false;
         IsDeletedExternally = false;
         SaveState = IsReadOnly ? SaveState.ReadOnly : SaveState.Saved;
-        LoadRequested?.Invoke(this, new LoadRequest(Text, caretToEnd));
+        LoadRequested?.Invoke(this, new LoadRequest(Text, caretToEnd && line is null, line is { } l ? TaskLines.LineStart(Text, l) : null));
         PathChanged?.Invoke(this, EventArgs.Empty);
         RememberLastNote();
     }
@@ -174,6 +182,30 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
         _dirty = true;
         SaveState = SaveState.Pending;
         _autosave.Schedule(SaveAsync);
+    }
+
+    /// <summary>
+    /// Ticks the open task on <paramref name="line"/> off in the open note (M9-01) – as an edit of the editor, saved
+    /// like typing. False when the note is read-only or has no such open task any more.
+    /// </summary>
+    public bool CompleteTask(int line, string text)
+    {
+        if (IsReadOnly || TaskLines.FindBox(Text, line, text) is not { } box)
+        {
+            return false;
+        }
+
+        if (EditRequested is { } apply)
+        {
+            // The selection is the view's to fill in: this edit has the same length, the caret need not move.
+            apply(this, new TextEdit(box + 1, 1, "x", box + 3, 0));
+        }
+        else
+        {
+            OnTextEdited(string.Concat(Text.AsSpan(0, box + 1), "x", Text.AsSpan(box + 2)));
+        }
+
+        return true;
     }
 
     /// <summary>Saves pending changes now (focus loss, note switch, window close).</summary>
@@ -503,4 +535,5 @@ internal sealed partial class NoteEditorViewModel : ObservableObject
     private partial void LogSaveFailed(Exception ex, string path);
 }
 
-internal sealed record LoadRequest(string Text, bool CaretToEnd);
+/// <param name="CaretOffset">Where to put the caret (and scroll to) when the note opens at a given line.</param>
+internal sealed record LoadRequest(string Text, bool CaretToEnd, int? CaretOffset = null);

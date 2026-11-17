@@ -51,4 +51,8 @@ internal static partial class Strings
         var key = count == 1 ? R.Notes_One : count is >= 2 and <= 4 ? R.Notes_Few : R.Notes_Many;
         return Format(key, count);
     }
+
+    /// <summary>"3 open tasks" with the plural rules of <see cref="Notes"/>.</summary>
+    public static string OpenTasks(int count) =>
+        Format(count == 1 ? R.Tasks_One : count is >= 2 and <= 4 ? R.Tasks_Few : R.Tasks_Many, count);
 }

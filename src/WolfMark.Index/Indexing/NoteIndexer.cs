@@ -511,6 +511,22 @@ public sealed partial class NoteIndexer
             }
         }
 
+        // Open tasks – like the links, only when the content was read.
+        if (info is not null)
+        {
+            using (var del = c.Command("DELETE FROM note_tasks WHERE note_id = $id;", tx).With("$id", id))
+            {
+                del.ExecuteNonQuery();
+            }
+
+            foreach (var task in info.Tasks)
+            {
+                using var ins = c.Command("INSERT OR IGNORE INTO note_tasks (note_id, line, text) VALUES ($id, $l, $t);", tx)
+                    .With("$id", id).With("$l", task.Line).With("$t", task.Text);
+                ins.ExecuteNonQuery();
+            }
+        }
+
         // Full text.
         using (var del = c.Command("DELETE FROM notes_fts WHERE rowid = $id;", tx).With("$id", id))
         {

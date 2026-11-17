@@ -17,7 +17,16 @@ public sealed record NoteContentInfo(
 {
     /// <summary>Keys of the wiki links in the note (<see cref="WikiLinks.Key"/>), each once – for backlinks.</summary>
     public IReadOnlyList<string> Links { get; init; } = [];
+
+    /// <summary>The open tasks (<c>- [ ]</c>) in the order they appear – the "Open tasks" view lists them (M9-01).</summary>
+    public IReadOnlyList<NoteTask> Tasks { get; init; } = [];
 }
+
+/// <summary>
+/// An open task of a note: its line in the file (0-based, front matter included), the column of its <c>[ ]</c> box
+/// and its text without Markdown.
+/// </summary>
+public sealed record NoteTask(int Line, int Column, string Text);
 
 /// <summary>
 /// Extracts title, preview, word and task counts (SPEC §4.2). Tags are not read from the content: a note's tag is the
@@ -40,6 +49,7 @@ public static class NoteContentAnalyzer
         var open = 0;
         var done = 0;
         var links = new List<string>();
+        var tasks = new List<NoteTask>();
 
         // Tables read as their cells in the title and preview ("Method · Path · Notes"), not as pipes and dashes.
         // Lines in code blocks are skipped below before this is used, so the code check is not needed here.
@@ -75,6 +85,7 @@ public static class NoteContentAnalyzer
                 {
                     case MarkdownTokenKind.TaskOpen:
                         open++;
+                        tasks.Add(new NoteTask(i, token.Start, Truncate(plain, TitleLength)));
                         break;
                     case MarkdownTokenKind.WikiLink:
                         if (WikiLinks.Parse(line.Substring(token.Start, token.Length)) is { } target
@@ -123,6 +134,7 @@ public static class NoteContentAnalyzer
             body.ToString())
         {
             Links = links,
+            Tasks = tasks,
         };
     }
 

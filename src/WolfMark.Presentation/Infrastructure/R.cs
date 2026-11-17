@@ -50,6 +50,12 @@ internal static class R
     public const string History_Yesterday = nameof(History_Yesterday);
     public const string History_Empty = nameof(History_Empty);
     public const string History_OpenTasks = nameof(History_OpenTasks);
+    public const string History_NoOpenTasks = nameof(History_NoOpenTasks);
+    public const string Tasks_One = nameof(Tasks_One);
+    public const string Tasks_Few = nameof(Tasks_Few);
+    public const string Tasks_Many = nameof(Tasks_Many);
+    public const string Task_Complete = nameof(Task_Complete);
+    public const string Task_CompleteFailed = nameof(Task_CompleteFailed);
     public const string History_ClearFilter = nameof(History_ClearFilter);
     public const string Menu_ChangeTag = nameof(Menu_ChangeTag);
     public const string Menu_OpenInExplorer = nameof(Menu_OpenInExplorer);

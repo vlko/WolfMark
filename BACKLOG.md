@@ -264,7 +264,17 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 ## M9 – Rozšírenia 🟡/⚪
 
 - 🟨 **M9-01 – 🟡 Úlohy:** pohľad „Nedokončené“ naprieč dňami, počty v kalendári.
-  *Stav:* Čiastočne: filter „Nedokončené“, progres úloh v týždennej lište.
+  „Nedokončené“ v histórii ukáže namiesto poznámok to, čo treba spraviť: poznámky s otvorenými úlohami podľa dňa
+  vzniku (odškrtnutie nemení poradie) a pod každou jej úlohy. Štvorček úlohu odškrtne – v otvorenej poznámke ako
+  úpravu editora (jeden krok späť), inak priamo v súbore a len ak sa od načítania nezmenil; text úlohy otvorí
+  poznámku s kurzorom na jej riadku. Filter tagu a dňa platí aj tu, pri „Nedokončené“ je počet všetkých otvorených
+  úloh. Úlohy v poznámkach z Claude Code sa len zobrazujú (import je len na čítanie). Bunka dňa v týždennom pásiku aj
+  v mesiaci má v rohu počet otvorených úloh, čítačka obrazovky ho povie. Index: tabuľka `note_tasks` (schéma 4 –
+  prvý štart index prestaví). Logika: `NoteContentInfo.Tasks`, `TaskLines`, `HistoryService.GetOpenTasksAsync`,
+  `HistoryTaskViewModel`, `MainViewModel.CompleteTaskAsync`.
+  *Stav:* testy `TaskLinesTests`, `OpenTasksTests`, `IndexerTests`; Desktop overený na snímke (`open-tasks.png`
+  pribudla do `--screenshots` a smoke testov); Windows treba vyskúšať na Windows. Otvorené: úlohy s termínom,
+  zoradenie podľa priority, odškrtnutie späť zo zoznamu (ide cez Ctrl+Z v editore).
 - ⬜ **M9-02 – 🟡 Denný pohľad** (všetky poznámky dňa ako jedna stránka).
 - 🟨 **M2-05 – 🟡 Embedding provider** (presunuté z M2 – odložené 2026-11-13, ID ostáva kvôli odkazom v kóde a ADR 0003).
   Rozhranie `IEmbeddingProvider`; implementácia ONNX Runtime + multilingválny model; stiahnutie modelu pri prvom použití s overením hashu; chunking; dávkové počítanie v pozadí s nízkou prioritou.

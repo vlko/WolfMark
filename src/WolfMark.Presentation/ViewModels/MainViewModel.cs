@@ -354,20 +354,70 @@ internal sealed partial class MainViewModel : ObservableObject
     private bool IsOpenInEditor(string relativePath) =>
         string.Equals(Editor.Path?.RelativePath, relativePath, StringComparison.OrdinalIgnoreCase);
 
-    public async Task OpenNoteAsync(string relativePath)
+    /// <param name="line">Line to put the caret on (0-based) – a task picked in the "Open tasks" list.</param>
+    public async Task OpenNoteAsync(string relativePath, int? line = null)
     {
         if (!NotePath.TryParse(relativePath, out var path))
         {
             return;
         }
 
-        await Editor.OpenAsync(path);
+        await Editor.OpenAsync(path, line: line);
         var day = Editor.Day;
         if (day != SelectedDay)
         {
             SelectedDay = day;
             await Week.LoadAsync(day, day);
             await SyncCalendarMonthAsync();
+        }
+    }
+
+    /// <summary>
+    /// Ticks a task off from the "Open tasks" list (M9-01). The open note is edited in the editor (one undo step,
+    /// saved at once); any other note in its file – only while the file is what the index read, so nothing written
+    /// elsewhere meanwhile is lost. The row shows the result right away and comes back when it did not work.
+    /// </summary>
+    public async Task CompleteTaskAsync(HistoryTaskViewModel task)
+    {
+        if (!task.CanComplete || task.IsDone || !NotePath.TryParse(task.Note.RelativePath, out var path))
+        {
+            return;
+        }
+
+        task.IsDone = true;
+        var done = false;
+        try
+        {
+            if (IsOpenInEditor(path.RelativePath))
+            {
+                done = Editor.CompleteTask(task.Line, task.Text);
+                if (done)
+                {
+                    await Editor.FlushAsync();
+                }
+            }
+            else
+            {
+                var engine = _host.Engine;
+                var ct = _host.ShutdownToken;
+                done = await Task.Run(async () =>
+                {
+                    var snapshot = await engine.ReadSnapshotAsync(path, ct).ConfigureAwait(false);
+                    return TaskLines.Complete(snapshot.Text, task.Line, task.Text) is { } updated
+                           && await engine.TrySaveAsync(path, updated, snapshot.Hash, ct).ConfigureAwait(false) is not null;
+                });
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            done = false;
+        }
+
+        if (!done)
+        {
+            task.IsDone = false;
+            ErrorNotice = Strings.Get(R.Task_CompleteFailed);
+            _ = History.ReloadAsync();
         }
     }
 

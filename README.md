@@ -62,7 +62,8 @@ notebook unless I ask.
 | **Tables & images** | GFM pipe tables as a grid with aligned, wrapped columns; pasted or dropped images copied next to the note and previewed inline |
 | **Calendar** | Week strip with per-tag counts and hatched tag bands, full month view with labels between weeks, keyboard navigation |
 | **Tags** | One tag per note, in the file name (`work_1403.md`); add, rename, merge, recolour or remove tags in Settings; colours travel with the notes |
-| **History** | All notes ordered by last edit, filter by tag, day or open tasks; right-click to change the tag, open the folder, copy a link or move to trash; Markdown files opened from elsewhere appear there too |
+| **History** | All notes ordered by last edit, filter by tag or day; right-click to change the tag, open the folder, copy a link or move to trash; Markdown files opened from elsewhere appear there too |
+| **Open tasks** | One click turns the history into the list of what is left to do: every unfinished `- [ ]` across all days, under its note; tick it off right there or click it to open the note at that line; the calendar shows how many each day still has |
 | **Search** | `Ctrl+K` command palette, SQLite FTS5 full-text with `#tag` and `@2026-10` filters; `Ctrl+F` / `Ctrl+H` find and replace within the note |
 | **Links between notes** | `[[2026/11/16/work_1403]]`, `[[work_1403]]` or `[[2026-11-16]]` – `Ctrl`+click follows them, and a note shows which notes link to it |
 | **Trash** | Deleted notes go to a trash folder next to the notes on every system; Settings → *Trash* lists them, restores them to where they were, and empties it |
@@ -381,7 +382,7 @@ the images itself, so it also works without a screen (under Xvfb, as the smoke t
 
 ## Roadmap
 
-Next on the list: a daily view of all of a day's notes, an overview of open tasks across days, templates per tag, export,
+Next on the list: a daily view of all of a day's notes, templates per tag, export,
 semantic search with a local embedding model, a local MCP server so Claude can search your notebook, signed packages
 (MSIX/winget, notarised macOS app) and automatic updates.
 See [`BACKLOG.md`](BACKLOG.md).

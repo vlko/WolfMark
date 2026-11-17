@@ -153,6 +153,24 @@
   <data name="History_OpenTasks" xml:space="preserve">
     <value>Open tasks</value>
   </data>
+  <data name="History_NoOpenTasks" xml:space="preserve">
+    <value>No open tasks</value>
+  </data>
+  <data name="Tasks_One" xml:space="preserve">
+    <value>{0} open task</value>
+  </data>
+  <data name="Tasks_Few" xml:space="preserve">
+    <value>{0} open tasks</value>
+  </data>
+  <data name="Tasks_Many" xml:space="preserve">
+    <value>{0} open tasks</value>
+  </data>
+  <data name="Task_Complete" xml:space="preserve">
+    <value>Mark as done</value>
+  </data>
+  <data name="Task_CompleteFailed" xml:space="preserve">
+    <value>The task could not be ticked off – the note has changed.</value>
+  </data>
   <data name="History_ClearFilter" xml:space="preserve">
     <value>Clear filter</value>
   </data>

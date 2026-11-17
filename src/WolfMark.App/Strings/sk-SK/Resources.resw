@@ -153,6 +153,24 @@
   <data name="History_OpenTasks" xml:space="preserve">
     <value>Nedokončené</value>
   </data>
+  <data name="History_NoOpenTasks" xml:space="preserve">
+    <value>Žiadne nedokončené úlohy</value>
+  </data>
+  <data name="Tasks_One" xml:space="preserve">
+    <value>{0} nedokončená úloha</value>
+  </data>
+  <data name="Tasks_Few" xml:space="preserve">
+    <value>{0} nedokončené úlohy</value>
+  </data>
+  <data name="Tasks_Many" xml:space="preserve">
+    <value>{0} nedokončených úloh</value>
+  </data>
+  <data name="Task_Complete" xml:space="preserve">
+    <value>Označiť ako hotové</value>
+  </data>
+  <data name="Task_CompleteFailed" xml:space="preserve">
+    <value>Úlohu sa nepodarilo odškrtnúť – poznámka sa zmenila.</value>
+  </data>
   <data name="History_ClearFilter" xml:space="preserve">
     <value>Zrušiť filter</value>
   </data>

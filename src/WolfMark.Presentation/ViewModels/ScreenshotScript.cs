@@ -59,6 +59,11 @@ internal sealed partial class ScreenshotScript(MainViewModel vm, IScreenshotStag
             await stage.ShotAsync("calendar-month.png", 2000); // the toolbar fades back in after the expand
             await vm.ToggleCalendarAsync();
 
+            // The tasks to do instead of the history, each under its note.
+            await vm.History.ToggleOpenTasksAsync();
+            await stage.ShotAsync("open-tasks.png");
+            await vm.History.ToggleOpenTasksAsync();
+
             if (claude is not null)
             {
                 await OpenAsync(claude);
