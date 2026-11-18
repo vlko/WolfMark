@@ -100,6 +100,19 @@ android {
         }
     }
 
+    testOptions {
+        unitTests {
+            // The screenshot tests (src/test) draw the real screens with the app's fonts and strings.
+            isIncludeAndroidResources = true
+            all {
+                it.systemProperty("robolectric.graphicsMode", "NATIVE")
+                // -Pscreenshots writes the PNGs to build/outputs/roborazzi; without it the tests only check that
+                // the screens can be drawn.
+                it.systemProperty("roborazzi.test.record", providers.gradleProperty("screenshots").isPresent.toString())
+            }
+        }
+    }
+
     lint {
         // The app targets the API level it was written and tested against; raising it is a change of its own.
         disable += "OldTargetApi"
@@ -127,4 +140,12 @@ dependencies {
     implementation(libs.msal)
     implementation(libs.markdown)
     implementation(libs.markdown.coil)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

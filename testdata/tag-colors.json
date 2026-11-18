@@ -1,0 +1,245 @@
+{
+  "comment": "Tag colours (SPEC §3.5): the colour of a tag without one in tags.json, and whether dark text reads better on a colour. Checked by WolfMark.Core.Tests and by the Android app (android/core). Blends are per channel, truncated.",
+  "untagged": "#C6C2B8",
+  "tags": [
+    {
+      "tag": "Share",
+      "hash": 2848586808,
+      "color": "#5CCB86"
+    },
+    {
+      "tag": "share",
+      "hash": 2848586808,
+      "color": "#5CCB86"
+    },
+    {
+      "tag": "SHARE",
+      "hash": 2848586808,
+      "color": "#5CCB86"
+    },
+    {
+      "tag": "work",
+      "hash": 1536741984,
+      "color": "#45BDF2"
+    },
+    {
+      "tag": "meeting",
+      "hash": 227248186,
+      "color": "#5CCB86"
+    },
+    {
+      "tag": "ideas",
+      "hash": 4063160523,
+      "color": "#9FD13F"
+    },
+    {
+      "tag": "reading",
+      "hash": 775837691,
+      "color": "#6F8197"
+    },
+    {
+      "tag": "family",
+      "hash": 1377633321,
+      "color": "#F7C62F"
+    },
+    {
+      "tag": "release",
+      "hash": 272019070,
+      "color": "#45BDF2"
+    },
+    {
+      "tag": "ClaudeCode",
+      "hash": 3941316470,
+      "color": "#D97757"
+    },
+    {
+      "tag": "claudecode",
+      "hash": 3941316470,
+      "color": "#D97757"
+    },
+    {
+      "tag": "praca",
+      "hash": 2427272902,
+      "color": "#C08552"
+    },
+    {
+      "tag": "pracovné-veci",
+      "hash": 4132667366,
+      "color": "#F5922A"
+    },
+    {
+      "tag": "žltá-ruža",
+      "hash": 556145970,
+      "color": "#F5922A"
+    },
+    {
+      "tag": "dom",
+      "hash": 3966289531,
+      "color": "#F7C62F"
+    },
+    {
+      "tag": "a",
+      "hash": 3826002220,
+      "color": "#C08552"
+    },
+    {
+      "tag": "2026",
+      "hash": 1076444563,
+      "color": "#12A5B5"
+    },
+    {
+      "tag": "billing-api",
+      "hash": 1445190225,
+      "color": "#F2564B"
+    },
+    {
+      "tag": "infra-terraform",
+      "hash": 445663528,
+      "color": "#F5922A"
+    },
+    {
+      "tag": "wolfmark",
+      "hash": 276554908,
+      "color": "#1E88F5"
+    },
+    {
+      "tag": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "hash": 3516603077,
+      "color": "#F7C62F"
+    }
+  ],
+  "foreground": [
+    {
+      "color": "#1E88F5",
+      "darkText": false
+    },
+    {
+      "color": "#F7C62F",
+      "darkText": true
+    },
+    {
+      "color": "#F5922A",
+      "darkText": true
+    },
+    {
+      "color": "#F2564B",
+      "darkText": false
+    },
+    {
+      "color": "#5CCB86",
+      "darkText": true
+    },
+    {
+      "color": "#12A5B5",
+      "darkText": false
+    },
+    {
+      "color": "#A47BF2",
+      "darkText": false
+    },
+    {
+      "color": "#F07AB8",
+      "darkText": false
+    },
+    {
+      "color": "#45BDF2",
+      "darkText": true
+    },
+    {
+      "color": "#9FD13F",
+      "darkText": true
+    },
+    {
+      "color": "#4C5FD7",
+      "darkText": false
+    },
+    {
+      "color": "#F57F72",
+      "darkText": false
+    },
+    {
+      "color": "#C08552",
+      "darkText": false
+    },
+    {
+      "color": "#6F8197",
+      "darkText": false
+    },
+    {
+      "color": "#D97757",
+      "darkText": false
+    },
+    {
+      "color": "#C6C2B8",
+      "darkText": true
+    },
+    {
+      "color": "#2F6FEB",
+      "darkText": false
+    },
+    {
+      "color": "#F2B705",
+      "darkText": true
+    },
+    {
+      "color": "#8E44AD",
+      "darkText": false
+    },
+    {
+      "color": "#16A085",
+      "darkText": false
+    },
+    {
+      "color": "#E84A5F",
+      "darkText": false
+    },
+    {
+      "color": "#00A884",
+      "darkText": false
+    },
+    {
+      "color": "#FFFFFF",
+      "darkText": true
+    },
+    {
+      "color": "#000000",
+      "darkText": false
+    },
+    {
+      "color": "#777777",
+      "darkText": false
+    }
+  ],
+  "blends": [
+    {
+      "from": "#1E88F5",
+      "to": "#EEECE5",
+      "amount": 0.4,
+      "result": "#71B0EE"
+    },
+    {
+      "from": "#F7C62F",
+      "to": "#25272A",
+      "amount": 0.25,
+      "result": "#C29E2D"
+    },
+    {
+      "from": "#F2564B",
+      "to": "#000000",
+      "amount": 0.6,
+      "result": "#60221E"
+    },
+    {
+      "from": "#12A5B5",
+      "to": "#FFFFFF",
+      "amount": 0.8,
+      "result": "#CFEDF0"
+    },
+    {
+      "from": "#C6C2B8",
+      "to": "#EEECE5",
+      "amount": 0.4,
+      "result": "#D6D2CA"
+    }
+  ]
+}

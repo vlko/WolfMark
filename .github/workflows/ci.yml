@@ -175,7 +175,13 @@ jobs:
           WOLFMARK_KEYALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           WOLFMARK_KEYPASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           WOLFMARK_MSALCLIENTID: ${{ vars.WOLFMARK_MSAL_CLIENT_ID }}
-        run: ./gradlew --no-daemon :core:test :app:assembleDebug :app:lintDebug
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:assembleDebug :app:lintDebug -Pscreenshots
+      # The screens as drawn on the runner (Robolectric): to look at without a phone.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-screenshots
+          path: android/app/build/outputs/roborazzi
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v7
         with:
           name: WolfMark-android-debug

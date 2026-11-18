@@ -31,6 +31,21 @@ class WolfMarkApp : Application() {
     /** False until the folder was found in OneDrive or chosen by hand. */
     val vaultConfirmed: Boolean get() = preferences.getBoolean("vaultConfirmed", false)
 
+    /** "system", "light" or "dark". */
+    var theme: String
+        get() = preferences.getString("theme", "system") ?: "system"
+        set(value) = preferences.edit { putString("theme", value) }
+
+    /** Text size of an open note, 1 = as designed; changed by pinching the note. */
+    var textScale: Float
+        get() = preferences.getFloat("textScale", 1f)
+        set(value) = preferences.edit { putFloat("textScale", value) }
+
+    /** The share of the height below the calendar that the note takes; the history has the rest. */
+    var split: Float
+        get() = preferences.getFloat("split", 0.55f)
+        set(value) = preferences.edit { putFloat("split", value) }
+
     var devicesRefreshedAt: Long
         get() = preferences.getLong("devicesRefreshedAt", 0)
         set(value) = preferences.edit { putLong("devicesRefreshedAt", value) }

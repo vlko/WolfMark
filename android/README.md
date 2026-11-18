@@ -6,8 +6,10 @@ A share target and a read-only viewer for the notes WolfMark keeps in OneDrive.
   `Share`) in your notes folder. On Wi-Fi the app first tries a computer where WolfMark runs with *Settings →
   Sharing from the phone* switched on; otherwise it writes the note through OneDrive. Without a connection the
   share waits on the phone and is sent later, once.
-- **Read** your notes: days, tag filter, rendered Markdown with images. A copy is kept on the phone for reading
-  without a connection. The app never changes or deletes a note.
+- **Read** your notes in a window that looks like the desktop's: the day and the week band coloured by tags, the
+  tag tabs at the right edge, the open note with the history under it, the month on its own view. Pinch a note
+  with two fingers to change its text size. A copy is kept on the phone for reading without a connection. The app
+  never changes or deletes a note.
 
 Design and rejected alternatives: [`docs/adr/0017-android-share-lan-onedrive.md`](../docs/adr/0017-android-share-lan-onedrive.md),
 SPEC §4.8.
@@ -76,6 +78,7 @@ cd android
 ./gradlew :core:test            # name rules, protocol, OneDrive client, queue, mirror – no device needed
 ./gradlew :app:assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:lintDebug        # warnings are errors
+./gradlew :app:testDebugUnitTest -Pscreenshots   # draws the screens to app/build/outputs/roborazzi (no device)
 ./gradlew :app:assembleRelease -Pwolfmark.version=0.9.0   # signed only with a key of your own (below)
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -85,10 +88,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 | Module | What |
 |---|---|
 | `core` | Plain Kotlin/JVM, no Android: `NoteName`/`NotePath`/`TagName` (the desktop's rules), `ShareFrame`/`ShareMessage`/`ShareClient` (the LAN protocol), `ShareComposer` (shared content → Markdown), `GraphClient` (OneDrive over `HttpURLConnection`), `ShareQueue` + `ShareDelivery`, `NoteMirror` (the phone's copy, through the change feed). |
-| `app` | Android: `ShareActivity` (stores the share, shows a toast, goes away), `DeliveryWorker` (WorkManager), `Auth` (MSAL), `MainActivity` + Compose screens. |
+| `app` | Android: `ShareActivity` (stores the share, shows a toast, goes away), `DeliveryWorker` (WorkManager), `Auth` (MSAL), `MainActivity` + Compose screens (`ui/`: the desktop's palette, Barlow fonts and icons in `ui/theme`). |
 
-`core` is tested against the same vectors as the desktop – [`testdata/note-names.json`](../testdata/note-names.json)
-and [`testdata/share-frames.json`](../testdata/share-frames.json). A change to the file-name rules or to the
+`core` is tested against the same vectors as the desktop – [`testdata/note-names.json`](../testdata/note-names.json),
+[`testdata/share-frames.json`](../testdata/share-frames.json) and [`testdata/tag-colors.json`](../testdata/tag-colors.json). A change to the file-name rules or to the
 protocol changes both implementations and those files together.
 
 ## Things to know
@@ -99,4 +102,7 @@ protocol changes both implementations and those files together.
   at most every 12 hours while sharing. After switching receiving on at the desktop, press *Refresh* once.
 - Images the desktop cannot show (HEIC, AVIF) are stored as JPEG.
 - A shared link is stored as a link: the app does not download the page.
+- The look follows the desktop (`Theming/Palette`, `Typo`, ADR 0004): a change of colours or fonts there is a
+  change here too. The Barlow fonts in `app/src/main/res/font` are under the SIL Open Font License
+  (`src/WolfMark.App/Assets/Fonts/OFL-Barlow.txt`).
 - MSAL adds the NFC permission to the manifest (security keys at sign-in); the app itself does not use NFC.

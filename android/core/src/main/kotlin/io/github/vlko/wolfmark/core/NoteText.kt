@@ -9,7 +9,7 @@ object NoteText {
     const val TITLE_LENGTH = 120
     const val PREVIEW_LENGTH = 200
 
-    data class Summary(val title: String, val preview: String)
+    data class Summary(val title: String, val preview: String, val openTasks: Int = 0, val doneTasks: Int = 0)
 
     /** The note's text without a leading YAML front matter block. */
     fun body(content: String): String {
@@ -24,11 +24,16 @@ object NoteText {
         var title: String? = null
         val preview = StringBuilder()
         var inCode = false
+        var open = 0
+        var done = 0
         for (line in body(content).split('\n')) {
             val trimmed = line.trim()
             if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
                 inCode = !inCode
                 continue
+            }
+            if (!inCode) {
+                task.find(trimmed)?.let { if (it.groupValues[1] == " ") open++ else done++ }
             }
             val plain = if (inCode) trimmed else strip(trimmed)
             if (plain.isEmpty()) continue
@@ -39,9 +44,10 @@ object NoteText {
                 preview.append(plain)
             }
         }
-        return Summary(title.orEmpty(), preview.toString().take(PREVIEW_LENGTH))
+        return Summary(title.orEmpty(), preview.toString().take(PREVIEW_LENGTH), open, done)
     }
 
+    private val task = Regex("""^(?:>\s?)*[-*+]\s+\[([ xX])]\s""")
     private val image = Regex("""!\[([^\]]*)]\([^)]*\)""")
     private val link = Regex("""\[([^\]]*)]\([^)]*\)""")
     private val wiki = Regex("""\[\[([^\]|]*)(?:\|([^\]]*))?]]""")

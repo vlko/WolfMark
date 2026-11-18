@@ -1,15 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A plain "W" until the app shares the desktop's icon. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M34,40L43,68L54,46L65,68L74,40"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="6" />
-</vector>
+<!-- The 256 px artwork from src/WolfMark.App/Assets/IconProposals/riso-white.png, inside the adaptive icon's safe zone. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_art"
+    android:inset="17%" />

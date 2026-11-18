@@ -54,8 +54,9 @@ class NoteMirrorTest {
         // A Markdown file outside the day folders is a note too, without a tag.
         assertNull(notes.single { it.path.relativePath == "readme.md" }.path.tag)
         assertEquals("# Example\nhttps://example.com/x\n", mirror.read(share.path))
-        // Images are not downloaded with the notes; the trash and the settings never are.
-        assertTrue(drive.requests.none { "assets" in it || ".wolfmark" in it })
+        // Images are not downloaded with the notes and the trash never is; of .wolfmark only the tag colours are read.
+        assertTrue(drive.requests.none { "assets" in it || "trash" in it })
+        assertEquals(listOf("GET /raw/WolfMark/.wolfmark/tags.json"), drive.requests.filter { "/raw/" in it && ".wolfmark" in it }.distinct())
     }
 
     @Test
@@ -182,5 +183,42 @@ class NoteMirrorTest {
         assertEquals(30, mirror.notes().size)
         // What was already here is not fetched again.
         assertEquals(30 - kept, drive.requests.count { it.startsWith("GET /raw/") })
+    }
+
+    @Test
+    fun tagColoursChosenOnTheDesktopAndTaskCountsComeWithTheNotes() {
+        drive.put("WolfMark/.wolfmark/tags.json", """{"version":1,"tags":[{"name":"work","color":"#2F6FEB"}]}""")
+        drive.put("WolfMark/2026/11/17/work_0900.md", "# Plan\n- [ ] one\n- [x] two\n- [ ] three\n")
+        val mirror = NoteMirror(temp.root)
+        mirror.sync(drive.client(), "WolfMark")
+
+        assertEquals(0x2F6FEB, TagColors.parse(mirror.tagsJson()).of("work"))
+        val note = mirror.notes().single()
+        assertEquals(2 to 1, note.openTasks to note.doneTasks)
+
+        // Changed on the desktop: the phone follows.
+        drive.put("WolfMark/.wolfmark/tags.json", """{"version":1,"tags":[{"name":"work","color":"#00A884"}]}""")
+        mirror.sync(drive.client(), "WolfMark")
+        assertEquals(0x00A884, TagColors.parse(NoteMirror(temp.root).tagsJson()).of("work"))
+        assertEquals(1, mirror.notes().size) // tags.json is not a note
+    }
+
+    @Test
+    fun aCopyMadeBeforeTagColoursWereReadAsksForThemOnce() {
+        drive.put("WolfMark/2026/11/17/work_0900.md", "- [ ] one\n")
+        val mirror = NoteMirror(temp.root)
+        mirror.sync(drive.client(), "WolfMark")
+        // What an older version left behind: no task counts, no tags.json, a change feed that is already past it.
+        val state = java.io.File(temp.root, "mirror.json")
+        state.writeText(state.readText().replace("\"tagsChecked\":true", "\"tagsChecked\":false").replace(Regex("\"open\":\\d+,?"), "").replace(Regex(",\"done\":\\d+"), ""))
+        drive.put("WolfMark/.wolfmark/tags.json", """{"version":1,"tags":[{"name":"work","color":"#2F6FEB"}]}""")
+        java.io.File(temp.root, "tags.json").delete()
+        drive.requests.clear()
+
+        val old = NoteMirror(temp.root)
+        assertEquals(1, old.notes().single().openTasks) // counted from the file on the phone
+        old.sync(drive.client(), "WolfMark")
+        assertEquals(0x2F6FEB, TagColors.parse(old.tagsJson()).of("work"))
+        assertTrue(drive.requests.none { it.contains("work_0900") }) // the note itself is not fetched again
     }
 }

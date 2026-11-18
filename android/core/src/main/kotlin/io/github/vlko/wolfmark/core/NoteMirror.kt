@@ -17,6 +17,8 @@ data class MirrorNote(
     val title: String,
     val preview: String,
     val modifiedMs: Long,
+    val openTasks: Int = 0,
+    val doneTasks: Int = 0,
 ) {
     /** The note's day: from its folder, or (a note outside the day folders) when it was last changed. */
     fun day(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
@@ -33,10 +35,17 @@ data class MirrorNote(
  * deleting [root] loses nothing.
  */
 class NoteMirror(private val root: File) {
-    private class Entry(val id: String, var path: String, var tag: String?, var modifiedMs: Long, var title: String, var preview: String)
+    private class Entry(
+        val id: String, var path: String, var tag: String?, var modifiedMs: Long, var title: String, var preview: String,
+        /** Negative = not counted yet (a copy made by an older version): counted from the file on first use. */
+        var openTasks: Int = -1, var doneTasks: Int = 0,
+    )
 
     private val stateFile = File(root, "mirror.json")
     private val notesDir = File(root, "notes")
+    private val tagsFile = File(root, "tags.json")
+    private var tagsTag: String? = null
+    private var tagsChecked = false
     private var vault: String? = null
     private var deltaLink: String? = null
     private val folders = HashMap<String, String>()
@@ -49,8 +58,21 @@ class NoteMirror(private val root: File) {
 
     @Synchronized
     fun notes(): List<MirrorNote> =
-        entries.values.mapNotNull { e -> NotePath.parse(e.path)?.let { MirrorNote(it, e.title, e.preview, e.modifiedMs) } }
+        entries.values.mapNotNull { e ->
+            if (e.openTasks < 0) countTasks(e)
+            NotePath.parse(e.path)?.let { MirrorNote(it, e.title, e.preview, e.modifiedMs, e.openTasks, e.doneTasks) }
+        }
             .sortedWith(compareByDescending<MirrorNote> { it.day() }.thenByDescending { it.time() }.thenBy { it.path.relativePath })
+
+    private fun countTasks(entry: Entry) {
+        val text = runCatching { resolve(entry.path)?.takeIf { it.isFile }?.readBytes()?.let(::decode) }.getOrNull()
+        val summary = text?.let(NoteText::summarize)
+        entry.openTasks = summary?.openTasks ?: 0
+        entry.doneTasks = summary?.doneTasks ?: 0
+    }
+
+    /** The text of the notes' `.wolfmark/tags.json` (tag colours chosen on the desktop); null when there is none. */
+    fun tagsJson(): String? = runCatching { tagsFile.takeIf { it.isFile }?.readText() }.getOrNull()
 
     /** The note's text from the copy; null when it is not there. */
     fun read(note: NotePath): String? =
@@ -65,6 +87,15 @@ class NoteMirror(private val root: File) {
     fun sync(graph: GraphClient, vaultPath: String, progress: (Int) -> Unit = {}): Int = synchronized(syncLock) {
         val folder = vaultPath.trim('/')
         synchronized(this) { if (!folder.equals(vault, ignoreCase = true)) reset(folder) }
+        if (!tagsChecked) {
+            // A copy that is already up to date never hears of tags.json through the change feed: ask once.
+            val bytes = runCatching { graph.download("$folder/$TAGS") }.getOrNull()
+            synchronized(this) {
+                if (bytes != null) writeAtomically(tagsFile, bytes)
+                tagsChecked = true
+                save()
+            }
+        }
         try {
             run(graph, folder, progress)
         } catch (_: DeltaExpiredException) {
@@ -140,6 +171,7 @@ class NoteMirror(private val root: File) {
     private fun downloadPath(folder: String, item: DriveItem): String? {
         if (item.deleted || item.isFolder) return null
         val relative = relativePath(folder, item) ?: return null
+        if (relative.equals(TAGS, ignoreCase = true)) return relative.takeIf { tagsTag == null || tagsTag != item.contentTag || !tagsFile.isFile }
         if (NotePath.parse(relative) == null) return null
         val target = resolve(relative) ?: return null
         val known = entries[item.id]
@@ -163,6 +195,14 @@ class NoteMirror(private val root: File) {
         val relative = relativePath(folder, item) ?: return false
         if (item.isFolder) {
             folders[item.id] = relative
+            return false
+        }
+
+        if (relative.equals(TAGS, ignoreCase = true)) {
+            fetched()?.let { bytes ->
+                writeAtomically(tagsFile, bytes)
+                tagsTag = item.contentTag
+            }
             return false
         }
 
@@ -197,7 +237,10 @@ class NoteMirror(private val root: File) {
         }
         if (known != null && known.path != relative) resolve(known.path)?.delete()
         val summary = NoteText.summarize(decode(bytes))
-        entries[item.id] = Entry(item.id, relative, item.contentTag, modified, summary.title.ifEmpty { item.name.removeSuffix(".md") }, summary.preview)
+        entries[item.id] = Entry(
+            item.id, relative, item.contentTag, modified, summary.title.ifEmpty { item.name.removeSuffix(".md") }, summary.preview,
+            summary.openTasks, summary.doneTasks,
+        )
         return true
     }
 
@@ -246,6 +289,17 @@ class NoteMirror(private val root: File) {
     private companion object {
         /** Notes fetched at the same time: enough to be several times faster, few enough not to be throttled. */
         const val DOWNLOADS = 4
+        const val TAGS = ".wolfmark/tags.json"
+    }
+
+    private fun writeAtomically(file: File, bytes: ByteArray) {
+        file.parentFile?.mkdirs()
+        val temp = File(file.path + ".tmp")
+        temp.writeBytes(bytes)
+        if (!temp.renameTo(file)) {
+            file.delete()
+            temp.renameTo(file)
+        }
     }
 
     private fun decode(bytes: ByteArray): String {
@@ -258,6 +312,9 @@ class NoteMirror(private val root: File) {
         entries.clear()
         folders.clear()
         deltaLink = null
+        tagsFile.delete()
+        tagsTag = null
+        tagsChecked = false
         vault = folder
         save()
     }
@@ -267,6 +324,8 @@ class NoteMirror(private val root: File) {
             val o = JSONObject(stateFile.readText())
             vault = o.optString("vault").ifEmpty { null }
             deltaLink = o.optString("deltaLink").ifEmpty { null }
+            tagsTag = o.optString("tagsTag").ifEmpty { null }
+            tagsChecked = o.optBoolean("tagsChecked")
             o.optJSONObject("folders")?.let { f -> f.keys().forEach { folders[it] = f.getString(it) } }
             val notes = o.optJSONArray("notes") ?: JSONArray()
             for (i in 0 until notes.length()) {
@@ -274,6 +333,7 @@ class NoteMirror(private val root: File) {
                 entries[n.getString("id")] = Entry(
                     n.getString("id"), n.getString("path"), n.optString("tag").ifEmpty { null },
                     n.optLong("modified"), n.optString("title"), n.optString("preview"),
+                    n.optInt("open", -1), n.optInt("done"),
                 )
             }
         } catch (_: Exception) {
@@ -286,11 +346,13 @@ class NoteMirror(private val root: File) {
 
     private fun save() {
         val o = JSONObject().put("vault", vault ?: "").put("deltaLink", deltaLink ?: "").put("folders", JSONObject(folders as Map<*, *>))
+            .put("tagsTag", tagsTag ?: "").put("tagsChecked", tagsChecked)
         val notes = JSONArray()
         entries.values.forEach { e ->
             notes.put(
                 JSONObject().put("id", e.id).put("path", e.path).put("tag", e.tag ?: "")
-                    .put("modified", e.modifiedMs).put("title", e.title).put("preview", e.preview),
+                    .put("modified", e.modifiedMs).put("title", e.title).put("preview", e.preview)
+                    .put("open", e.openTasks).put("done", e.doneTasks),
             )
         }
         o.put("notes", notes)
