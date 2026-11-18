@@ -142,6 +142,12 @@ internal sealed partial class AppHost : IAsyncDisposable
     public event EventHandler<Exception>? ClaudeSyncFailed;
 
     /// <summary>
+    /// A note shared from the phone arrived while the app runs – over the network, or as a file brought by OneDrive.
+    /// Raised on a background thread.
+    /// </summary>
+    public event EventHandler<Infrastructure.ShareArrival>? ShareArrived;
+
+    /// <summary>
     /// Completes after the first Claude Code import of this run, successful or not (never when the sync is off).
     /// Unlike the events it cannot be missed by someone who starts listening after a fast start.
     /// </summary>
@@ -261,6 +267,7 @@ internal sealed partial class AppHost : IAsyncDisposable
 
             // Subscribe before scanning so no change between scan and loop is lost.
             var events = Hub.Subscribe();
+            var shareEvents = Hub.Subscribe();
             _watcher = new NoteWatcher(Engine, Hub, Time, Loggers.CreateLogger<NoteWatcher>());
             _watcher.Start();
 
@@ -286,6 +293,7 @@ internal sealed partial class AppHost : IAsyncDisposable
 
             StartClaudeSync(token);
             StartShare(token);
+            _ = Background.Run("share-arrivals", t => WatchShareArrivalsAsync(shareEvents, t), token);
 
             if (EmbeddingProvider is { } provider)
             {
@@ -344,6 +352,7 @@ internal sealed partial class AppHost : IAsyncDisposable
         if (s.Enabled && s.KeyBytes() is { } key && !string.IsNullOrEmpty(s.DeviceId))
         {
             _share = new ShareService(Engine, new ShareOptions(s.DeviceId, Environment.MachineName, s.Port, key), Time, Loggers);
+            _share.Received += (_, path) => _ = Background.Run("share-arrived", t => AnnounceShareAsync(path, t), ct);
             _ = Background.Run("share", _share.RunAsync, ct);
         }
         else if (!string.IsNullOrEmpty(s.DeviceId))
@@ -355,6 +364,39 @@ internal sealed partial class AppHost : IAsyncDisposable
                 return Task.CompletedTask;
             }, ct);
         }
+    }
+
+    /// <summary>Shares that come as files (the phone wrote them through OneDrive): the watcher reports them.</summary>
+    private async Task WatchShareArrivalsAsync(System.Threading.Channels.ChannelReader<NoteEvent> events, CancellationToken ct)
+    {
+        await foreach (var e in events.ReadAllAsync(ct).ConfigureAwait(false))
+        {
+            if (Infrastructure.ShareArrivals.IsArrival(e) && e is NoteCreated created)
+            {
+                await AnnounceShareAsync(created.Path, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task AnnounceShareAsync(WolfMark.Core.Notes.NotePath path, CancellationToken ct)
+    {
+        var title = path.FileName;
+        try
+        {
+            // A file OneDrive has only listed so far is not downloaded just to name it in a notification.
+            var full = Engine.GetFullPath(path);
+            if (!CloudFileAttributes.IsPlaceholder(File.GetAttributes(full)))
+            {
+                var text = await Engine.ReadAsync(path, ct).ConfigureAwait(false);
+                var analyzed = WolfMark.Core.Notes.NoteContentAnalyzer.Analyze(text).Title;
+                title = analyzed.Length > 0 ? analyzed : title;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        ShareArrived?.Invoke(this, new Infrastructure.ShareArrival(path, title));
     }
 
     public string ClaudeDirectory => string.IsNullOrWhiteSpace(Settings.Current.ClaudeCode.ClaudeDirectory)

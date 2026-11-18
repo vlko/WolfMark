@@ -53,6 +53,16 @@ internal sealed class Notices : StackPanel
             return vm.CleanupWarning is not null;
         });
 
+        // A share from the phone (M12): which one, and a way to it. Further shares update the same notice.
+        var share = Notice(Strings.Get(R.Share_NoticeTitle), string.Empty, warning: false,
+            (Strings.Get(R.Share_NoticeOpen), () => _ = vm.OpenSharedNoteAsync()));
+        share.Closed = () => vm.ShareNotice = null;
+        Bind(share, vm, nameof(MainViewModel.ShareNotice), () =>
+        {
+            share.Message.Text = vm.ShareNotice?.Message ?? string.Empty;
+            return vm.ShareNotice is not null;
+        });
+
         var error = Notice(Strings.Get(R.Error_Title), string.Empty, warning: true);
         error.Closed = () => vm.ErrorNotice = null;
         Bind(error, vm, nameof(MainViewModel.ErrorNotice), () =>
@@ -61,7 +71,7 @@ internal sealed class Notices : StackPanel
             return vm.ErrorNotice is not null;
         });
 
-        Children.AddRange([error.Root, external.Root, deleted.Root, conflict.Root, nonStandard.Root, cleanup.Root]);
+        Children.AddRange([error.Root, share.Root, external.Root, deleted.Root, conflict.Root, nonStandard.Root, cleanup.Root]);
         Margin = new Thickness(24, 0, 24, 6);
     }
 

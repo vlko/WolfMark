@@ -462,6 +462,15 @@
   <data name="Settings_ClaudeSyncNow" xml:space="preserve">
     <value>Sync now</value>
   </data>
+  <data name="Share_NoticeTitle" xml:space="preserve">
+    <value>Shared from the phone</value>
+  </data>
+  <data name="Share_NoticeMany" xml:space="preserve">
+    <value>{0} new shares; the latest: {1}</value>
+  </data>
+  <data name="Share_NoticeOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
   <data name="Settings_Share" xml:space="preserve">
     <value>Sharing from the phone</value>
   </data>
@@ -475,7 +484,10 @@
     <value>Port</value>
   </data>
   <data name="Settings_ShareNewKey" xml:space="preserve">
-    <value>Make a new key when saving (the phone picks it up through OneDrive)</value>
+    <value>Replace the encryption key (disconnects devices that have the old one)</value>
+  </data>
+  <data name="Settings_ShareNewKeyHint" xml:space="preserve">
+    <value>Only needed when a device should no longer be able to send here – a lost phone, for example. The key is made on its own when receiving is first switched on. Your phone picks the new one up through OneDrive at its next refresh; until then its shares arrive through OneDrive.</value>
   </data>
   <data name="Settings_Index" xml:space="preserve">
     <value>Index</value>

@@ -20,6 +20,7 @@ internal sealed unsafe class TrayIcon : IDisposable
     private const uint CmdShow = 1, CmdSettings = 2, CmdExit = 3;
     private const uint NinSelect = 0x0400; // WM_USER
     private const uint NinKeySelect = NinSelect | 1;
+    private const uint NinBalloonHide = NinSelect + 3, NinBalloonTimeout = NinSelect + 4, NinBalloonUserClick = NinSelect + 5;
 
     private static TrayIcon? s_current;
     private readonly HWND _hwnd;
@@ -49,6 +50,39 @@ internal sealed unsafe class TrayIcon : IDisposable
     public event EventHandler? SettingsRequested;
 
     public event EventHandler? ExitRequested;
+
+    /// <summary>The notification shown with <see cref="ShowNotification"/> was clicked.</summary>
+    public event EventHandler? NotificationClicked;
+
+    /// <summary>The notification went away – clicked, dismissed or timed out.</summary>
+    public event EventHandler? NotificationClosed;
+
+    /// <summary>
+    /// A system notification from this icon (Windows shows it as a toast and keeps it in the notification centre).
+    /// A newer one replaces the one on screen.
+    /// </summary>
+    public void ShowNotification(string title, string text)
+    {
+        if (!_added)
+        {
+            return;
+        }
+
+        var data = NewData();
+        data.uFlags = NOTIFY_ICON_DATA_FLAGS.NIF_INFO;
+        Copy(title, MemoryMarshal.CreateSpan(ref data.szInfoTitle[0], 64));
+        Copy(text, MemoryMarshal.CreateSpan(ref data.szInfo[0], 256));
+        data.dwInfoFlags = NOTIFY_ICON_INFOTIP_FLAGS.NIIF_USER | NOTIFY_ICON_INFOTIP_FLAGS.NIIF_LARGE_ICON;
+        data.hBalloonIcon = _icon;
+        PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_MODIFY, &data);
+    }
+
+    private static void Copy(string text, Span<char> buffer)
+    {
+        var part = text.AsSpan(0, Math.Min(text.Length, buffer.Length - 1));
+        part.CopyTo(buffer);
+        buffer[part.Length] = '\0';
+    }
 
     public void SetIcon(string iconPath)
     {
@@ -158,7 +192,16 @@ internal sealed unsafe class TrayIcon : IDisposable
         // each pair, otherwise the menu opens twice.
         var show = _version4 ? evt is NinSelect or NinKeySelect : evt == PInvoke.WM_LBUTTONUP;
         var menu = _version4 ? evt == PInvoke.WM_CONTEXTMENU : evt == PInvoke.WM_RBUTTONUP;
-        if (show)
+        if (evt == NinBalloonUserClick)
+        {
+            NotificationClicked?.Invoke(this, EventArgs.Empty);
+            NotificationClosed?.Invoke(this, EventArgs.Empty);
+        }
+        else if (evt is NinBalloonHide or NinBalloonTimeout)
+        {
+            NotificationClosed?.Invoke(this, EventArgs.Empty);
+        }
+        else if (show)
         {
             ShowRequested?.Invoke(this, EventArgs.Empty);
         }

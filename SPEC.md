@@ -273,8 +273,10 @@ Android aplikácia (Kotlin, Compose) je cieľom systémového „Zdieľať“ a 
 
 - **Čo sa zdieľa:** odkaz, odkaz s označeným textom, celý text ľubovoľnej dĺžky, obrázky. Vznikne bežná poznámka `YYYY/MM/DD/Share_HHmm.md` (deň a čas podľa telefónu), obrázky v `assets` dňa. Aplikácia obsah stránky z odkazu sama nesťahuje.
 - **Doručenie:** na Wi-Fi najprv priamo bežiacemu WolfMarku (šifrovaný rámec nad TCP), inak cez Microsoft Graph rovno do priečinka poznámok; bez siete fronta v telefóne. Tú istú poznámku nevytvorí dvakrát (UUID zdieľania).
+- **Oznámenie:** nové zdieľanie (cez sieť aj od OneDrive) ukáže v okne pruh s názvom a tlačidlom Otvoriť; na Windows aj systémové oznámenie, keď okno nie je v popredí.
 - **Desktop:** príjem sa zapína v Nastaveniach (predvolene vypnutý). Zapnutý počúva na porte a v `.wolfmark/share/<id>.json` oznamuje telefónu svoje adresy, port a kľúč. Poznámku vytvára `DirectoryEngine.CreateAsync`, takže index a okno sa obnovia bežnými udalosťami.
-- **Prehliadač v telefóne:** len na čítanie – dni, poznámky, filter podľa tagu, vykreslený Markdown; lokálna kópia pre prácu bez siete.
+- **Oznámenie na počítači:** nové zdieľanie, ktoré príde za behu (cez sieť alebo ako súbor z OneDrive), ukáže pruh v okne s tlačidlom Otvoriť; na Windows aj systémové oznámenie, keď okno nie je v popredí.
+- **Prehliadač v telefóne:** len na čítanie, vo vzhľade desktopu (paleta, písma, týždenný pás, záložky tagov vpravo, poznámka s históriou pod ňou, mesiac ako samostatné zobrazenie); farby tagov rovnaké ako na počítači; lokálna kópia pre prácu bez siete.
 - **Spoločné vektory** `testdata/*.json` držia názvy súborov a protokol rovnaké v C# aj v Kotline.
 
 ---
@@ -433,6 +435,4 @@ Rozdelené podľa priority; zaradené do backlogu ako samostatné míľniky aleb
 
 ### Claude Code
 - Dokumentácia: https://code.claude.com/docs
-- Nastavenia (`cleanupPeriodDays`): https://code.claude.com/docs/en/settings
-- Hooks (`UserPromptSubmit`): https://code.claude.com/docs/en/hooks
-- MCP: https://modelcontextprotocol.io/
+- N

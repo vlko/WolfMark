@@ -153,11 +153,15 @@ internal static class R
     public const string Settings_ClaudeInterval = nameof(Settings_ClaudeInterval);
     public const string Settings_ClaudeWatch = nameof(Settings_ClaudeWatch);
     public const string Settings_ClaudeSyncNow = nameof(Settings_ClaudeSyncNow);
+    public const string Share_NoticeTitle = nameof(Share_NoticeTitle);
+    public const string Share_NoticeMany = nameof(Share_NoticeMany);
+    public const string Share_NoticeOpen = nameof(Share_NoticeOpen);
     public const string Settings_Share = nameof(Settings_Share);
     public const string Settings_ShareEnabled = nameof(Settings_ShareEnabled);
     public const string Settings_ShareHint = nameof(Settings_ShareHint);
     public const string Settings_SharePort = nameof(Settings_SharePort);
     public const string Settings_ShareNewKey = nameof(Settings_ShareNewKey);
+    public const string Settings_ShareNewKeyHint = nameof(Settings_ShareNewKeyHint);
     public const string Settings_Index = nameof(Settings_Index);
     public const string Settings_IndexRebuild = nameof(Settings_IndexRebuild);
     public const string Settings_IndexSemanticOn = nameof(Settings_IndexSemanticOn);

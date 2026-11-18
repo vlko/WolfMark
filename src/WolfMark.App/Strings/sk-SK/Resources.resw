@@ -462,6 +462,15 @@
   <data name="Settings_ClaudeSyncNow" xml:space="preserve">
     <value>Synchronizovať teraz</value>
   </data>
+  <data name="Share_NoticeTitle" xml:space="preserve">
+    <value>Zdieľané z telefónu</value>
+  </data>
+  <data name="Share_NoticeMany" xml:space="preserve">
+    <value>{0} nových zdieľaní; posledné: {1}</value>
+  </data>
+  <data name="Share_NoticeOpen" xml:space="preserve">
+    <value>Otvoriť</value>
+  </data>
   <data name="Settings_Share" xml:space="preserve">
     <value>Zdieľanie z telefónu</value>
   </data>
@@ -475,7 +484,10 @@
     <value>Port</value>
   </data>
   <data name="Settings_ShareNewKey" xml:space="preserve">
-    <value>Pri uložení vytvoriť nový kľúč (telefón si ho prevezme cez OneDrive)</value>
+    <value>Vymeniť šifrovací kľúč (odpojí zariadenia so starým)</value>
+  </data>
+  <data name="Settings_ShareNewKeyHint" xml:space="preserve">
+    <value>Treba len vtedy, keď niektoré zariadenie už nemá mať možnosť sem posielať – napríklad stratený telefón. Kľúč sa vytvorí sám pri prvom zapnutí príjmu. Váš telefón si nový prevezme cez OneDrive pri najbližšom obnovení; dovtedy jeho zdieľania prichádzajú cez OneDrive.</value>
   </data>
   <data name="Settings_Index" xml:space="preserve">
     <value>Index</value>

@@ -441,6 +441,13 @@ funguje zdieľanie samo cez OneDrive, priama cesta a prehliadač prichádzajú p
   odpoveď; vypnutie zmaže oznámenie. *Stav:* testy 697, Linux smoke 28/28 (bežný build, 2026-11-17). **Otvorené:**
   AOT publish (vo WSL chýba linker – ukáže CI), stránka Nastavení a výzva brány firewall na Windows, smoke kontrola
   s bežiacou aplikáciou.
+- 🟨 **M12-10 – Oznámenie o novom zdieľaní na počítači.** Keď za behu príde poznámka s tagom `Share` (cez sieť od
+  `ShareReceiver`, alebo ako súbor z OneDrive cez watcher), okno ukáže zatvárateľný pruh „Zdieľané z telefónu“
+  s názvom a tlačidlom Otvoriť; ďalšie zdieľania pruh aktualizujú („3 nové zdieľania; posledné: …“). Na Windows
+  navyše systémové oznámenie z ikony v oblasti oznámení, keď okno nie je v popredí alebo je skryté; kliknutie
+  otvorí poznámku (bez „zatvárať do oblasti oznámení“ ikona existuje len počas oznámenia). Poznámka označená `Share`
+  ručne oznámením nie je. *Stav:* `ShareArrivalTests` (vrátane súboru zapísaného do bežiacej aplikácie), testy 709,
+  Linux smoke 28/28. **Otvorené:** systémové oznámenie na Windows je len skompilované; macOS/Linux majú len pruh.
 - 🟨 **M12-03 – Android: kostra, prihlásenie, priečinok poznámok.** Projekt `android/` (moduly `core`, `app`), port
   názvov súborov a protokolu s testami proti spoločným vektorom, MSAL (osobný účet), výber priečinka v OneDrive.
   *AK:* `./gradlew test` zelený; po prihlásení aplikácia vypíše priečinok poznámok. *Stav:* `:core:test` 35 testov (z toho `LiveDesktopTest` beží len proti zadanému desktopu),
@@ -469,3 +476,13 @@ funguje zdieľanie samo cez OneDrive, priama cesta a prehliadač prichádzajú p
   v secretoch pridá do vydania `WolfMark-<verzia>-android.apk`, bez neho vydanie prejde bez APK.
   *Stav:* job `android` prešiel na GitHube (2026-11-17, bez kľúča); so skúšobným kľúčom lokálne overený podpis oboch
   APK, odtlačok, verzia a adresa návratu z prihlásenia. **Otvorené:** kľúč a secrety autora, `release.yml` až pri tagu.
+- 🟨 **M12-09 – Vzhľad podľa desktopu.** Paleta, písma Barlow a ikony desktopu; nadpis dňa vľavo a ovládanie
+  kalendára vpravo, týždenný pás (šikmé pásy tagov, šrafovanie minulých dní, rámik dneška, bodky, úlohy), témy
+  týždňa, zvislé záložky tagov vpravo, detail poznámky s históriou pod ním a posuvným deličom, mesiac ako samostatné
+  zobrazenie s históriou, len poznámka na celú obrazovku, stránka Nastavení (účet, priečinok, téma, veľkosť textu,
+  zdieľanie), zväčšovanie textu dvoma prstami. Jadro: farby tagov ako desktop (`tags.json`, FNV paleta; spoločné
+  vektory `testdata/tag-colors.json`), kalendárový model, počty úloh. *Stav:* `:core:test` 44 testov, xUnit test
+  vektorov farieb, lint čistý; obrazovky vykreslené na JVM (Roborazzi, 9 snímok, svetlá, tmavá aj slovenčina)
+  a porovnané so snímkami desktopu. Na telefóne (Android 16) autor potvrdil vzhľad, zoom dvoma prstami a ťahanie deliča
+  s pamätaním polohy (2026-11-18). **Otvorené:** tabuľky bez rámika, prepínač „Otvorené úlohy“ a štítky medzi
+  týždňami v mesiaci nie sú.

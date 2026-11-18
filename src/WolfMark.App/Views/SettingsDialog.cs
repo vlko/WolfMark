@@ -260,6 +260,8 @@ internal static class SettingsDialog
         var shareNewKey = new CheckBox { Content = Strings.Get(R.Settings_ShareNewKey) };
         var shareHint = Typo.Body(Strings.Get(R.Settings_ShareHint), 12.5, Palette.InkSecondary);
         shareHint.TextWrapping = TextWrapping.Wrap;
+        var shareNewKeyHint = Typo.Body(Strings.Get(R.Settings_ShareNewKeyHint), 12.5, Palette.InkTertiary);
+        shareNewKeyHint.TextWrapping = TextWrapping.Wrap;
 
         // Index
         var semantic = Typo.Body(Strings.Get(host.EmbeddingProvider is not null && host.Db.VectorsAvailable ? R.Settings_IndexSemanticOn : R.Settings_IndexSemanticOff), 12.5, Palette.InkSecondary);
@@ -386,7 +388,8 @@ internal static class SettingsDialog
                 shareEnabled,
                 shareHint,
                 sharePort,
-                shareNewKey)),
+                shareNewKey,
+                shareNewKeyHint)),
             (Glyphs.Sync, Strings.Get(R.Settings_IndexDiagnostics), Ui.Ui.VStack(
                 10,
                 Section(Strings.Get(R.Settings_Index)),

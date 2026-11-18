@@ -56,6 +56,9 @@ internal sealed partial class MainWindow : Window
     internal void ScrollEditorToStart() => _editor.ScrollToStart();
     private bool _settingsOpen;
     private TrayIcon? _tray;
+    /// <summary>The tray icon exists only to carry a notification ("close to tray" is off) and goes with it.</summary>
+    private bool _trayForNotification;
+    private bool _isActive;
     private GlobalHotkey? _hotkey;
     private QuickNoteWindow? _quickNote;
 
@@ -241,12 +244,19 @@ internal sealed partial class MainWindow : Window
         {
             _tray?.Dispose();
             _tray = null;
+            _trayForNotification = false;
             return;
         }
 
+        _trayForNotification = false;
+        EnsureTray();
+    }
+
+    private TrayIcon EnsureTray()
+    {
         if (_tray is not null)
         {
-            return;
+            return _tray;
         }
 
         _tray = new TrayIcon(Win32Interop.GetWindowFromWindowId(AppWindow.Id), AppIcons.IcoPath(_host.Settings.Current.AppIcon), Strings.Get(R.AppTitle))
@@ -260,6 +270,40 @@ internal sealed partial class MainWindow : Window
             _ = OpenSettingsAsync();
         };
         _tray.ExitRequested += (_, _) => _ = ExitAsync();
+        _tray.NotificationClicked += (_, _) =>
+        {
+            BringToFront();
+            _ = _vm.OpenSharedNoteAsync();
+        };
+        _tray.NotificationClosed += (_, _) =>
+        {
+            if (_trayForNotification)
+            {
+                _trayForNotification = false;
+                _tray?.Dispose();
+                _tray = null;
+            }
+        };
+        return _tray;
+    }
+
+    /// <summary>
+    /// A share from the phone arrived (M12). The window shows it in a notice; when the window is hidden or another
+    /// app is in front, Windows shows it too – a click brings WolfMark forward with the note open.
+    /// </summary>
+    private void OnShareArrived(ShareNoticeInfo notice)
+    {
+        if ((_isActive && AppWindow.IsVisible) || LaunchOptions.Current.IsDemo)
+        {
+            return;
+        }
+
+        if (_tray is null)
+        {
+            _trayForNotification = true;
+        }
+
+        EnsureTray().ShowNotification(Strings.Get(R.Share_NoticeTitle), notice.Message);
     }
 
     /// <summary>
@@ -847,8 +891,10 @@ internal sealed partial class MainWindow : Window
 
     private void WireLifecycle()
     {
+        _vm.ShareArrived += (_, notice) => OnShareArrived(notice);
         Activated += (_, e) =>
         {
+            _isActive = e.WindowActivationState != WindowActivationState.Deactivated;
             if (e.WindowActivationState == WindowActivationState.Deactivated)
             {
                 _ = _vm.Editor.FlushAsync();

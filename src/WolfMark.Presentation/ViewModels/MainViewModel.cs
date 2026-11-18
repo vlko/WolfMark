@@ -59,6 +59,7 @@ internal sealed partial class MainViewModel : ObservableObject
             ClaudeStatusIsError = true;
             ClaudeStatus = Strings.Format(R.Status_ClaudeFailed, DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture));
         });
+        host.ShareArrived += (_, arrival) => UiThread.Post(() => OnShareArrived(arrival));
         host.StartupFailed += (_, ex) => UiThread.Post(() => ErrorNotice = Strings.Format(R.Error_Startup, ex.Message));
         if (host.StartupError is { } startupError)
         {
@@ -120,6 +121,30 @@ internal sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool ClaudeStatusIsError { get; private set; }
+
+    /// <summary>Shares from the phone that arrived since the notice was closed; null = nothing to show.</summary>
+    [ObservableProperty]
+    public partial ShareNoticeInfo? ShareNotice { get; set; }
+
+    /// <summary>A share arrived (UI thread) – for the system notification, which the window shows when it is not in front.</summary>
+    public event EventHandler<ShareNoticeInfo>? ShareArrived;
+
+    private void OnShareArrived(ShareArrival arrival)
+    {
+        var notice = ShareNoticeInfo.After(ShareNotice, arrival);
+        ShareNotice = notice;
+        ShareArrived?.Invoke(this, notice);
+    }
+
+    /// <summary>Opens the share the notice is about and closes the notice.</summary>
+    public async Task OpenSharedNoteAsync()
+    {
+        if (ShareNotice is { } notice)
+        {
+            ShareNotice = null;
+            await OpenNoteAsync(notice.RelativePath);
+        }
+    }
 
     /// <summary>Error notice at the bottom (message), null = hidden. Details are in the log.</summary>
     [ObservableProperty]

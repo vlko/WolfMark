@@ -36,10 +36,14 @@ public sealed partial class ShareService : IAsyncDisposable
         _logger = loggers.CreateLogger<ShareService>();
         _addresses = addresses ?? ShareDeviceFile.LocalAddresses;
         var receiver = new ShareReceiver(engine, time, loggers.CreateLogger<ShareReceiver>());
+        receiver.Received += (_, path) => Received?.Invoke(this, path);
         _listener = new ShareListener(receiver, options.Key, IPAddress.Any, options.Port, loggers.CreateLogger<ShareListener>());
     }
 
     public int Port => _listener.Port;
+
+    /// <summary>A share arrived over the network and is a note now. Background thread.</summary>
+    public event EventHandler<WolfMark.Core.Notes.NotePath>? Received;
 
     /// <summary>Runs until cancelled. A taken port is logged and ends the run – the phone then uses OneDrive.</summary>
     public async Task RunAsync(CancellationToken cancellationToken)

@@ -24,6 +24,9 @@ public sealed partial class ShareReceiver(DirectoryEngine engine, TimeProvider t
     private readonly Dictionary<Guid, string> _received = [];
     private readonly Queue<Guid> _order = new();
 
+    /// <summary>A share became a note (not raised for a retry of one that already did). Background thread.</summary>
+    public event EventHandler<WolfMark.Core.Notes.NotePath>? Received;
+
     public async Task<ShareResponse> ReceiveAsync(ShareMessage message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);
@@ -62,6 +65,7 @@ public sealed partial class ShareReceiver(DirectoryEngine engine, TimeProvider t
             var path = await engine.CreateAsync(message.CreatedLocal, TagName.Share, markdown, cancellationToken).ConfigureAwait(false);
             Remember(message.Id, path.RelativePath);
             LogReceived(path.RelativePath, message.Attachments.Count);
+            Received?.Invoke(this, path);
             return new ShareResponse(ShareStatus.Created, path.RelativePath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
