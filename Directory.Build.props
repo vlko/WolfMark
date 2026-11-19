@@ -9,7 +9,7 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <SatelliteResourceLanguages>en;sk</SatelliteResourceLanguages>
     <!-- One version for both apps and the libraries; the release workflow overrides it with the tag. -->
-    <Version>0.8.0</Version>
+    <Version>0.9.0</Version>
     <!-- AOT tuned for speed (static PGO, vxsort) and runtime-native async (.NET 11), see docs/adr/0006-build-size.md. -->
     <OptimizationPreference>Speed</OptimizationPreference>
     <Features>$(Features);runtime-async=on</Features>
