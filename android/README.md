@@ -11,6 +11,24 @@ A share target and a read-only viewer for the notes WolfMark keeps in OneDrive.
   with two fingers to change its text size. A copy is kept on the phone for reading without a connection. The app
   never changes or deletes a note.
 
+<table>
+<tr>
+<td><img src="../docs/screenshots/android/week-light.png" alt="The week band, the open note and the history" width="210"></td>
+<td><img src="../docs/screenshots/android/month.png" alt="The month with the history under it" width="210"></td>
+<td><img src="../docs/screenshots/android/note-only.png" alt="A note alone, rendered Markdown" width="210"></td>
+<td><img src="../docs/screenshots/android/week-dark.png" alt="The dark theme" width="210"></td>
+</tr>
+<tr>
+<td align="center">Week, note and history</td>
+<td align="center">Month</td>
+<td align="center">A note alone</td>
+<td align="center">Dark theme</td>
+</tr>
+</table>
+
+The pictures are drawn by the tests on demo notes (`./gradlew :app:testDebugUnitTest -Pscreenshots`, no device
+needed) and kept in [`docs/screenshots/android`](../docs/screenshots/android).
+
 Design and rejected alternatives: [`docs/adr/0017-android-share-lan-onedrive.md`](../docs/adr/0017-android-share-lan-onedrive.md),
 SPEC §4.8.
 

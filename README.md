@@ -209,6 +209,12 @@ it had before, without the changes made while portable. Details are in
 - **Search** (`Ctrl+K`): full-text over titles and bodies with diacritics-insensitive matching, `#tag` and
   `@YYYY-MM` filters, results ranked with BM25. (Semantic search over embeddings is prepared in the index but no
   model ships yet – see the roadmap.)
+- **Open tasks**: the *Open tasks* switch above the history turns it into the list of what is left to do – every
+  unfinished `- [ ]` of the notebook under its note, narrowed by the tag and day you picked. The box ticks a task off
+  right there, its text opens the note with the caret on that line, and the day cells of the calendar show how many
+  are open.
+
+  ![Open tasks listed under their notes](docs/screenshots/open-tasks.png)
 - **Editor**: formatted mode hides Markdown markers outside the current line, checkboxes are clickable; raw mode
   keeps the markers visible but muted. Highlighting runs incrementally in the background and never blocks typing.
   Quote, lists, task and code apply to every selected line (code over several lines becomes a fenced block).
