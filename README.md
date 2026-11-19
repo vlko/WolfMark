@@ -69,6 +69,7 @@ notebook unless I ask.
 | **Trash** | Deleted notes go to a trash folder next to the notes on every system; Settings → *Trash* lists them, restores them to where they were, and empties it |
 | **Quick note** | A small window for a new note of today without the main window: a global shortcut on Windows, `--quick-note` for a shortcut of the system elsewhere |
 | **Links** | `wolfmark://today`, `day/…`, `note/…`, `new`, `search?q=…` open the app where you point them; New note / Today / Search in the taskbar jump list, the Dock menu and Linux launcher actions |
+| **Android companion** | Share a link, a text or pictures from the phone into a note tagged `Share`, and read your notes there – read-only, for notes kept in OneDrive ([below](#android-share-to-your-notes-and-read-them)) |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
 | **Markdown files anywhere** | WolfMark can open every `.md` file: notes switch the main window, other files open in their own window with *Save*, a status bar and *Copy to my notes* |
 | **Full view** | `F11` (macOS `Ctrl+Cmd+F`): only the formatting buttons and the note |
@@ -383,12 +384,31 @@ WolfMark.App.exe --demo %TEMP%\WolfMarkDemo --screenshots docs\screenshots   # c
 The macOS/Linux app takes the same switches (`WolfMark.Desktop --demo … --screenshots …`); it draws its windows into
 the images itself, so it also works without a screen (under Xvfb, as the smoke test does).
 
-## Android: share to your notes
+## Android: share to your notes and read them
 
-The [`android/`](android/README.md) folder holds a small Android app: share a link, a text or a picture from any app
-and it becomes a note with the tag `Share` – sent straight to WolfMark on your computer when both are on the same
-network (*Settings → Sharing from the phone*, off by default), through OneDrive otherwise. It also shows your notes,
-read-only. It is not in the releases yet: build it yourself, with your own Microsoft app registration.
+There is a small Android app in the [`android/`](android/README.md) folder. It does two things:
+
+- **Sharing.** Share a link, a selection, a whole text or pictures from any app on the phone and it becomes a note
+  with the tag `Share` (`YYYY/MM/DD/Share_HHmm.md`, pictures in the day's `assets`).
+  - When the phone and the computer are on the same network, the note goes **straight to WolfMark on the computer**,
+    encrypted. Switch it on in *Settings → Sharing from the phone* (off by default).
+  - Otherwise the phone writes the note **through OneDrive**. Without a connection the share waits on the phone and is
+    sent later, once.
+  - WolfMark on the computer says when a share arrives – a notice with the note's title and *Open*, on Windows also a
+    system notification when the window is hidden.
+- **Reading.** The app shows your notes in the look of the desktop: the day, the week band coloured by tags, the
+  month, tag tabs and rendered Markdown, with a copy on the phone for reading without a connection.
+
+Two things to know before you try it:
+
+- **It is read-only.** The app adds new `Share` notes and nothing else: it never edits, renames or deletes a note.
+  Writing and organising stay on the computer.
+- **It needs your notes in OneDrive.** The phone signs in to your Microsoft account and reads the notes folder
+  there, so it works only when the desktop app keeps its notes in OneDrive (the default on Windows). Notes in
+  another folder, in portable mode or in a different cloud are out of its reach.
+
+Signing in needs a Microsoft app registration of your own, and the app is built from source – the steps are in
+[`android/README.md`](android/README.md). A release carries an APK only when it could be signed with the project's key.
 
 ## Roadmap
 
