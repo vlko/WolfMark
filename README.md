@@ -297,6 +297,8 @@ self-contained, no installer and no .NET runtime needed:
   is not notarised, so macOS says it *could not verify "WolfMark" is free of malware*. Click *Done*, then open
   **System Settings → Privacy & Security** and choose **Open Anyway** next to the WolfMark message (or run
   `xattr -dr com.apple.quarantine /Applications/WolfMark.app`). Data lives in `~/Library/Application Support/WolfMark`.
+- **Android** (`WolfMark-<version>-android.apk`): a companion for sharing into your notes and reading them, see
+  [below](#android-share-to-your-notes-and-read-them).
 - **Linux x64** (`WolfMark-<version>-linux-x64.tar.gz`): unpack and run `./wolfmark`; `INSTALL.txt` inside adds a menu
   entry. Data lives in `~/.local/share/WolfMark`; notes default to a `WolfMark` folder in your Documents folder (XDG
   user dirs, else home).
@@ -407,8 +409,9 @@ Two things to know before you try it:
   there, so it works only when the desktop app keeps its notes in OneDrive (the default on Windows). Notes in
   another folder, in portable mode or in a different cloud are out of its reach.
 
-Signing in needs a Microsoft app registration of your own, and the app is built from source – the steps are in
-[`android/README.md`](android/README.md). A release carries an APK only when it could be signed with the project's key.
+**Getting it.** `WolfMark-<version>-android.apk` is on the [Releases](https://github.com/vlko/WolfMark/releases)
+page: open it on the phone and allow the installation (it is not in Google Play). Building it yourself needs a
+signing key and a Microsoft app registration of your own – the steps are in [`android/README.md`](android/README.md).
 
 ## Roadmap
 
