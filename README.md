@@ -71,7 +71,7 @@ notebook unless I ask.
 | **Links** | `wolfmark://today`, `day/…`, `note/…`, `new`, `search?q=…` open the app where you point them; New note / Today / Search in the taskbar jump list, the Dock menu and Linux launcher actions |
 | **Claude Code sync** | Human prompts from `~/.claude/projects` become notes, per session and day, secrets redacted |
 | **Markdown files anywhere** | WolfMark can open every `.md` file: notes switch the main window, other files open in their own window with *Save*, a status bar and *Copy to my notes* |
-| **Full view** | `F11` (macOS `Ctrl+Cmd+F`): only the day, the formatting buttons and the note |
+| **Full view** | `F11` (macOS `Ctrl+Cmd+F`): only the formatting buttons and the note |
 | **Portable mode** | Notes, settings and index in a `WolfMarkData` folder next to the app – carry it on a USB drive, nothing written to the computer |
 | **Desktop integration** | Light/dark theme, notification-area icon, single instance; start at sign-in (hidden in the notification area if you like); a choice of app icons |
 | **Robust storage** | Atomic writes, recycle bin instead of delete, OneDrive placeholders and conflict copies handled; a note changed elsewhere while you type is never overwritten unseen |
@@ -91,9 +91,12 @@ up to date, so it stays instant even with years of notes.
 - **What the week was about.** Under the strip, a summary line counts the week's notes per tag – for example
   `■ WORK 6  ■ MEETING 5  ■ WOLFMARK 4  ■ BILLING-API 2  ■ NO TAG 1`. Claude Code sessions are counted **per project**
   instead of under a single tag, so you can see where your AI time went.
-- **Month view.** `Ctrl+Shift+C` expands the full month in full tag colours: ISO week numbers, weekday labels and
-  **labels between weeks** taken from tags you mark as calendar labels (e.g. a `release` note becomes
-  `■ V1.0 RELEASE ———`).
+- **Month view.** `Ctrl+Shift+C` (or the calendar button) shows the full month in full tag colours: ISO week numbers,
+  weekday labels and **labels between weeks** taken from tags you mark as calendar labels (e.g. a `release` note
+  becomes `■ V1.0 RELEASE ———`). The month is a view of its own, with the history under it and no note: pick a day to
+  narrow the history, pick a note there and the week view is back on that note and its week.
+- **Today** brings the app back to how it starts: today, its week and month, no tag, day or open-tasks filter. It
+  leaves the calendar on the week or the month, whichever it was.
 - **Tag rail.** Vertical tabs on the right edge select an active tag: the history is filtered, other days are dimmed
   and new notes get that tag.
 - **Keyboard first.** Arrows move between days, `Enter` opens a day, `Ctrl+Alt+←/→` moves by week. Cells are
@@ -220,7 +223,7 @@ it had before, without the changes made while portable. Details are in
   to five lines high) and behaves as one block: the caret sits before or after it, text typed there goes to its own
   line, Backspace/Delete remove the whole image. Double-click opens it in the default viewer. Only images inside
   the notes folder are shown, never remote or network paths.
-- **Full view** (`F11`, macOS `Ctrl+Cmd+F`): the tags, calendar, history and times step aside and the note fills
+- **Full view** (`F11`, macOS `Ctrl+Cmd+F`): the date, tags, calendar, history and times step aside and the note fills
   the window; `Esc` brings them back.
 - **Markdown files from anywhere**: WolfMark can be the app that opens `.md` files (Settings → *General* →
   *Markdown files*; Windows asks you to confirm it in *Default apps*). A note from your notes folder opens in the main
@@ -268,10 +271,10 @@ it had before, without the changes made while portable. Details are in
 | `Ctrl+F` / `Ctrl+H` | Find / find and replace in the open note; `Enter` or `F3` next, `Shift+Enter` or `Shift+F3` previous, `Esc` closes |
 | `Ctrl`+click | Follow a wiki link `[[…]]` (also *Open linked note* in the right-click menu) |
 | `Win+Shift+N` | Quick note from anywhere – Windows, off until switched on in Settings (the shortcut can be changed) |
-| `Ctrl+Shift+C` | Full calendar (arrows, `Enter`) |
+| `Ctrl+Shift+C` | Month view with the history (arrows, `Enter`); again for the week and the note |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next week |
 | `Ctrl+E` | Raw ↔ formatted mode |
-| `F11` (macOS `Ctrl+Cmd+F`) | Full view: only the day, the formatting buttons and the note (again or `Esc` to leave) |
+| `F11` (macOS `Ctrl+Cmd+F`) | Full view: only the formatting buttons and the note (again or `Esc` to leave) |
 | `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+wheel | Editor font size larger / smaller / default |
 | `Ctrl+B` / `Ctrl+I` / `Ctrl+Shift+L` | Bold / italic / task |
 | `Tab` / `Shift+Tab`, `Enter` | Indent list, continue list |

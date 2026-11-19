@@ -136,7 +136,7 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *AK:* Od spustenia po písanie < 600 ms (AOT, vyvážený režim napájania; pôvodne 300 ms – ADR 0011).
 - ✅ **M4-10 – Veľkosť písma a farebné emotikony.** `Ctrl` `+` / `Ctrl` `−` / `Ctrl+0`, `Ctrl`+koliesko (podľa znaku na rozložení), uloží sa do nastavení; farebné emotikony v Nastaveniach (Windows).
   *Stav:* Windows aj Avalonia (v0.3.2). Rýchly zoom kolieskom padal (natívny pád WinUI); obídené – zoom sa sčíta na jeden relayout, chyby kreslenia sa logujú („Editor drawing failed“). Skutočná príčina neznáma, čaká na záznam v logu.
-- ✅ **M4-11 – Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, tlačidlo pred `+`): len dátum, riadok s časmi a `×`, formátovanie a editor.
+- ✅ **M4-11 – Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, tlačidlo pred `+`): riadok s časmi a `×`, formátovanie a editor (dátum od M6-07 nie).
   *Stav:* Windows overené; Avalonia skompilované, na Macu neoverené.
 - ⬜ **M4-12 – Prístupnosť editora** (UI Automation text pattern pre čítačky obrazovky) – nový Win2D editor ju zatiaľ nemá (známe obmedzenie v0.3.1).
 
@@ -169,6 +169,21 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - 🟨 **M6-06 – Vizuálne doladenie** podľa referencie (papierové pozadie, karta, typografia dátumu, pilulky tagov), light/dark.
   *Farby kalendára (2026-10-21, ADR 0004):* v týždennom páse šrafy minulých dní `\` každé 4 px a farby tagov stlmené (svetlá 40 %, tmavá 25 %), mesačná mriežka plné farby bez šrafov, číslo minulého dňa so záznamom = plná farba prvého tagu o 60 % tmavšia / o 80 % svetlejšia. Zatiaľ OK, **ešte doladiť** (čitateľnosť čísla nad pásom iného tagu, malé čísla v mesačnej mriežke, tmavá téma); náhľady `temp_design/calendar-*.png`.
   *~~Známy problém~~ (vyriešené vo verzii 0.6.0) – preblikávanie pri zmene veľkosti okna:* farby/text sa pri resize striedajú („zasedne“ ↔ „silno čierne“), občas tak ostanú; položky histórie sa pri resize na chvíľu vykreslia dvojmo. Zistenia: bez system backdropu sa odkryté plochy pri resize kreslia čierne; Mica nastavená v konštruktore okna preblikávala, nastavená po aktivácii pomohla čiastočne; text pravdepodobne prepína ClearType ↔ grayscale podľa kompozície (Mica, ContentDialog, live resize) – v réžii WinUI/Windows App SDK (2.5.1), nie .NET. Experiment: Nastavenia → Diagnostika → „Vykresľovanie okna“ (Mica vs. bez backdropu + pozadie triedy okna v farbe papiera) – **nepomohla ani jedna varianta** (overené 2026-10-16). Neoverené hypotézy na ďalšie kolo: ClearType ↔ grayscale (porovnať zväčšené screenshoty textu), prekresľovanie `ItemsRepeater` histórie pri zmene šírky (pevná výška riadkov), opakované `OnThemeChanged`/`Palette.Apply` počas resize (zalogovať). Vrátiť sa po ďalšej verzii Windows App SDK; ak pretrvá, nahlásiť do microsoft-ui-xaml s minimálnou ukážkou. *2026-11-13:* **vyriešené** aktualizáciou na Windows App SDK 2.6.5 (overené na Windows); diagnostický prepínač „Vykresľovanie okna“ odstránený, Mica sa nastavuje po prvej aktivácii.
+
+- 🟨 **M6-07 – Hlavička ako na Androide.** Dátum vľavo a v tom istom riadku vpravo ovládanie kalendára (‹ › DNES, rozbalenie) s titulkom týždňa/mesiaca pod ním (M12-09); ušetrí riadok hlavičky kalendára. V celom okne sa skryje celý riadok – dátum aj ovládanie.
+  *AK:* WinUI aj Avalonia rovnako; tlačidlá sa neposúvajú s dĺžkou titulku; F11/Esc/× vráti hlavičku.
+  *Stav:* Avalonia overená snímkami zo `smoke-linux.sh` (hlavné okno, mesiac, celé okno), WinUI len skompilované. **Otvorené:** pozrieť na Windows, prefotiť `docs/screenshots/*.png`.
+
+- 🟨 **M6-08 – Mesiac ako samostatné zobrazenie, Dnes ako po štarte.** Rozbalený kalendár skryje poznámku (riadok
+  s tagom a formátovaním, editor, delič) a pod mesiacom je história cez zvyšok okna – ako na Androide. Deň v mesiaci
+  sa len vyberie a zúži históriu; poznámka vybraná z histórie (aj z hľadania, odkazu, `Ctrl+N`) prepne do týždňa na jej
+  týždeň a deň. **Dnes** zruší všetky filtre (tag, deň, otvorené úlohy), vyberie dnešok a nemení týždeň/mesiac.
+  Aplikácia štartuje vždy v týždni (`CalendarExpanded` sa už nepoužíva). Android rovnako (`UiState.opened`,
+  `UiState.atToday`). Navyše: ikona kalendára namiesto šípok pri prepínači mesiaca, TODAY bez medzery, v celom okne
+  rovnaké okraje vľavo aj vpravo a editor zarovnaný s lištou, čiara nad históriou bez odskoku (Windows).
+  *AK:* WinUI aj Avalonia rovnako; celé okno (F11) má prednosť pred mesiacom a po návrate sa mesiac obnoví.
+  *Stav:* `CalendarModeTests` (8), `StateTransitionsTest` (5, Android), testy 717, Linux smoke 28/28, snímka mesiaca
+  z Avalonie skontrolovaná. **Otvorené:** WinUI len skompilované; telefón; F11 z mesačného režimu neoverené ručne.
 
 ## M7 – Synchronizácia z Claude Code 🟢
 

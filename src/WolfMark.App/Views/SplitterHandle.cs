@@ -19,7 +19,7 @@ internal sealed partial class SplitterHandle : Grid
         Height = 10;
         Background = Palette.Transparent;
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth);
-        Children.Add(new Rectangle { Height = 1, Fill = Palette.Divider, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(24, 0, 24, 0) });
+        Children.Add(new Rectangle { Height = 1, Fill = Palette.Divider, VerticalAlignment = VerticalAlignment.Center });
         Children.Add(new Rectangle { Width = 36, Height = 4, RadiusX = 2, RadiusY = 2, Fill = Palette.SubtleFillHover, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
 
         PointerPressed += (_, e) =>

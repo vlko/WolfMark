@@ -216,9 +216,11 @@ Správanie:
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│  [title bar s vlastným obsahom: dátum · vyhľadávanie · ⚙]      │
+│  [title bar s vlastným obsahom: logo · vyhľadávanie · ⚙]       │
 ├───────────────────────────────────────────────────────────────┤
-│  KALENDÁROVÁ LIŠTA  ‹  Po13 Ut14 St15● Št16 Pi17 So18 Ne19  › ⤢ │  ← kompaktná (týždeň), ⤢ = plný kalendár
+│  18 NOVEMBER 2026                          ‹  ›  [DNES]  ⤢     │  ← dátum vľavo, ovládanie kalendára vpravo (M6-07)
+│     STREDA                       TÝŽDEŇ 47 · NOVEMBER 2026     │    pod tlačidlami týždeň / mesiac
+│  KALENDÁROVÁ LIŠTA  Po16 Ut17 St18● Št19 Pi20 So21 Ne22         │  ← kompaktná (týždeň), ⤢ = plný kalendár
 ├───────────────────────────────────────────────────────────────┤
 │  #praca ▾   14:03                         [Raw | Formát]  [+]  │  ← hlavička poznámky: tag (výber farby), čas, režim, nová poznámka
 │                                                               │
@@ -235,9 +237,10 @@ Správanie:
 - **Tlačidlo `+`** (aj `Ctrl+N`): vytvorí novú poznámku s aktuálnym časom v dnešnom adresári a presunie do nej fokus. Súbor sa fyzicky vytvorí až po prvom napísanom znaku (prázdne poznámky nevznikajú).
 - **Po spustení** sa otvorí posledná upravovaná poznámka s kurzorom na konci.
 - **Kalendárová lišta:** dni aktuálneho týždňa, pri každom dni počet záznamov a farebné prúžky tagov. Klik na deň → filtruje históriu na daný deň a otvorí jeho poslednú poznámku. Šípky/scroll posúvajú týždne.
-- **Plný kalendár:** prepnutie z lišty (tlačidlo alebo `Ctrl+Shift+C`) – rozbalí sa ako overlay alebo nahradí editor (viď 5.2).
+- **Plný kalendár (mesiac):** prepnutie z hlavičky (ikona kalendára alebo `Ctrl+Shift+C`) – samostatné zobrazenie: mesiac a pod ním história cez zvyšok okna, **bez poznámky** (M6-08, rovnako ako na Androide). Klik na deň ho vyberie a zúži históriu, poznámka sa neotvára. Výber poznámky z histórie (aj z vyhľadávania, odkazu, `Ctrl+N`) prepne späť do týždňa s tou poznámkou, pás ukáže jej týždeň. Aplikácia štartuje vždy v týždennom zobrazení.
+- **Dnes:** vráti aplikáciu do stavu po spustení – dnešok, jeho týždeň a mesiac, žiadny filter (tag, deň, otvorené úlohy), dnešná posledná poznámka; týždenný/mesačný režim nemení.
 - **História:** virtualizovaný `ItemsRepeater`/`ListView`, nekonečný scroll (stránkovanie z indexu), farebný pruh tagu, dátum, čas, titulok, náhľad. Filtrovanie podľa tagu (klik na tag) a dňa. Klik → otvorí v editore.
-- **Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, alebo tlačidlo pred `+`): ostane dátum, pod ním riadok s časom vytvorenia a úpravy a `×`, z hlavičky len formátovanie a editor; tagy, kalendár, história a časy vľavo zmiznú. `F11`/`Esc`/`×` vráti rozloženie, režim sa nepamätá.
+- **Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, alebo tlačidlo pred `+`): dátum aj ovládanie kalendára sa skryjú, navrchu ostane riadok s časom vytvorenia a úpravy a `×`, z hlavičky len formátovanie a editor; tagy, kalendár, história a časy vľavo zmiznú. `F11`/`Esc`/`×` vráti rozloženie, režim sa nepamätá.
 - **Vyhľadávanie** (`Ctrl+K`, command-palette štýl): hybridné hľadanie, výsledky so zvýraznením, filter `#tag`, `@2026-10`.
 
 ### 4.6 Nastavenia

@@ -82,6 +82,33 @@ data class UiState(
             .toList()
 }
 
+/**
+ * A note picked to read (from the history, in either view): the week view with the note, on the note's week, its
+ * day selected – the same on the desktop (M6-08).
+ */
+fun UiState.opened(note: MirrorNote): UiState {
+    val day = note.day()
+    return copy(
+        open = OpenNote(note, open?.takeIf { it.note.path == note.path }?.markdown),
+        view = CalendarView.WEEK,
+        selectedDay = day,
+        week = CalendarModel.monday(day),
+    )
+}
+
+/**
+ * "Today": how the app starts – today selected, its week and month shown, no tag or day filter. Only the calendar
+ * stays as it is, week or month.
+ */
+fun UiState.atToday(today: LocalDate): UiState = copy(
+    today = today,
+    selectedDay = today,
+    week = CalendarModel.monday(today),
+    month = YearMonth.from(today),
+    tagFilter = null,
+    dayFilter = false,
+)
+
 /** What the screens can ask for – the view model in the app, nothing in a screenshot test. */
 interface Actions {
     fun signIn() {}
@@ -198,9 +225,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application), A
         val s = _state.value
         val open = s.open
         when {
-            open == null -> loaded.notes.maxByOrNull { it.modifiedMs }?.let(::open)
+            // Shown without moving the calendar: this is a refresh, not the user picking a note.
+            open == null -> loaded.notes.maxByOrNull { it.modifiedMs }?.let { latest ->
+                _state.update { it.copy(open = OpenNote(latest, null)) }
+                load(latest)
+            }
             loaded.notes.none { it.path == open.note.path } -> _state.update { it.copy(open = null) }
-            else -> loaded.notes.first { it.path == open.note.path }.let { if (it != open.note) open(it) }
+            else -> loaded.notes.first { it.path == open.note.path }.let { changed ->
+                if (changed != open.note) {
+                    _state.update { it.copy(open = OpenNote(changed, open.markdown)) }
+                    load(changed)
+                }
+            }
         }
     }
 
@@ -326,9 +362,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), A
         if (s.view == CalendarView.WEEK) s.copy(week = s.week.plusWeeks(n)) else s.copy(month = s.month.plusMonths(n))
     }
 
-    override fun goToday() = _state.update { s ->
-        val today = LocalDate.now()
-        s.copy(today = today, selectedDay = today, dayFilter = false, week = CalendarModel.monday(today), month = YearMonth.from(today))
+    override fun goToday() {
+        _state.update { it.atToday(LocalDate.now()) }
+        // As after a start: the note changed last – shown without leaving the month view, if that is where we are.
+        _state.value.notes.maxByOrNull { it.modifiedMs }?.let { latest ->
+            if (_state.value.open?.note?.path != latest.path) {
+                _state.update { it.copy(open = OpenNote(latest, null)) }
+                load(latest)
+            }
+        }
     }
 
     override fun setView(view: CalendarView) = _state.update { s ->
@@ -340,16 +382,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application), A
     override fun setFullNote(full: Boolean) = _state.update { it.copy(fullNote = full) }
 
     override fun open(note: MirrorNote) {
+        _state.update { it.opened(note) }
+        load(note)
+    }
+
+    /** Reads the note's text into the open note (if it is still the open one when the text is there). */
+    private fun load(note: MirrorNote) {
         viewModelScope.launch {
-            // From the month view a note opens in the week view, where there is room for it.
-            _state.update { s ->
-                val day = note.day()
-                s.copy(
-                    open = OpenNote(note, s.open?.takeIf { it.note.path == note.path }?.markdown),
-                    view = CalendarView.WEEK,
-                    week = if (s.view == CalendarView.MONTH) CalendarModel.monday(day) else s.week,
-                )
-            }
             val markdown = withContext(Dispatchers.IO) { app.mirror.read(note.path)?.let { prepare(note.path, NoteText.body(it)) } }
             _state.update { if (it.open?.note?.path == note.path) it.copy(open = OpenNote(note, markdown ?: "")) else it }
         }

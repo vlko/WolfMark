@@ -17,7 +17,9 @@ namespace WolfMark.App.Views;
 /// <summary>
 /// Calendar panel at the top of the window (M6-01..M6-05, ADR 0004). Collapsed it is the bracketed week
 /// band (<c>expected_calendar.png</c>); expanded it becomes the month grid (<c>full_calendar.png</c>) in
-/// place – no overlay. All controls sit left of the title so their position never depends on its length.
+/// place – no overlay. Its controls and title are the separate <see cref="Header"/>, which the window puts
+/// right of the day heading (M6-07, as on Android); the buttons sit above the title so their position never
+/// depends on its length.
 /// </summary>
 internal sealed partial class CalendarPanel : UserControl
 {
@@ -34,26 +36,36 @@ internal sealed partial class CalendarPanel : UserControl
     private readonly TextBlock _title;
     private readonly Button _expand;
 
+    /// <summary>Navigation buttons with the week/month title under them, placed by the window next to the date.</summary>
+    public StackPanel Header { get; }
+
     public CalendarPanel(MainViewModel vm, TagBrushes brushes)
     {
         _vm = vm;
         _brushes = brushes;
 
-        // Header: [◀][▶][TODAY] TITLE ………… [expand] – controls never move.
-        _title = new TextBlock { FontFamily = Typo.CondensedBold, FontSize = 21, Foreground = Palette.Ink, VerticalAlignment = VerticalAlignment.Center, CharacterSpacing = 20 };
-        _expand = Ui.Ui.IconButton(Glyphs.Expand, Strings.Get(R.Calendar_Expand), () => _ = vm.ToggleCalendarAsync(), 13);
-        var header = Ui.Ui.Columns(
+        // Header (placed by the window right of the day heading, as on Android):
+        // [◀][▶][TODAY][expand] with the week/month title under them – the buttons never move.
+        _title = new TextBlock
+        {
+            FontFamily = Typo.CondensedBold, FontSize = 16, Foreground = Palette.InkSecondary, CharacterSpacing = 20,
+            HorizontalAlignment = HorizontalAlignment.Right, TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap, Margin = new Thickness(0, 2, 6, 0),
+        };
+        _expand = Ui.Ui.IconButton(Glyphs.Calendar, Strings.Get(R.Calendar_Expand), () => _ = vm.ToggleCalendarAsync(), 13);
+        var buttons = Ui.Ui.Columns(
             (Ui.Ui.Px(36), Ui.Ui.IconButton(Glyphs.ChevronLeft, Strings.Get(R.Calendar_Previous), () => _ = vm.MoveCalendarAsync(-1), 11)),
             (Ui.Ui.Px(36), Ui.Ui.IconButton(Glyphs.ChevronRight, Strings.Get(R.Calendar_Next), () => _ = vm.MoveCalendarAsync(1), 11)),
-            (Ui.Ui.Px(76), Ui.Ui.TagButton(Strings.Get(R.Common_Today), () => _ = vm.GoToTodayAsync())),
-            (Ui.Ui.Star, _title),
+            // as wide as its text: the title is under the buttons now, nothing here has to keep its place
+            (Ui.Ui.Auto, Ui.Ui.TagButton(Strings.Get(R.Common_Today), () => _ = vm.GoToTodayAsync())),
             (Ui.Ui.Px(36), _expand));
-        header.ColumnSpacing = 4;
-        header.Margin = new Thickness(0, 0, 0, 8);
-        ((FrameworkElement)header.Children[3]).Margin = new Thickness(10, 0, 0, 0);
+        buttons.ColumnSpacing = 4;
+        buttons.HorizontalAlignment = HorizontalAlignment.Right;
+        Header = Ui.Ui.VStack(0, buttons, _title);
+        Header.VerticalAlignment = VerticalAlignment.Bottom;
 
         _band = BuildBand();
-        Content = Ui.Ui.Rows((Ui.Ui.Auto, header), (Ui.Ui.Auto, _band), (Ui.Ui.Auto, _month));
+        Content = Ui.Ui.Rows((Ui.Ui.Auto, _band), (Ui.Ui.Auto, _month));
 
         vm.Week.PropertyChanged += (_, e) =>
         {
@@ -103,15 +115,23 @@ internal sealed partial class CalendarPanel : UserControl
     }
 
     /// <summary>Moves keyboard focus into the visible calendar (Ctrl+Shift+C).</summary>
-    public void FocusSelectedDay()
+    public void FocusSelectedDay() => FocusSelectedDay(FocusState.Keyboard);
+
+    /// <summary>
+    /// The month view opened with the mouse: the editor that had the focus is hidden, so the focus goes to the
+    /// selected day (arrows then move in the month) – without the keyboard focus frame, nobody used the keyboard.
+    /// </summary>
+    public void TakeFocus() => FocusSelectedDay(FocusState.Programmatic);
+
+    private void FocusSelectedDay(FocusState state)
     {
         if (_vm.IsCalendarExpanded && _monthCells.TryGetValue(_vm.SelectedDay, out var cell))
         {
-            cell.Focus(FocusState.Keyboard);
+            cell.Focus(state);
         }
         else
         {
-            _bandCells.FirstOrDefault(c => c.Date == _vm.SelectedDay)?.Focus(FocusState.Keyboard);
+            _bandCells.FirstOrDefault(c => c.Date == _vm.SelectedDay)?.Focus(state);
         }
     }
 
@@ -120,7 +140,8 @@ internal sealed partial class CalendarPanel : UserControl
         var expanded = _vm.IsCalendarExpanded;
         _band.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         _month.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-        ((FontIcon)_expand.Content).Glyph = expanded ? Glyphs.Collapse : Glyphs.Expand;
+        // A calendar opens the month (as on Android); the arrows are the full view of the note, in the note bar.
+        ((FontIcon)_expand.Content).Glyph = expanded ? Glyphs.Collapse : Glyphs.Calendar;
         var tip = Strings.Get(expanded ? R.Calendar_Collapse : R.Calendar_Expand);
         ToolTipService.SetToolTip(_expand, tip);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_expand, tip);

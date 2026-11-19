@@ -38,7 +38,7 @@ internal sealed partial class MainViewModel : ObservableObject
         Find = new FindViewModel();
         Today = DateOnly.FromDateTime(DateTime.Now);
         SelectedDay = Today;
-        IsCalendarExpanded = host.Settings.Current.CalendarExpanded;
+        // The app always starts on the week with the note (M6-08): the month view has no editor to type into.
 
         Editor.PathChanged += (_, _) => History.MarkCurrent(Editor.IsPersisted ? Editor.Path?.RelativePath : null);
         Editor.PathChanged += (_, _) => _ = LoadBacklinksAsync();
@@ -169,8 +169,8 @@ internal sealed partial class MainViewModel : ObservableObject
     public partial bool IsSearchOpen { get; set; }
 
     /// <summary>
-    /// The note fills the window: day heading, formatting and the editor only – no tag rail, calendar, history or
-    /// time gutter. Not remembered: a new start shows the whole app.
+    /// The note fills the window: formatting and the editor only – no day heading, tag rail, calendar, history or
+    /// time gutter (M6-07). Not remembered: a new start shows the whole app.
     /// </summary>
     [ObservableProperty]
     public partial bool IsFullView { get; set; }
@@ -214,11 +214,46 @@ internal sealed partial class MainViewModel : ObservableObject
         await CheckClaudeCleanupAsync();
     }
 
-    /// <summary>"Today": back to the start-up mode – today selected, history of all notes (no day filter).</summary>
-    public Task GoToTodayAsync() => SelectDayAsync(Today, openLatest: true, filterHistory: false);
+    /// <summary>
+    /// "Today": back to how the app starts (M6-08) – today selected, its week and month shown, no filter of any kind
+    /// (tag, day, open tasks), today's latest note open. Only the calendar stays as it is, week or month.
+    /// </summary>
+    public async Task GoToTodayAsync()
+    {
+        if (ActiveTag is not null)
+        {
+            ActiveTag = null;
+            Calendar.SetFilter(null);
+            foreach (var t in RailTags)
+            {
+                t.IsActive = false;
+            }
+        }
 
+        if (History.HasFilter)
+        {
+            await History.ClearFiltersAsync();
+        }
+
+        if (!IsCalendarExpanded)
+        {
+            // Also when today is selected already and only the band was moved to another week.
+            await Week.LoadAsync(Today, Today);
+        }
+
+        await SelectDayCoreAsync(Today, openLatest: true, filterHistory: false);
+        await SyncCalendarMonthAsync(force: true);
+    }
+
+    /// <summary>
+    /// A day picked in the calendar. In the week view its latest note opens; in the month view (which shows no note)
+    /// the day is only selected and the history narrowed to it – a note is then picked from the history.
+    /// </summary>
     /// <param name="filterHistory">True when the user picked a specific day: history shows only that day.</param>
-    public async Task SelectDayAsync(DateOnly day, bool openLatest = true, bool filterHistory = true)
+    public Task SelectDayAsync(DateOnly day, bool openLatest = true, bool filterHistory = true) =>
+        SelectDayCoreAsync(day, openLatest && !IsCalendarExpanded, filterHistory);
+
+    private async Task SelectDayCoreAsync(DateOnly day, bool openLatest, bool filterHistory)
     {
         SelectedDay = day;
         if (day < Week.Monday || day > Week.Monday.AddDays(6))
@@ -389,7 +424,10 @@ internal sealed partial class MainViewModel : ObservableObject
 
         await Editor.OpenAsync(path, line: line);
         var day = Editor.Day;
-        if (day != SelectedDay)
+        // A note opened from the month view (history, search, a link…) is shown: back to the week, on its week.
+        var fromMonth = IsCalendarExpanded;
+        IsCalendarExpanded = false;
+        if (day != SelectedDay || fromMonth)
         {
             SelectedDay = day;
             await Week.LoadAsync(day, day);
@@ -599,7 +637,9 @@ internal sealed partial class MainViewModel : ObservableObject
     public async Task NewNoteAsync()
     {
         await Editor.NewAsync(ActiveTag);
-        if (SelectedDay != Today)
+        var fromMonth = IsCalendarExpanded;
+        IsCalendarExpanded = false; // a new note needs the editor, which the month view does not show
+        if (SelectedDay != Today || fromMonth)
         {
             SelectedDay = Today;
             await Week.LoadAsync(Today, Today);
@@ -610,8 +650,12 @@ internal sealed partial class MainViewModel : ObservableObject
     public async Task ToggleCalendarAsync()
     {
         IsCalendarExpanded = !IsCalendarExpanded;
-        _host.Settings.Current.CalendarExpanded = IsCalendarExpanded;
-        _ = _host.SaveSettingsAsync();
+        if (!IsCalendarExpanded && (SelectedDay < Week.Monday || SelectedDay > Week.Monday.AddDays(6)))
+        {
+            // Back from the month: the band shows the week of the day picked there.
+            await Week.LoadAsync(SelectedDay, SelectedDay);
+        }
+
         await SyncCalendarMonthAsync(force: true);
     }
 

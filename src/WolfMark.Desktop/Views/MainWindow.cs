@@ -49,7 +49,7 @@ internal sealed partial class MainWindow : Window
 
         _historyRow = new RowDefinition(Math.Max(120, _host.Settings.Current.HistoryPaneHeight), GridUnitType.Pixel);
         var main = new Grid { Margin = new Thickness(24, 4, 8, 0) };
-        main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // day heading
+        main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // day heading, calendar controls
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // full view bar
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // calendar
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // note bar
@@ -57,9 +57,11 @@ internal sealed partial class MainWindow : Window
         main.RowDefinitions.Add(new RowDefinition(GridLength.Auto)); // splitter
         main.RowDefinitions.Add(_historyRow);
 
-        var heading = DayHeading();
-        heading.Margin = new Thickness(0, 0, 0, 14);
         var calendar = _calendar = new CalendarPanel(vm) { Margin = new Thickness(0, 0, 0, 12) };
+        // date left, calendar navigation and title right – one row, as on Android (M6-07)
+        var dateRow = Ui.Columns((Ui.Star, DayHeading()), (Ui.Auto, calendar.Header));
+        dateRow.ColumnSpacing = 12;
+        dateRow.Margin = new Thickness(0, 0, 0, 14);
         var noteBar = new NoteBar(vm, _editor) { Margin = new Thickness(0, 0, 0, 10) };
         var splitter = new GridSplitter
         {
@@ -77,7 +79,7 @@ internal sealed partial class MainWindow : Window
         editorCell.Children.Add(_findBar);
         var fullViewBar = FullViewBar();
         var history = new HistoryView(vm);
-        Add(main, heading, 0);
+        Add(main, dateRow, 0);
         Add(main, fullViewBar, 1);
         Add(main, calendar, 2);
         Add(main, noteBar, 3);
@@ -90,7 +92,7 @@ internal sealed partial class MainWindow : Window
         // With the month open in a low window the panes need more than there is: the history is cut at the bottom
         // instead of being drawn over the notices and the status bar.
         content.ClipToBounds = true;
-        WireFullView(fullViewBar, editorPane, [calendar, splitter, history, rail]);
+        WireLayout(main, fullViewBar, editorPane, editorCell, noteBar, splitter, [dateRow, calendar, history, rail]);
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto") };
         var notices = new Notices(vm);
         var status = new StatusBar(vm);
@@ -364,22 +366,38 @@ internal sealed partial class MainWindow : Window
         };
     }
 
-    /// <summary>Full view (F11): the tag rail, calendar, history and time gutter make room for the note.</summary>
-    private void WireFullView(Border bar, Grid editorPane, Control[] hidden)
+    /// <summary>
+    /// What the window shows under the top bar: everything; the note alone (full view, F11 – the date row, tag
+    /// rail, calendar, history and time gutter make room for it); or the month with the history and no note (the
+    /// calendar expanded, M6-08, as on Android). Full view wins over the month.
+    /// </summary>
+    private void WireLayout(Grid main, Border bar, Grid editorPane, Control editorCell, Control noteBar, Control splitter, Control[] hiddenInFullView)
     {
         var gutterWidth = editorPane.ColumnDefinitions[0].Width;
         var lineWidth = editorPane.ColumnDefinitions[1].Width;
+        var editorRow = main.RowDefinitions[Grid.GetRow(editorCell)];
+        var editorHeight = editorRow.Height;
+        var editorMinHeight = editorRow.MinHeight;
         var historyHeight = _historyRow.Height;
-        Ui.Bind(_vm, nameof(MainViewModel.IsFullView), () =>
+        var margin = main.Margin;
+        var (wasFull, wasMonth) = (false, false);
+        void Apply()
         {
             var full = _vm.IsFullView;
-            if (full == bar.IsVisible)
+            var month = _vm.IsCalendarExpanded && !full;
+            if (full == wasFull && month == wasMonth)
             {
-                return; // the first call, before any change
+                return; // also the first calls, before any change
             }
 
+            if (!wasFull && !wasMonth)
+            {
+                historyHeight = _historyRow.Height; // the splitter may have moved it
+            }
+
+            (wasFull, wasMonth) = (full, month);
             bar.IsVisible = full;
-            foreach (var control in hidden)
+            foreach (var control in hiddenInFullView)
             {
                 control.IsVisible = !full;
             }
@@ -389,16 +407,33 @@ internal sealed partial class MainWindow : Window
                 control.IsVisible = !full; // created/edited times and the dotted line
             }
 
-            if (full)
-            {
-                historyHeight = _historyRow.Height; // the splitter may have moved it
-            }
-
-            _historyRow.Height = full ? new GridLength(0) : historyHeight;
+            splitter.IsVisible = !full && !month;
+            noteBar.IsVisible = !month;
+            editorCell.IsVisible = !month;
+            editorRow.MinHeight = month ? 0 : editorMinHeight;
+            editorRow.Height = month ? new GridLength(0) : editorHeight;
+            _historyRow.Height = full ? new GridLength(0) : month ? new GridLength(1, GridUnitType.Star) : historyHeight;
             editorPane.ColumnDefinitions[0].Width = full ? new GridLength(0) : gutterWidth;
             editorPane.ColumnDefinitions[1].Width = full ? new GridLength(0) : lineWidth;
-            _editor.FocusEditor();
-        });
+            // The editor keeps a gap to the dotted line of the time gutter (its left padding); without the gutter
+            // that gap would be an indent under the full view bar – the line numbers start where the bar does.
+            editorPane.Margin = new Thickness(full ? -18 : 0, 0, 0, 0);
+            // The left margin is wider than the right one because the tag rail stands on the right; without the
+            // rail both sides get the same.
+            main.Margin = full ? new Thickness(margin.Right, margin.Top, margin.Right, margin.Bottom) : margin;
+            if (!month)
+            {
+                _editor.FocusEditor();
+            }
+            else
+            {
+                // After the month is drawn: otherwise the focus falls to whatever comes next, the first tag tab.
+                Dispatcher.UIThread.Post(_calendar.TakeFocus, DispatcherPriority.Background);
+            }
+        }
+
+        Ui.Bind(_vm, nameof(MainViewModel.IsFullView), Apply);
+        Ui.Bind(_vm, nameof(MainViewModel.IsCalendarExpanded), Apply);
     }
 
     /// <summary>Ctrl + / Ctrl − / Ctrl 0 in the editor: the font size setting, saved once the zooming stops.</summary>

@@ -95,7 +95,10 @@ public sealed class LocalSettings
     /// <summary>Global shortcut for the quick note window (M8-01, Windows); off by default.</summary>
     public QuickNoteSettings QuickNote { get; set; } = new();
 
-    /// <summary>Calendar panel shows the full month (true) or only the week band.</summary>
+    /// <summary>
+    /// No longer used (M6-08): the app always starts on the week band – the month view shows no note. Kept so that
+    /// settings files written by older versions still load.
+    /// </summary>
     public bool CalendarExpanded { get; set; }
 
     public WindowPlacement? Window { get; set; }
