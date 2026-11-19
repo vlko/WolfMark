@@ -183,7 +183,8 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   rovnaké okraje vľavo aj vpravo a editor zarovnaný s lištou, čiara nad históriou bez odskoku (Windows).
   *AK:* WinUI aj Avalonia rovnako; celé okno (F11) má prednosť pred mesiacom a po návrate sa mesiac obnoví.
   *Stav:* `CalendarModeTests` (8), `StateTransitionsTest` (5, Android), testy 717, Linux smoke 28/28, snímka mesiaca
-  z Avalonie skontrolovaná. **Otvorené:** WinUI len skompilované; telefón; F11 z mesačného režimu neoverené ručne.
+  z Avalonie skontrolovaná. Windows smoke 30/30 a snímky z Windows (2026-11-19); autor potvrdil výber poznámky z histórie v mesačnom režime.
+  **Otvorené:** Dnes so zapnutými filtrami a F11 z mesačného režimu neoverené ručne.
 
 ## M7 – Synchronizácia z Claude Code 🟢
 
@@ -462,7 +463,8 @@ funguje zdieľanie samo cez OneDrive, priama cesta a prehliadač prichádzajú p
   navyše systémové oznámenie z ikony v oblasti oznámení, keď okno nie je v popredí alebo je skryté; kliknutie
   otvorí poznámku (bez „zatvárať do oblasti oznámení“ ikona existuje len počas oznámenia). Poznámka označená `Share`
   ručne oznámením nie je. *Stav:* `ShareArrivalTests` (vrátane súboru zapísaného do bežiacej aplikácie), testy 709,
-  Linux smoke 28/28. **Otvorené:** systémové oznámenie na Windows je len skompilované; macOS/Linux majú len pruh.
+  Linux smoke 28/28. Autor potvrdil zdieľanie z telefónu do WolfMarku na Windows (2026-11-19; ktorou cestou prišlo a či sa ukázalo
+  systémové oznámenie, nie je zapísané). **Otvorené:** macOS/Linux majú len pruh.
 - 🟨 **M12-03 – Android: kostra, prihlásenie, priečinok poznámok.** Projekt `android/` (moduly `core`, `app`), port
   názvov súborov a protokolu s testami proti spoločným vektorom, MSAL (osobný účet), výber priečinka v OneDrive.
   *AK:* `./gradlew test` zelený; po prihlásení aplikácia vypíše priečinok poznámok. *Stav:* `:core:test` 35 testov (z toho `LiveDesktopTest` beží len proti zadanému desktopu),
