@@ -139,6 +139,12 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
 - ✅ **M4-11 – Celé okno** (`F11`, na macOS `Ctrl+Cmd+F`, tlačidlo pred `+`): riadok s časmi a `×`, formátovanie a editor (dátum od M6-07 nie).
   *Stav:* Windows overené; Avalonia skompilované, na Macu neoverené.
 - ⬜ **M4-12 – Prístupnosť editora** (UI Automation text pattern pre čítačky obrazovky) – nový Win2D editor ju zatiaľ nemá (známe obmedzenie v0.3.1).
+- 🟨 **M4-13 – Prepínač RAW/FORMÁT, na ktorom vidno, čo je zapnuté.** Dve tlačidlá sa líšili len odtieňom výplne
+  (`#E5E2D9` vs `#EFEDE6`). Teraz jeden spojený prepínač na spoločnej koľajnici, zapnutý režim je plný blok
+  (`TodayFill`/`TodayInk`, ADR 0004). WinUI: klik na už zapnutý segment ho vypol a ostali vypnuté oba
+  (`ToggleButton` sa prepína sám) – stav sa po kliknutí vracia z režimu.
+  *AK:* WinUI aj Avalonia, hlavné okno aj okno externého súboru, svetlá aj tmavá téma; šírka sa prepnutím nemení.
+  *Stav:* Linux smoke 28/28, snímky z Avalonie (svetlá, tmavá) skontrolované. **Otvorené:** overiť na Windows.
 
 ## M5 – História záznamov 🟢
 
@@ -185,6 +191,26 @@ Stav: ✅ hotové a overené testami · 🟨 implementované, čaká na overenie
   *Stav:* `CalendarModeTests` (8), `StateTransitionsTest` (5, Android), testy 717, Linux smoke 28/28, snímka mesiaca
   z Avalonie skontrolovaná. Windows smoke 30/30 a snímky z Windows (2026-11-19); autor potvrdil výber poznámky z histórie v mesačnom režime.
   **Otvorené:** Dnes so zapnutými filtrami a F11 z mesačného režimu neoverené ručne.
+- 🟨 **M6-09 – Preblikávanie: prvky občas na polovičnom krytí (Windows).** Čísla v týždennom páse (aj v mesiaci) sú
+  raz výrazné, raz „zasednuté“ – ten istý príznak ako pri M6-06, teraz aj bez zmeny veľkosti okna.
+  *Zistenia (2026-11-19, pixely snímok `temp_design/correct_today.png`, `shaded_today.png`):* zasednuté prvky majú
+  **presne 50 % krytie**, nie inú farbu (dnešná 19: `#867770` = `#1F1F1E` na 50 % nad `#EDCFC1`). Po jednotlivých
+  prvkoch a nielen v kalendári: číslo dňa, výplň bunky, celé tlačidlá (Today, abc, RAW/FORMÁT, + NOVÁ), veľký dátum.
+  Nie je to ClearType ↔ grayscale. Aplikácia krytie 0.5 nikde nenastavuje a nemá žiadne prechody ani animácie –
+  **príčina neznáma**.
+  *Príčina (2026-11-19):* opakované prechodové štetce s priehľadnými zarážkami (`LinearGradientBrush`, `Absolute`,
+  `Repeat`) – šrafy minulých dní v týždennom páse a bodkované čiary. Kým sú na obrazovke, WinUI (Windows App SDK
+  2.6.5) kreslí iné texty, okraje a výplne okna na polovičnom krytí, po každom prekreslení iné. Výpis vykresľovania
+  mal pritom všetky hodnoty správne (krytie 1, farby plne kryté) – chyba je pod XAML. Overené vypínaním: bez oboch
+  štetcov žiadne preblikávanie, len bez šráf veľmi občas, len bez bodkovaných čiar stále. Krytie 0.5 v histórii
+  (odškrtnutá úloha, chýbajúci súbor) s tým nesúvisí (pokus s 0.4/0.6: stále presne 50 %).
+  *Oprava:* šrafy sú čiary (`Path` v `CalendarDayCell`), bodkovaná čiara prerušovaný ťah (`Ui.DottedLine`); opakované
+  prechodové štetce sa vo WinUI aplikácii nepoužívajú (ADR 0004). Avalonia sa nemenila.
+  *Opravené popri tom:* jedno načítanie týždňa prekreslilo pás asi 40-krát (každá vlastnosť každého dňa) – teraz
+  raz (`WeekStripViewModel.DaysChanged`); bunka sa neprekresľuje, ak sa nezmenila (WinUI); svetlejšia výplň pod
+  ukazovateľom ostávala po skrytí bunky; rozbalenie mesiaca ho kreslilo dvakrát, najprv zo starých dát.
+  *Stav:* `WeekStripTests` (3), testy 720, Linux smoke 28/28. Autor potvrdil na Windows, že preblikávanie zmizlo
+  (2026-11-19). **Otvorené:** nahlásiť do microsoft-ui-xaml s minimálnou ukážkou.
 
 ## M7 – Synchronizácia z Claude Code 🟢
 

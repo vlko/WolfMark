@@ -26,6 +26,12 @@ internal sealed partial class WeekStripViewModel : ObservableObject
 
     public ObservableCollection<WeekDayViewModel> Days { get; } = [];
 
+    /// <summary>
+    /// The days changed, once for all seven. The band redraws on this and not on each property of each day: one load
+    /// of a week was some forty redraws of the whole band.
+    /// </summary>
+    public event EventHandler? DaysChanged;
+
     [ObservableProperty]
     public partial DateOnly Monday { get; private set; }
 
@@ -58,6 +64,8 @@ internal sealed partial class WeekStripViewModel : ObservableObject
                 var date = monday.AddDays(i);
                 Days[i].Set(date, names[i], today, date == selected, CalendarDay.Empty(date));
             }
+
+            DaysChanged?.Invoke(this, EventArgs.Empty);
         }
 
         await _host.DatabaseReady;
@@ -75,6 +83,7 @@ internal sealed partial class WeekStripViewModel : ObservableObject
             Days[i].Set(date, names[i], today, date == selected, days.GetValueOrDefault(date) ?? CalendarDay.Empty(date));
         }
 
+        DaysChanged?.Invoke(this, EventArgs.Empty);
         Topics = topics;
         _loaded = true;
     }
@@ -85,6 +94,8 @@ internal sealed partial class WeekStripViewModel : ObservableObject
         {
             d.IsSelected = d.Date == selected;
         }
+
+        DaysChanged?.Invoke(this, EventArgs.Empty);
     }
 }
 

@@ -18,6 +18,9 @@
    vzorky farieb): glow aj text dostanú tú z troch farieb, ktorá nie je farbou textu v pokoji a má
    najvyšší kontrast (WCAG) k výplni (`Ui.HoverColor`) – napr. + NOVÁ a ClaudeCode čierna. Tlačidlá v toolbaroch majú jednu výšku (`Metrics.ButtonHeight`), RAW/FORMÁT
    pevnú šírku.
+   **Prepínač RAW/FORMÁT** (2026-11-19, M4-13) je jeden prvok: dva segmenty bez medzery na spoločnej koľajnici
+   (`SubtleFill`), zapnutý režim je plný blok v silnej farbe (`TodayFill`, text `TodayInk`), vypnutý je priehľadný
+   s textom `InkSecondary`. Dve tlačidlá líšiace sa odtieňom výplne nepovedali, ktoré je zapnuté.
    Každé tlačidlo ide cez `Ui.StyleButton` (WinUI lightweight styling); texty a ikony dedia farbu tlačidla.
    Ak sa výplň mení (vybraný riadok histórie), tlačidlo má vlastný štetec a mení sa jeho farba.
 3. **Farby** (`Theming/Palette.cs`): výraznejšia paleta tagov (`TagPalette`), modrý akcent, ružová a žltá
@@ -39,6 +42,10 @@ pamätá) mesačná mriežka s bublinami dní, čísiel týždňov a štítkami 
 týždeň resp. mesiac. Minulé dni sú šrafované len v týždennom páse (šrafy `\` každé 4 px, proti hraniciam pásov
 tagov) a farby tagov sú v ňom stlmené k farbe prázdnej bunky (svetlá téma o 40 %, tmavá o 25 %);
 mesačná mriežka má plné farby bez šrafov (`full_calendar.png`).
+**Šrafy a bodkované čiary sa vo WinUI kreslia čiarami** (2026-11-19, M6-09), nie opakovaným prechodovým štetcom
+(`LinearGradientBrush` s `Absolute`/`Repeat` a priehľadnými zarážkami): s takým štetcom na obrazovke kreslilo WinUI
+(Windows App SDK 2.6.5) iné prvky okna na polovičnom krytí. Šrafy sú `Path` s čiarami pod 45°, bodkovaná čiara
+prerušovaný ťah.
 
 **Ročný pohľad zo SPEC §5.2 sa nerobí** (2026-11-16): posúvateľný zoznam mesiacov, „lupu“ na týždeň pri hoveri
 a prepínač Rok/Mesiac nahrádza tento panel – týždenný pás je „lupa“ na aktuálny týždeň, mesačná mriežka plný

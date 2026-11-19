@@ -30,7 +30,15 @@ internal sealed partial class CalendarDayCell : ContentControl
     private readonly TagBrushes _brushes;
     private readonly bool _weekBand; // hatched past days and softer colours (the month grid: full colours)
     private readonly Border _fill = new();
-    private readonly Border _hatch = new() { Background = Palette.PastHatch, IsHitTestVisible = false };
+    // Stripes "\" over a past day, drawn as lines: a repeating gradient brush made WinUI fade other elements (Palette.PastHatch).
+    private readonly Microsoft.UI.Xaml.Shapes.Path _hatch = new()
+    {
+        Stroke = Palette.PastHatch,
+        StrokeThickness = HatchStep / 2 / Math.Sqrt(2), // half of the period, measured across the stripe
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+        IsHitTestVisible = false,
+    };
     private readonly Rectangle _frame = new() { StrokeThickness = 3, Stroke = Palette.TodayFrame, IsHitTestVisible = false };
     private readonly Rectangle _frameDash = new() { StrokeThickness = 3, Stroke = Palette.TodayFrameDash, StrokeDashArray = [2, 2], IsHitTestVisible = false };
     private readonly Border _selection = new() { BorderBrush = Palette.Ink, BorderThickness = new Thickness(0, 0, 0, 3), IsHitTestVisible = false };
@@ -43,7 +51,11 @@ internal sealed partial class CalendarDayCell : ContentControl
     private readonly Rectangle _taskBox = new() { Width = 6, Height = 6, StrokeThickness = 1, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _taskCount = new() { FontFamily = Typo.CondensedBold, VerticalAlignment = VerticalAlignment.Center };
     private readonly StackPanel _tasks = new() { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 5, 0), IsHitTestVisible = false };
+    private const double HatchStep = 8; // px between the stripes along the cell, as the gradient 4 px across had
+
     private DayCellState _state;
+    private int _colors = -1; // TagBrushes.Generation the cell was drawn with
+    private bool _hover;
 
     public CalendarDayCell(TagBrushes brushes, double height, double numberSize, bool weekBand)
     {
@@ -78,15 +90,68 @@ internal sealed partial class CalendarDayCell : ContentControl
         LostFocus += (_, _) => _focus.Visibility = Visibility.Collapsed;
         CornerRadius = Radius.None;
 
-        PointerEntered += (_, _) => _fill.Opacity = 0.85;
-        PointerExited += (_, _) => _fill.Opacity = 1;
+        if (weekBand)
+        {
+            grid.SizeChanged += (_, e) => _hatch.Data = Stripes(e.NewSize.Width, e.NewSize.Height);
+        }
+
+        PointerEntered += (_, _) => SetHover(true);
+        PointerExited += (_, _) => SetHover(false);
+        // A cell hidden or covered under the pointer gets no PointerExited: the lighter fill stayed until the next hover.
+        PointerCanceled += (_, _) => SetHover(false);
+        PointerCaptureLost += (_, _) => SetHover(false);
+        Unloaded += (_, _) => SetHover(false);
     }
 
     public DateOnly Date => _state.Date;
 
+    /// <summary>Lines "\" (45°) every <see cref="HatchStep"/> px, cut to the cell.</summary>
+    private static GeometryGroup Stripes(double width, double height)
+    {
+        var stripes = new GeometryGroup();
+        for (var x = -height; x < width; x += HatchStep)
+        {
+            // The line x + y from the top edge to the bottom one, without what is left or right of the cell.
+            var top = Math.Max(0, -x);
+            var bottom = Math.Min(height, width - x);
+            if (bottom > top)
+            {
+                stripes.Children.Add(new LineGeometry
+                {
+                    StartPoint = new Windows.Foundation.Point(x + top, top),
+                    EndPoint = new Windows.Foundation.Point(x + bottom, bottom),
+                });
+            }
+        }
+
+        return stripes;
+    }
+
+    private void SetHover(bool hover)
+    {
+        _hover = hover;
+        _fill.Opacity = hover ? 0.85 : 1;
+    }
+
+    /// <summary>The same picture: the days compared by what is drawn (every load brings a new list of tags).</summary>
+    private static bool Same(DayCellState a, DayCellState b) =>
+        a.Date == b.Date && a.IsToday == b.IsToday && a.IsPast == b.IsPast && a.IsSelected == b.IsSelected
+        && a.InMonth == b.InMonth && a.IsDimmed == b.IsDimmed && a.AutomationName == b.AutomationName
+        && a.Day.NoteCount == b.Day.NoteCount && a.Day.OpenTasks == b.Day.OpenTasks
+        && a.Day.Tags.SequenceEqual(b.Day.Tags);
+
     public void Update(DayCellState state)
     {
+        // Nothing to redraw: the band is refreshed after every save, mostly with the same days. New brushes and dots
+        // each time were work for nothing (M6-09).
+        if (_colors == _brushes.Generation && Same(state, _state))
+        {
+            return;
+        }
+
         _state = state;
+        _colors = _brushes.Generation;
+        _fill.Opacity = _hover ? 0.85 : 1;
         var day = state.Day;
         Opacity = !state.InMonth ? 0 : state.IsDimmed ? 0.2 : 1;
         IsTabStop = state.InMonth;

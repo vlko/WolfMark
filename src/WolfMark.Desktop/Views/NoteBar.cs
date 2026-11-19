@@ -124,38 +124,60 @@ internal static class FormatBar
         return format;
     }
 
-    /// <summary>[RAW][FORMATTED] showing and setting the mode of <paramref name="source"/>.</summary>
-    public static StackPanel ModeSegments(System.ComponentModel.INotifyPropertyChanged source, string property, Func<EditorMode> get, Action<EditorMode> set)
+    /// <summary>
+    /// [RAW|FORMATTED] showing and setting the mode of <paramref name="source"/>: one switch of two joined segments
+    /// on a shared track; the mode that is on is a block in the strong ink (ADR 0004).
+    /// </summary>
+    public static Border ModeSegments(System.ComponentModel.INotifyPropertyChanged source, string property, Func<EditorMode> get, Action<EditorMode> set)
     {
-        var raw = Segment(Strings.Get(R.Mode_Raw));
-        var formatted = Segment(Strings.Get(R.Mode_Formatted));
-        raw.Click += (_, _) => set(EditorMode.Raw);
-        formatted.Click += (_, _) => set(EditorMode.Formatted);
+        var raw = Segment(Strings.Get(R.Mode_Raw), () => set(EditorMode.Raw));
+        var formatted = Segment(Strings.Get(R.Mode_Formatted), () => set(EditorMode.Formatted));
         void UpdateMode()
         {
-            foreach (var (button, mode) in new[] { (raw, EditorMode.Raw), (formatted, EditorMode.Formatted) })
+            foreach (var (segment, mode) in new[] { (raw, EditorMode.Raw), (formatted, EditorMode.Formatted) })
             {
                 var on = get() == mode;
-                button.Background = on ? Palette.SubtleFillHover : Palette.SubtleFill;
-                ((TextBlock)button.Content!).Foreground = on ? Palette.Ink : Palette.InkTertiary;
+                segment.Block.Background = on ? Palette.TodayFill : Brushes.Transparent;
+                segment.Label.Foreground = on ? Palette.TodayInk : Palette.InkSecondary;
             }
         }
 
         Ui.Bind(source, property, UpdateMode);
-        Palette.Changed += (_, _) => UpdateMode();
-        return Ui.HStack(4, raw, formatted);
+        var track = new Border
+        {
+            Background = Palette.SubtleFill,
+            CornerRadius = new CornerRadius(3),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = Ui.HStack(0, raw.Cell, formatted.Cell),
+        };
+        Ui.OnPaletteChanged(track, UpdateMode);
+        return track;
     }
 
     private static TextBlock HeadingLabel(string text) => new() { Text = text, FontFamily = Typo.CondensedBold, FontSize = 16, Foreground = Palette.Ink };
 
-    private static Button Segment(string text)
+    /// <summary>
+    /// One segment of the mode switch: the block of the mode that is on, a transparent button over it and the label
+    /// on top – the theme's hover fill of a button would otherwise replace the block.
+    /// </summary>
+    private static (Panel Cell, Border Block, TextBlock Label) Segment(string text, Action onClick)
     {
-        var button = Ui.FlatButton(Typo.Caps(text.ToUpper(CultureInfo.CurrentCulture), 14, Palette.InkTertiary));
-        button.Width = 112;
-        button.Height = Ui.ButtonHeight;
-        button.HorizontalContentAlignment = HorizontalAlignment.Center;
-        button.VerticalContentAlignment = VerticalAlignment.Center;
+        var block = new Border { CornerRadius = new CornerRadius(3) };
+        var label = Typo.Caps(text.ToUpper(CultureInfo.CurrentCulture), 14, Palette.InkSecondary);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.IsHitTestVisible = false;
+        var button = Ui.FlatButton(string.Empty, Brushes.Transparent);
+        button.HorizontalAlignment = HorizontalAlignment.Stretch;
+        button.VerticalAlignment = VerticalAlignment.Stretch;
+        button[Avalonia.Automation.AutomationProperties.NameProperty] = text;
+        button.Click += (_, _) => onClick();
         ToolTip.SetTip(button, Strings.Get(R.Mode_Tooltip));
-        return button;
+        // Fixed width: RAW and FORMATTED are the same size in either state, nothing shifts when switching.
+        var cell = new Panel { Width = 112, Height = Ui.ButtonHeight };
+        cell.Children.Add(block);
+        cell.Children.Add(button);
+        cell.Children.Add(label);
+        return (cell, block, label);
     }
 }

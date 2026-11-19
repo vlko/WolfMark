@@ -66,39 +66,13 @@ internal static class Palette
 
     public static SolidColorBrush Transparent { get; } = new(Microsoft.UI.Colors.Transparent);
 
-    /// <summary>Diagonal stripes laid over past days of the week band (reference: hatched pastel days).</summary>
-    public static LinearGradientBrush PastHatch { get; } = new()
-    {
-        MappingMode = BrushMappingMode.Absolute,
-        // Stripes "\" every 4 px: across the tag bands ("/", ~35°) they make a woven pattern (expected_calendar.png);
-        // stripes along the bands blurred into them.
-        StartPoint = new Windows.Foundation.Point(0, 4),
-        EndPoint = new Windows.Foundation.Point(4, 0),
-        SpreadMethod = GradientSpreadMethod.Repeat,
-        GradientStops =
-        {
-            new GradientStop { Offset = 0 },
-            new GradientStop { Offset = 0.5 },
-            new GradientStop { Color = Microsoft.UI.Colors.Transparent, Offset = 0.5 },
-            new GradientStop { Color = Microsoft.UI.Colors.Transparent, Offset = 1 },
-        },
-    };
-
-    /// <summary>Vertical dotted line (repeating 2px dash / 3px gap) in the tertiary ink.</summary>
-    public static LinearGradientBrush Dotted { get; } = new()
-    {
-        MappingMode = BrushMappingMode.Absolute,
-        StartPoint = new Windows.Foundation.Point(0, 0),
-        EndPoint = new Windows.Foundation.Point(0, 5),
-        SpreadMethod = GradientSpreadMethod.Repeat,
-        GradientStops =
-        {
-            new GradientStop { Offset = 0 },
-            new GradientStop { Offset = 0.4 },
-            new GradientStop { Color = Microsoft.UI.Colors.Transparent, Offset = 0.4 },
-            new GradientStop { Color = Microsoft.UI.Colors.Transparent, Offset = 1 },
-        },
-    };
+    /// <summary>
+    /// Colour of the diagonal stripes laid over past days of the week band (reference: hatched pastel days). The
+    /// stripes are lines (CalendarDayCell), the dotted lines a dashed stroke (Ui.DottedLine) – not repeating gradient
+    /// brushes with transparent stops: with those on screen WinUI (Windows App SDK 2.6.5) drew other texts, strokes and
+    /// fills of the window at half their opacity, differently after every redraw (M6-09).
+    /// </summary>
+    public static SolidColorBrush PastHatch { get; } = new();
 
     public static bool IsDark { get; private set; }
 
@@ -158,11 +132,7 @@ internal static class Palette
         GlowNeutral.Color = Color.FromArgb(0x66, Accent.Color.R, Accent.Color.G, Accent.Color.B);
         GlowNeutralStrong.Color = Color.FromArgb(0xB0, Accent.Color.R, Accent.Color.G, Accent.Color.B);
 
-        var hatch = IsDark ? Color.FromArgb(0x5C, 0x1A, 0x1B, 0x1D) : Color.FromArgb(0x6E, 0xFF, 0xFF, 0xFF);
-        PastHatch.GradientStops[0].Color = hatch;
-        PastHatch.GradientStops[1].Color = hatch;
-        Dotted.GradientStops[0].Color = InkTertiary.Color;
-        Dotted.GradientStops[1].Color = InkTertiary.Color;
+        PastHatch.Color = IsDark ? Color.FromArgb(0x5C, 0x1A, 0x1B, 0x1D) : Color.FromArgb(0x6E, 0xFF, 0xFF, 0xFF);
         Changed?.Invoke(null, EventArgs.Empty);
     }
 

@@ -70,8 +70,7 @@ internal sealed class CalendarPanel : UserControl
 
             UpdateTitle();
         };
-        vm.Week.Days.CollectionChanged += (_, _) => WatchDays();
-        WatchDays();
+        vm.Week.DaysChanged += (_, _) => RenderBand();
         vm.Calendar.Rebuilt += (_, _) => RenderMonth();
         vm.Calendar.PropertyChanged += (_, _) => UpdateTitle();
         vm.PropertyChanged += (_, e) =>
@@ -127,19 +126,6 @@ internal sealed class CalendarPanel : UserControl
         }
     }
 
-    private void WatchDays()
-    {
-        foreach (var day in _vm.Week.Days)
-        {
-            day.PropertyChanged -= OnDayChanged;
-            day.PropertyChanged += OnDayChanged;
-        }
-
-        RenderBand();
-    }
-
-    private void OnDayChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => RenderBand();
-
     private void ApplyExpanded()
     {
         var expanded = _vm.IsCalendarExpanded;
@@ -151,7 +137,12 @@ internal sealed class CalendarPanel : UserControl
         ToolTip.SetTip(_expand, tip);
         Avalonia.Automation.AutomationProperties.SetName(_expand, tip);
         UpdateTitle();
-        RenderMonth();
+        // Opening the month loads it and draws it then (Calendar.Rebuilt). Drawing what was loaded the last time
+        // first showed the old month for a moment and built the grid twice.
+        if (_monthCells.Count == 0)
+        {
+            RenderMonth();
+        }
     }
 
     private void UpdateTitle() =>
@@ -484,6 +475,8 @@ internal sealed class CalendarPanel : UserControl
             Cursor = new Cursor(StandardCursorType.Hand);
             PointerEntered += (_, _) => _fill.Opacity = 0.85;
             PointerExited += (_, _) => _fill.Opacity = 1;
+            // A cell hidden under the pointer gets no PointerExited: the lighter fill stayed until the next hover.
+            DetachedFromVisualTree += (_, _) => _fill.Opacity = 1;
             PointerReleased += (_, e) =>
             {
                 if (e.InitialPressMouseButton == MouseButton.Left)
@@ -504,6 +497,7 @@ internal sealed class CalendarPanel : UserControl
         public void Update(DateOnly date, CalendarDay day, bool today, bool past, bool selected, bool inMonth, bool dimmed, string tip)
         {
             Date = date;
+            _fill.Opacity = IsPointerOver ? 0.85 : 1;
             Opacity = !inMonth ? 0 : dimmed ? 0.2 : 1;
             IsHitTestVisible = inMonth;
             Focusable = inMonth;

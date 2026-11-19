@@ -76,10 +76,7 @@ internal sealed partial class CalendarPanel : UserControl
 
             UpdateTitle();
         };
-        foreach (var day in vm.Week.Days)
-        {
-            day.PropertyChanged += (_, _) => RenderBand();
-        }
+        vm.Week.DaysChanged += (_, _) => RenderBand();
 
         vm.Calendar.Rebuilt += (_, _) => RenderMonth();
         vm.Calendar.PropertyChanged += (_, e) =>
@@ -146,7 +143,12 @@ internal sealed partial class CalendarPanel : UserControl
         ToolTipService.SetToolTip(_expand, tip);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_expand, tip);
         UpdateTitle();
-        RenderMonth();
+        // Opening the month loads it and draws it then (Calendar.Rebuilt). Drawing what was loaded the last time
+        // first showed the old month for a moment and built the grid twice.
+        if (_monthCells.Count == 0)
+        {
+            RenderMonth();
+        }
     }
 
     private void UpdateTitle() =>

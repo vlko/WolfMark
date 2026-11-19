@@ -14,6 +14,9 @@ internal sealed class TagBrushes(TagStore store)
 
     public event EventHandler? Changed;
 
+    /// <summary>Grows with every <see cref="Refresh"/> (tag colours or the theme changed): what was drawn before is stale.</summary>
+    public int Generation { get; private set; }
+
     public TagColor ColorOf(string? tag) => store.GetColor(tag);
 
     public SolidColorBrush BrushOf(string? tag)
@@ -36,6 +39,7 @@ internal sealed class TagBrushes(TagStore store)
             brush.Color = Palette.ToColor(store.GetColor(tag.Length == 0 ? null : tag));
         }
 
+        Generation++;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -72,22 +76,6 @@ internal sealed class TagBrushes(TagStore store)
 
         return brush;
     }
-
-    /// <summary>Diagonal hatching used for "today" (reference design).</summary>
-    public static Brush Hatch(Color background, Color stripe) => new LinearGradientBrush
-    {
-        MappingMode = BrushMappingMode.Absolute,
-        StartPoint = new Point(0, 0),
-        EndPoint = new Point(6, 6),
-        SpreadMethod = GradientSpreadMethod.Repeat,
-        GradientStops =
-        {
-            new GradientStop { Color = background, Offset = 0 },
-            new GradientStop { Color = background, Offset = 0.6 },
-            new GradientStop { Color = stripe, Offset = 0.6 },
-            new GradientStop { Color = stripe, Offset = 1 },
-        },
-    };
 
     public static Color DominantColor(TagStore store, IReadOnlyList<TagCount> tags) =>
         tags.Count == 0 ? default : Palette.ToColor(store.GetColor(tags[0].Tag.Length == 0 ? null : tags[0].Tag));

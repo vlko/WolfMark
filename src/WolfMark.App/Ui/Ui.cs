@@ -113,7 +113,7 @@ internal static class Ui
     /// changes later – mutate its colour instead of replacing it.
     /// </summary>
     /// <param name="onColor">True for coloured fills (tags, accent button).</param>
-    public static T StyleButton<T>(this T button, Brush fill, Brush ink, bool onColor = false, Brush? checkedFill = null)
+    public static T StyleButton<T>(this T button, Brush fill, Brush ink, bool onColor = false, Brush? checkedFill = null, Brush? checkedInk = null)
         where T : ButtonBase
     {
         Brush hoverInk = Palette.Accent;
@@ -154,7 +154,7 @@ internal static class Ui
         r["ToggleButtonBackgroundChecked"] = chk;
         r["ToggleButtonBackgroundCheckedPointerOver"] = chk;
         r["ToggleButtonBackgroundCheckedPressed"] = chk;
-        r["ToggleButtonForegroundChecked"] = ink;
+        r["ToggleButtonForegroundChecked"] = checkedInk ?? ink;
         r["ToggleButtonForegroundCheckedPointerOver"] = hoverInk;
         r["ToggleButtonForegroundCheckedPressed"] = hoverInk;
         r["ToggleButtonBorderBrushChecked"] = Palette.Transparent;
@@ -315,7 +315,19 @@ internal static class Ui
     }
 
     /// <summary>Vertical dotted separator (time gutter ┆ content).</summary>
-    public static Border DottedLine() => new() { Width = 1, VerticalAlignment = VerticalAlignment.Stretch, Background = Palette.Dotted };
+    /// <remarks>A dashed stroke (2 px dash, 3 px gap), not a repeating gradient brush – see <see cref="Palette.PastHatch"/>.</remarks>
+    public static FrameworkElement DottedLine() => new Microsoft.UI.Xaml.Shapes.Line
+    {
+        X1 = 0.5,
+        X2 = 0.5,
+        Y2 = 1,
+        Stretch = Stretch.Fill,
+        Width = 1,
+        VerticalAlignment = VerticalAlignment.Stretch,
+        Stroke = Palette.InkTertiary,
+        StrokeThickness = 1,
+        StrokeDashArray = [2, 3],
+    };
 
     /// <summary>Rounded card – only for floating surfaces (search palette); the main UI is flat.</summary>
     public static Border Card(UIElement child, double radius = 18) => new()

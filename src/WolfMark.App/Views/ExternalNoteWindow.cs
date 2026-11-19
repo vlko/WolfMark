@@ -184,16 +184,10 @@ internal sealed partial class ExternalNoteWindow : Window
     {
         var format = NoteHeaderView.BuildFormatToggles(_editor);
 
-        var raw = NoteHeaderView.SegmentButton(Strings.Get(R.Mode_Raw));
-        var formatted = NoteHeaderView.SegmentButton(Strings.Get(R.Mode_Formatted));
-        raw.Click += (_, _) => _doc.Mode = EditorMode.Raw;
-        formatted.Click += (_, _) => _doc.Mode = EditorMode.Formatted;
-        var segments = Ui.Ui.HStack(2, raw, formatted);
-        ToolTipService.SetToolTip(segments, Strings.Get(R.Mode_Tooltip));
+        var segments = NoteHeaderView.ModeSwitch(() => _doc.Mode, m => _doc.Mode = m, out var showMode);
         segments.Bind(_doc, nameof(ExternalDocumentViewModel.Mode), () =>
         {
-            raw.IsChecked = _doc.Mode == EditorMode.Raw;
-            formatted.IsChecked = _doc.Mode == EditorMode.Formatted;
+            showMode();
             _editor.Mode = _doc.Mode == EditorMode.Raw ? MarkdownEditorMode.Raw : MarkdownEditorMode.Formatted;
         });
 

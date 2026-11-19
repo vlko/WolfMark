@@ -105,17 +105,8 @@ internal sealed partial class NoteHeaderView
         });
         var proofing = BuildProofingToggle();
 
-        var raw = SegmentButton(Strings.Get(R.Mode_Raw));
-        var formatted = SegmentButton(Strings.Get(R.Mode_Formatted));
-        raw.Click += (_, _) => editor.Mode = EditorMode.Raw;
-        formatted.Click += (_, _) => editor.Mode = EditorMode.Formatted;
-        var segments = Ui.Ui.HStack(2, raw, formatted);
-        ToolTipService.SetToolTip(segments, Strings.Get(R.Mode_Tooltip));
-        segments.Bind(editor, nameof(NoteEditorViewModel.Mode), () =>
-        {
-            raw.IsChecked = editor.Mode == EditorMode.Raw;
-            formatted.IsChecked = editor.Mode == EditorMode.Formatted;
-        });
+        var segments = ModeSwitch(() => editor.Mode, m => editor.Mode = m, out var showMode);
+        segments.Bind(editor, nameof(NoteEditorViewModel.Mode), showMode);
 
         var add = Ui.Ui.TagButton(Strings.Get(R.Toolbar_NewNoteShort), () => _ = _vm.NewNoteAsync(), Palette.Accent, new SolidColorBrush(Microsoft.UI.Colors.White), Glyphs.Add);
         ToolTipService.SetToolTip(add, Strings.Get(R.Toolbar_NewNote));
@@ -256,16 +247,56 @@ internal sealed partial class NoteHeaderView
         return button;
     }
 
-    internal static ToggleButton SegmentButton(string text) => new ToggleButton
+    /// <summary>
+    /// [RAW|FORMÁT]: one switch of two joined segments on a shared track; the mode that is on is a block in the
+    /// strong ink (ADR 0004) – two separate buttons a shade apart did not say which one was on.
+    /// </summary>
+    /// <param name="show">Shows the current mode; bind it to the mode property.</param>
+    internal static Border ModeSwitch(Func<EditorMode> get, Action<EditorMode> set, out Action show)
     {
-        Content = Typo.Caps(text, 13, Palette.Ink),
-        // Fixed width: RAW and FORMÁT are the same size in either state, nothing shifts when switching.
-        Width = 92,
-        Height = Metrics.ButtonHeight,
-        Padding = new Thickness(0),
-        HorizontalContentAlignment = HorizontalAlignment.Center,
-        CornerRadius = Radius.Control,
-    }.StyleButton(Palette.SubtleFill, Palette.InkSecondary, checkedFill: Palette.SubtleFillHover);
+        var raw = Segment(Strings.Get(R.Mode_Raw));
+        var formatted = Segment(Strings.Get(R.Mode_Formatted));
+        void Show()
+        {
+            raw.IsChecked = get() == EditorMode.Raw;
+            formatted.IsChecked = get() == EditorMode.Formatted;
+        }
+
+        // A ToggleButton flips itself on a click: a click on the segment that is on would switch it off and leave
+        // both off, so the state is always put back from the mode.
+        raw.Click += (_, _) =>
+        {
+            set(EditorMode.Raw);
+            Show();
+        };
+        formatted.Click += (_, _) =>
+        {
+            set(EditorMode.Formatted);
+            Show();
+        };
+        show = Show;
+
+        var track = new Border
+        {
+            Background = Palette.SubtleFill,
+            CornerRadius = Radius.Control,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = Ui.Ui.HStack(0, raw, formatted),
+        };
+        ToolTipService.SetToolTip(track, Strings.Get(R.Mode_Tooltip));
+        return track;
+
+        static ToggleButton Segment(string text) => new ToggleButton
+        {
+            Content = Typo.Caps(text, 13, Palette.Ink),
+            // Fixed width: RAW and FORMÁT are the same size in either state, nothing shifts when switching.
+            Width = 92,
+            Height = Metrics.ButtonHeight,
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            CornerRadius = Radius.Control,
+        }.StyleButton(Palette.Transparent, Palette.InkSecondary, checkedFill: Palette.TodayFill, checkedInk: Palette.TodayInk);
+    }
 
     // ---------------------------------------------------------------- info bars
 
