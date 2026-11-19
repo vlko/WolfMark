@@ -394,6 +394,14 @@ the images itself, so it also works without a screen (under Xvfb, as the smoke t
 
 ## Android: share to your notes and read them
 
+<table>
+<tr>
+<td><img src="docs/screenshots/android/week-light.png" alt="Android: the week band, the open note and the history" width="230"></td>
+<td><img src="docs/screenshots/android/month.png" alt="Android: the month with the history under it" width="230"></td>
+<td><img src="docs/screenshots/android/week-dark.png" alt="Android: the dark theme" width="230"></td>
+</tr>
+</table>
+
 There is a small Android app in the [`android/`](android/README.md) folder. It does two things:
 
 - **Sharing.** Share a link, a selection, a whole text or pictures from any app on the phone and it becomes a note
