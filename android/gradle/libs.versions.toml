@@ -11,7 +11,7 @@ markdown = "0.46.0"
 coroutines = "1.11.0"
 json = "20260814"
 junit = "4.13.2"
-robolectric = "4.18"
+robolectric = "4.18.1"
 roborazzi = "1.79.0"
 
 [libraries]
