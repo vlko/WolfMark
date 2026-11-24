@@ -9,6 +9,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK.Base" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" />
     <ProjectReference Include="..\WolfMark.Core\WolfMark.Core.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
     <!-- WinUI 2.3.9 asks for 2.1.8, which is not on nuget.org (NU1603). -->

@@ -20,12 +20,12 @@
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
     <!-- Windows App SDK 2.6.5 components the app uses; the metapackage would also bundle AI, ML
          (onnxruntime, DirectML), Search and Widgets runtimes into the self-contained output. -->
-    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK.Foundation" Version="2.6.5" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.6.5" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK.DWrite" Version="2.6.5" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK.Base" Version="2.6.5" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.5" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Foundation" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.DWrite" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Base" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Runtime" Version="2.7.0" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <!-- Benchmarks (benchmarks/WolfMark.Benchmarks) – not shipped, so not subject to the AOT rule. -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
